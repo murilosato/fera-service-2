@@ -9,8 +9,18 @@ export enum ServiceType {
 }
 
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  OPERATIONAL = 'OPERATIONAL'
+  MASTER = 'MASTER', // Você (Dono do Sistema)
+  ADMIN = 'ADMIN',   // Dono da Empresa/Franquia
+  OPERATIONAL = 'OPERATIONAL' // Funcionário
+}
+
+export interface UserPermissions {
+  production: boolean;
+  finance: boolean;
+  inventory: boolean;
+  employees: boolean;
+  analytics: boolean;
+  ai: boolean;
 }
 
 export interface User {
@@ -19,6 +29,9 @@ export interface User {
   name: string;
   role: UserRole;
   avatarUrl?: string;
+  companyId?: string; // Para separar dados entre empresas futuramente
+  status: 'active' | 'suspended';
+  permissions: UserPermissions;
 }
 
 export interface Area {
@@ -39,7 +52,7 @@ export interface Service {
   areaM2: number;
   unitValue: number;
   totalValue: number;
-  serviceDate: string; // Formato YYYY-MM-DD
+  serviceDate: string;
 }
 
 export interface Employee {
@@ -120,4 +133,5 @@ export interface AppState {
   monthlyGoalM2: number;
   serviceRates: Record<ServiceType, number>;
   currentUser: User | null;
+  users: User[]; // Lista global de usuários para o MASTER gerenciar
 }

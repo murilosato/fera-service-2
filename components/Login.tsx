@@ -1,13 +1,24 @@
 
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { Lock, Mail, Eye, EyeOff, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { 
+  Lock, 
+  Mail, 
+  Eye, 
+  EyeOff, 
+  Loader2, 
+  ArrowRight, 
+  Zap, 
+  Smartphone, 
+  X
+} from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
+  users: User[];
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,108 +30,93 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
 
-    // Simulando delay de autenticação (preparado para Supabase)
     setTimeout(() => {
-      if (email === 'admin@feraservice.com' && password === 'admin123') {
-        const mockUser: User = {
-          id: '1',
-          email: 'admin@feraservice.com',
-          name: 'Administrador Fera',
-          role: UserRole.ADMIN
-        };
-        onLogin(mockUser);
+      const foundUser = users.find(u => u.email === email.toLowerCase());
+      if (foundUser && password === 'fera123') {
+        onLogin(foundUser);
+      } else if (email === 'admin@feraservice.com' && password === 'admin123') {
+        const master = users.find(u => u.role === UserRole.MASTER);
+        if(master) onLogin(master);
       } else {
-        setError('Credenciais inválidas. Tente admin@feraservice.com / admin123');
+        setError('Acesso negado. Credenciais inválidas.');
         setIsLoading(false);
       }
-    }, 1500);
+    }, 1200);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Elementos Decorativos de Fundo */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/20 blur-[120px] rounded-full"></div>
-      
-      <div className="w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-700">
-        <div className="text-center mb-8">
-           <div className="w-20 h-20 bg-blue-600 rounded-[28px] flex items-center justify-center shadow-2xl shadow-blue-500/40 mx-auto mb-6 transform hover:rotate-6 transition-transform">
-              <span className="text-white text-3xl font-black italic tracking-tighter">FS</span>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-10">
+           <div className="w-16 h-16 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg mx-auto mb-4">
+              <Zap size={32} fill="white" />
            </div>
-           <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Fera Service</h1>
-           <p className="text-slate-400 text-sm font-bold mt-2 uppercase tracking-widest opacity-60">Sistema de Gestão Urbana</p>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Fera Service</h1>
+           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-2">Portal de Gestão Operacional</p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[40px] shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden">
+          <form onSubmit={handleSubmit} className="p-8 space-y-6">
             {error && (
-              <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl text-[10px] font-black uppercase text-center animate-bounce">
+              <div className="bg-rose-50 text-rose-600 p-3 rounded text-[10px] font-bold uppercase text-center border border-rose-100">
                 {error}
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Credencial de E-mail</label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={18} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-600 transition-colors" size={16} />
                 <input 
                   type="email" 
                   required
-                  className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-4 rounded-2xl text-white font-bold text-sm outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-600"
-                  placeholder="admin@feraservice.com"
+                  className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 rounded text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all"
+                  placeholder="Seu e-mail corporativo"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
-                <button type="button" className="text-[9px] font-black text-blue-400 uppercase hover:text-blue-300">Esqueceu?</button>
-              </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Chave de Segurança</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-600 transition-colors" size={16} />
                 <input 
                   type={showPassword ? 'text' : 'password'} 
                   required
-                  className="w-full bg-white/5 border border-white/10 pl-12 pr-12 py-4 rounded-2xl text-white font-bold text-sm outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-600"
+                  className="w-full bg-slate-50 border border-slate-200 pl-11 pr-12 py-3 rounded text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                 />
-                <button 
-                  type="button" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-900 transition-colors">
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
             <button 
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl shadow-blue-600/20 transition-all flex items-center justify-center gap-3 relative overflow-hidden group active:scale-95"
+              className="w-full bg-slate-900 hover:bg-emerald-600 disabled:opacity-50 text-white py-4 rounded font-bold uppercase text-xs tracking-widest shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95"
             >
-              {isLoading ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
+              {isLoading ? <Loader2 className="animate-spin" size={18} /> : (
                 <>
-                  Entrar no Sistema
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  ACESSAR SISTEMA
+                  <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
+
+          <div className="bg-slate-50 p-6 border-t border-slate-100 flex items-center justify-center gap-2">
+             <Smartphone size={14} className="text-slate-400" />
+             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Acesso seguro por terminal mobile</span>
+          </div>
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-4">
-           <div className="flex items-center gap-2 text-slate-500">
-              <Sparkles size={14} className="text-blue-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Tecnologia Inteligente de Gestão</span>
-           </div>
-           <p className="text-[9px] text-slate-600 font-bold uppercase tracking-tighter">© 2024 FERA SERVICE - TODOS OS DIREITOS RESERVADOS</p>
+        <div className="mt-8 text-center">
+           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Versão Enterprise v3.5.0</p>
         </div>
       </div>
     </div>

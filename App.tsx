@@ -11,6 +11,8 @@ import Employees from './components/Employees';
 import AIAssistant from './components/AIAssistant';
 import Settings from './components/Settings';
 import Login from './components/Login';
+import Analytics from './components/Analytics';
+import Management from './components/Management';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(() => {
@@ -28,6 +30,7 @@ const App: React.FC = () => {
         inventory: parsed.inventory || INITIAL_STATE.inventory,
         cashIn: parsed.cashIn || INITIAL_STATE.cashIn,
         cashOut: parsed.cashOut || INITIAL_STATE.cashOut,
+        users: parsed.users || INITIAL_STATE.users,
         currentUser: parsed.currentUser || null
       };
     } catch (e) {
@@ -47,7 +50,13 @@ const App: React.FC = () => {
   }, [state]);
 
   const handleLogin = (user: User) => {
-    setState(prev => ({ ...prev, currentUser: user }));
+    // Busca o usuário real no estado para ter as permissões atualizadas
+    const realUser = state.users.find(u => u.email === user.email);
+    if (realUser?.status === 'suspended') {
+      alert("Sua conta está suspensa. Entre em contato com o Master Admin.");
+      return;
+    }
+    setState(prev => ({ ...prev, currentUser: realUser || user }));
     setActiveTab('dashboard');
   };
 
@@ -57,9 +66,8 @@ const App: React.FC = () => {
     }
   };
 
-  // Se não estiver logado, exibe apenas a tela de login
   if (!state.currentUser) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} users={state.users} />;
   }
 
   const renderContent = () => {
@@ -70,6 +78,8 @@ const App: React.FC = () => {
       case 'finance': return <Finance {...commonProps} />;
       case 'inventory': return <Inventory {...commonProps} />;
       case 'employees': return <Employees {...commonProps} />;
+      case 'analytics': return <Analytics state={state} />;
+      case 'management': return <Management state={state} setState={setState} />;
       case 'ai': return <AIAssistant state={state} />;
       case 'settings': return <Settings {...commonProps} />;
       default: return <Dashboard {...commonProps} />;

@@ -1,7 +1,6 @@
 
-import { AppState, ServiceType } from './types';
+import { AppState, ServiceType, UserRole } from './types';
 
-// Fixed: Added missing 'currentUser' property to comply with AppState interface
 export const INITIAL_STATE: AppState = {
   areas: [
     {
@@ -19,7 +18,6 @@ export const INITIAL_STATE: AppState = {
           areaM2: 5000,
           unitValue: 1.5,
           totalValue: 7500,
-          // Fixed: Added missing required serviceDate property
           serviceDate: '2024-03-01'
         }
       ]
@@ -51,7 +49,24 @@ export const INITIAL_STATE: AppState = {
     [ServiceType.BOCA_DE_LOBO]: 45.00,
     [ServiceType.PINTURA_MEIO_FIO]: 1.20,
   },
-  currentUser: null
+  currentUser: null,
+  users: [
+    {
+      id: 'master-1',
+      email: 'admin@feraservice.com',
+      name: 'Diretoria Master',
+      role: UserRole.MASTER,
+      status: 'active',
+      permissions: {
+        production: true,
+        finance: true,
+        inventory: true,
+        employees: true,
+        analytics: true,
+        ai: true
+      }
+    }
+  ]
 };
 
 export const SERVICE_OPTIONS = Object.values(ServiceType);
