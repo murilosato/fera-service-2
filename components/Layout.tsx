@@ -11,7 +11,6 @@ import {
   LogOut,
   Menu,
   X,
-  User as UserIcon,
   Zap,
   BarChart3,
   ShieldCheck
@@ -31,43 +30,50 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: true },
+    { id: 'dashboard', label: 'Painel Inicial', icon: LayoutDashboard, permission: true },
     { id: 'production', label: 'Produção', icon: MapPin, permission: user?.permissions.production },
-    { id: 'finance', label: 'Finanças', icon: DollarSign, permission: user?.permissions.finance },
-    { id: 'inventory', label: 'Estoque', icon: Package, permission: user?.permissions.inventory },
-    { id: 'employees', label: 'Equipe', icon: Users, permission: user?.permissions.employees },
-    { id: 'analytics', label: 'Relatórios', icon: BarChart3, permission: user?.permissions.analytics },
-    { id: 'management', label: 'Gestão', icon: ShieldCheck, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
-    { id: 'ai', label: 'Fera Bot', icon: MessageSquare, permission: user?.permissions.ai },
+    { id: 'finance', label: 'Financeiro', icon: DollarSign, permission: user?.permissions.finance },
+    { id: 'inventory', label: 'Almoxarifado', icon: Package, permission: user?.permissions.inventory },
+    { id: 'employees', label: 'Equipe & RH', icon: Users, permission: user?.permissions.employees },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, permission: user?.permissions.analytics },
+    { id: 'management', label: 'Gestão de Acessos', icon: ShieldCheck, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
+    { id: 'ai', label: 'Fera Bot (IA)', icon: MessageSquare, permission: user?.permissions.ai },
     { id: 'settings', label: 'Configurações', icon: Settings, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
   ];
 
   const visibleItems = menuItems.filter(item => item.permission);
 
+  const roleLabel = (role: UserRole) => {
+    switch(role) {
+      case UserRole.MASTER: return 'DIRETORIA MASTER';
+      case UserRole.ADMIN: return 'GERÊNCIA';
+      case UserRole.OPERATIONAL: return 'OPERACIONAL';
+      default: return role;
+    }
+  };
+
   const Sidebar = () => (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-300 w-64 fixed left-0 top-0 z-50 border-r border-slate-800">
-      <div className="p-6 border-b border-slate-800/50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-600 rounded-md flex items-center justify-center text-white shadow-sm">
-            <Zap size={18} fill="white" />
-          </div>
-          <h1 className="text-lg font-bold tracking-tight text-white uppercase">Fera Service</h1>
+    <div className="flex flex-col h-full bg-slate-900 text-slate-400 w-64 fixed left-0 top-0 z-50 border-r border-slate-800">
+      <div className="p-6 flex items-center gap-3 border-b border-slate-800">
+        <div className="w-8 h-8 bg-emerald-600 rounded flex items-center justify-center text-white">
+          <Zap size={18} fill="white" />
         </div>
+        <h1 className="text-lg font-black text-white uppercase tracking-tighter">Fera Service</h1>
       </div>
       
-      <div className="px-4 py-6 border-b border-slate-800/50">
+      <div className="p-4 border-b border-slate-800 bg-slate-900/50">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-500 font-bold">
+          <div className="w-10 h-10 rounded border border-slate-700 bg-slate-800 flex items-center justify-center text-emerald-500 font-bold">
             {user?.name?.charAt(0)}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-white truncate">{user?.name}</p>
-            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{userRole}</p>
+            <p className="text-xs font-bold text-white truncate uppercase">{user?.name}</p>
+            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{roleLabel(userRole)}</p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         {visibleItems.map((item) => (
           <button
             key={item.id}
@@ -75,7 +81,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
               setActiveTab(item.id);
               setIsMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm font-semibold ${
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded transition-all text-xs font-bold uppercase tracking-wide ${
               activeTab === item.id 
                 ? 'bg-emerald-600 text-white' 
                 : 'hover:bg-slate-800 hover:text-white'
@@ -90,28 +96,28 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
       <div className="p-4 border-t border-slate-800">
         <button 
           onClick={onLogout}
-          className="flex items-center gap-3 px-3 py-2 w-full text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-md transition-all text-sm font-bold"
+          className="flex items-center gap-3 px-3 py-2 w-full text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded transition-all text-xs font-black uppercase"
         >
           <LogOut size={16} />
-          Sair
+          Sair da Conta
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 antialiased">
       {/* Mobile Header */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="flex items-center gap-2">
            <div className="w-7 h-7 bg-emerald-600 rounded flex items-center justify-center text-white">
              <Zap size={14} fill="white" />
            </div>
-           <span className="font-bold text-slate-800 text-sm uppercase tracking-tight">{activeTab}</span>
+           <span className="font-black text-slate-900 text-xs uppercase tracking-tighter">{activeTab}</span>
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 text-slate-500 hover:bg-slate-100 rounded-md"
+          className="p-2 text-slate-500 hover:bg-slate-100 rounded"
         >
           <Menu size={20} />
         </button>
@@ -130,7 +136,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
         </div>
       )}
 
-      <main className="flex-1 lg:ml-64 p-4 lg:p-8">
+      <main className="flex-1 lg:ml-64 p-4 lg:p-10">
         <div className="max-w-7xl mx-auto">
           {children}
         </div>

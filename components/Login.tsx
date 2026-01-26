@@ -9,8 +9,7 @@ import {
   Loader2, 
   ArrowRight, 
   Zap, 
-  Smartphone, 
-  X
+  Smartphone
 } from 'lucide-react';
 
 interface LoginProps {
@@ -38,40 +37,40 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
         const master = users.find(u => u.role === UserRole.MASTER);
         if(master) onLogin(master);
       } else {
-        setError('Acesso negado. Credenciais inválidas.');
+        setError('Acesso negado. Por favor, verifique seu e-mail e chave.');
         setIsLoading(false);
       }
     }, 1200);
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans antialiased">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-           <div className="w-16 h-16 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg mx-auto mb-4">
+           <div className="w-16 h-16 bg-emerald-600 rounded flex items-center justify-center text-white shadow-xl mx-auto mb-4">
               <Zap size={32} fill="white" />
            </div>
-           <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Fera Service</h1>
-           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-2">Portal de Gestão Operacional</p>
+           <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">Fera Service</h1>
+           <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3 opacity-60">Portal de Gestão Urbana</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded shadow-2xl overflow-hidden">
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
             {error && (
-              <div className="bg-rose-50 text-rose-600 p-3 rounded text-[10px] font-bold uppercase text-center border border-rose-100">
+              <div className="bg-rose-50 text-rose-600 p-3 rounded text-[10px] font-black uppercase tracking-wider text-center border border-rose-100">
                 {error}
               </div>
             )}
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Credencial de E-mail</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
               <div className="relative group">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-600 transition-colors" size={16} />
                 <input 
                   type="email" 
                   required
-                  className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 rounded text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all"
-                  placeholder="Seu e-mail corporativo"
+                  className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 rounded text-[13px] font-bold outline-none focus:border-emerald-600 transition-all placeholder:text-slate-300"
+                  placeholder="usuario@feraservice.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
@@ -79,13 +78,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Chave de Segurança</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Chave de Segurança</label>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-600 transition-colors" size={16} />
                 <input 
                   type={showPassword ? 'text' : 'password'} 
                   required
-                  className="w-full bg-slate-50 border border-slate-200 pl-11 pr-12 py-3 rounded text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 pl-11 pr-12 py-3.5 rounded text-[13px] font-bold outline-none focus:border-emerald-600 transition-all"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -98,11 +97,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
 
             <button 
               disabled={isLoading}
-              className="w-full bg-slate-900 hover:bg-emerald-600 disabled:opacity-50 text-white py-4 rounded font-bold uppercase text-xs tracking-widest shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95"
+              className="w-full bg-slate-900 hover:bg-emerald-600 disabled:opacity-50 text-white py-4 rounded font-black uppercase text-[10px] tracking-[0.2em] shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95"
             >
               {isLoading ? <Loader2 className="animate-spin" size={18} /> : (
                 <>
-                  ACESSAR SISTEMA
+                  AUTENTICAR ACESSO
                   <ArrowRight size={16} />
                 </>
               )}
@@ -111,12 +110,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
 
           <div className="bg-slate-50 p-6 border-t border-slate-100 flex items-center justify-center gap-2">
              <Smartphone size={14} className="text-slate-400" />
-             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Acesso seguro por terminal mobile</span>
+             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Terminal de Campo v3.5.0</span>
           </div>
         </div>
 
         <div className="mt-8 text-center">
-           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Versão Enterprise v3.5.0</p>
+           <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">Ambiente Seguro & Criptografado</p>
         </div>
       </div>
     </div>

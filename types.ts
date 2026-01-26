@@ -9,9 +9,9 @@ export enum ServiceType {
 }
 
 export enum UserRole {
-  MASTER = 'MASTER', // Você (Dono do Sistema)
-  ADMIN = 'ADMIN',   // Dono da Empresa/Franquia
-  OPERATIONAL = 'OPERATIONAL' // Funcionário
+  MASTER = 'DIRETORIA_MASTER',
+  ADMIN = 'GERENTE_UNIDADE',
+  OPERATIONAL = 'OPERACIONAL'
 }
 
 export interface UserPermissions {
@@ -29,8 +29,8 @@ export interface User {
   name: string;
   role: UserRole;
   avatarUrl?: string;
-  companyId?: string; // Para separar dados entre empresas futuramente
-  status: 'active' | 'suspended';
+  companyId?: string;
+  status: 'ativo' | 'suspenso';
   permissions: UserPermissions;
 }
 
@@ -76,15 +76,21 @@ export interface AttendanceRecord {
   date: string;
   value: number;
   status: 'present' | 'absent';
-  paymentStatus?: 'paid' | 'pending';
+  paymentStatus?: 'pago' | 'pendente';
 }
 
-export interface ProductionRecord {
-  id: string;
-  employeeId: string;
-  serviceId: string;
-  associatedValue: number;
-  date: string;
+export interface AppState {
+  areas: Area[];
+  employees: Employee[];
+  attendanceRecords: AttendanceRecord[];
+  inventory: InventoryItem[];
+  inventoryExits: InventoryExit[];
+  cashIn: CashIn[];
+  cashOut: CashOut[];
+  monthlyGoalM2: number;
+  serviceRates: Record<ServiceType, number>;
+  currentUser: User | null;
+  users: User[];
 }
 
 export interface InventoryItem {
@@ -119,19 +125,4 @@ export interface CashOut {
   value: number;
   type: string;
   proofUrl?: string;
-}
-
-export interface AppState {
-  areas: Area[];
-  employees: Employee[];
-  attendanceRecords: AttendanceRecord[];
-  productionRecords: ProductionRecord[];
-  inventory: InventoryItem[];
-  inventoryExits: InventoryExit[];
-  cashIn: CashIn[];
-  cashOut: CashOut[];
-  monthlyGoalM2: number;
-  serviceRates: Record<ServiceType, number>;
-  currentUser: User | null;
-  users: User[]; // Lista global de usuários para o MASTER gerenciar
 }
