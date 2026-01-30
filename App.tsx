@@ -17,7 +17,6 @@ import Management from './components/Management';
 import ConfirmationModal from './components/ConfirmationModal';
 
 const App: React.FC = () => {
-  // Agora não bloqueamos mais com a tela de isConfigured por padrão
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [state, setState] = useState<AppState>(() => {
     try {
@@ -30,76 +29,88 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          setIsLoadingProfile(false);
-        }
-      } catch (e) {
-        console.warn("Supabase não inicializado ou URL ausente.");
-        setIsLoadingProfile(false);
-      }
-    };
-
-    checkSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await loadProfile(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setState(prev => ({ ...prev, currentUser: null }));
-        setIsLoadingProfile(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
   const loadProfile = async (userId: string) => {
     setIsLoadingProfile(true);
-    const profile = await fetchUserProfile(userId);
-    if (profile) {
-      const user: User = {
-        id: profile.id,
-        email: profile.email || '',
-        name: profile.full_name,
-        role: profile.role,
-        companyId: profile.company_id,
-        status: profile.status,
-        permissions: profile.permissions
-      };
-      setState(prev => ({ ...prev, currentUser: user }));
+    try {
+      const profile = await fetchUserProfile(userId);
+      if (profile) {
+        const user: User = {
+          id: profile.id,
+          email: profile.email || '',
+          name: profile.full_name,
+          role: profile.role || 'OPERACIONAL',
+          companyId: profile.company_id || 'default',
+          status: profile.status || 'ativo',
+          permissions: profile.permissions || {
+            production: true, finance: false, inventory: true,
+            employees: true, analytics: false, ai: true
+          }
+        };
+        setState(prev => ({ ...prev, currentUser: user }));
+      } else {
+        // Se falhar em carregar perfil, desloga por segurança
+        await signOut();
+      }
+    } catch (err) {
+      console.error("Erro no loadProfile:", err);
+    } finally {
+      setIsLoadingProfile(false);
     }
-    setIsLoadingProfile(false);
   };
+
+  useEffect(() => {
+    const initApp = async () => {
+      const url = localStorage.getItem('FERA_SUPABASE_URL');
+      if (!url) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setIsLoadingProfile(false);
+      }
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          await loadProfile(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setState(prev => ({ ...prev, currentUser: null }));
+          setIsLoadingProfile(false);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+
+    initApp();
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
     setShowLogoutConfirm(false);
+    setState(prev => ({ ...prev, currentUser: null }));
   };
 
   if (isLoadingProfile) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Autenticando sessão segura...</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Verificando Credenciais...</p>
       </div>
     );
   }
 
-  // Se não tiver URL configurada no localStorage, mostramos um aviso simples em vez de uma página inteira de infra
   if (!localStorage.getItem('FERA_SUPABASE_URL')) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-6 text-center">
-        <div className="bg-rose-500/10 border border-rose-500/20 p-8 rounded-[40px] max-w-sm">
-          <h2 className="text-white font-black uppercase tracking-tighter text-xl mb-4">URL Pendente</h2>
-          <p className="text-slate-400 text-xs font-bold uppercase leading-relaxed mb-6">As chaves foram configuradas, mas você precisa definir a URL do seu projeto Supabase no navegador.</p>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-[40px] max-w-sm">
+          <h2 className="text-white font-black uppercase tracking-tighter text-xl mb-4">Conectar Servidor</h2>
+          <p className="text-slate-400 text-xs font-bold uppercase leading-relaxed mb-6">Insira a URL do projeto Supabase para ativar o Fera Service.</p>
           <input 
             type="text" 
             placeholder="https://xyz.supabase.co" 
@@ -111,7 +122,7 @@ const App: React.FC = () => {
               }
             }}
           />
-          <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pressione ENTER para salvar e iniciar</p>
+          <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pressione ENTER para conectar</p>
         </div>
       </div>
     );

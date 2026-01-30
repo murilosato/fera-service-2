@@ -1,19 +1,15 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
-// Chaves fornecidas pelo usuário
 const SUPABASE_ANON_KEY = 'sb_publishable_KiZXFlucpA_RSEuYyot5GA_eQdaTKC2';
-const SUPABASE_SECRET_KEY = 'sb_secret_C4zghbXw2sUBouGn558Bow_Z4XtDNvz';
 
 const getKeys = () => {
-  // A URL ainda pode vir do localStorage ou ser definida aqui se você tiver
   const url = localStorage.getItem('FERA_SUPABASE_URL') || '';
   return { url, key: SUPABASE_ANON_KEY };
 };
 
 export const isSupabaseConfigured = () => {
   const { url } = getKeys();
-  // Se tivermos a URL no storage, consideramos configurado
   return !!url;
 };
 
@@ -21,17 +17,15 @@ let supabaseInstance: any = null;
 
 export const getSupabaseClient = () => {
   if (supabaseInstance) return supabaseInstance;
-
   const { url } = getKeys();
-  
-  // Se a URL estiver vazia, tentamos inicializar com uma string vazia para não quebrar o Proxy, 
-  // mas avisamos no console. Idealmente o usuário define a URL uma vez.
-  if (!url) {
-    console.warn("Supabase URL não encontrada no localStorage. Use localStorage.setItem('FERA_SUPABASE_URL', 'sua-url')");
-    return null;
-  }
+  if (!url) return null;
 
-  supabaseInstance = createClient(url, SUPABASE_ANON_KEY);
+  supabaseInstance = createClient(url, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  });
   return supabaseInstance;
 };
 
@@ -40,7 +34,10 @@ export const supabase: any = new Proxy({}, {
     const client = getSupabaseClient();
     if (!client) {
       return (...args: any[]) => {
-        console.error("Tentativa de usar Supabase sem URL configurada.");
+        if (prop === 'auth') return { 
+          getSession: async () => ({ data: { session: null } }),
+          onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+        };
         return { error: new Error("URL do Supabase não configurada.") };
       };
     }
@@ -53,21 +50,50 @@ export const fetchUserProfile = async (userId: string) => {
   if (!client) return null;
 
   try {
+    // Tenta buscar o perfil
     const { data, error } = await client
       .from('profiles')
       .select('*, companies(*)')
       .eq('id', userId)
-      .single();
+      .maybeSingle(); // Usamos maybeSingle para não estourar erro caso não exista
 
-    if (error) throw error;
+    if (error) {
+      console.error("Erro na busca de perfil:", error.message);
+      return null;
+    }
+
+    // Se o perfil não existe (ex: usuário criado manualmente no dashboard sem trigger)
+    // podemos retornar um perfil temporário baseado nos dados do Auth para não travar o login
+    if (!data) {
+      console.warn("Perfil não encontrado no banco público. Verifique os triggers.");
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        return {
+          id: user.id,
+          full_name: user.raw_user_meta_data?.full_name || user.email?.split('@')[0] || 'Usuário',
+          email: user.email,
+          role: 'OPERACIONAL',
+          status: 'ativo',
+          permissions: {
+            production: true, finance: false, inventory: true,
+            employees: true, analytics: false, ai: true
+          }
+        };
+      }
+    }
+
     return data;
   } catch (e) {
-    console.error("Erro ao buscar perfil:", e);
+    console.error("Falha crítica ao buscar perfil:", e);
     return null;
   }
 };
 
 export const signOut = async () => {
   const client = getSupabaseClient();
-  if (client) await client.auth.signOut();
+  if (client) {
+    await client.auth.signOut();
+    localStorage.removeItem('sb-access-token');
+    localStorage.removeItem('sb-refresh-token');
+  }
 };
