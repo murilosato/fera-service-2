@@ -13,6 +13,7 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import Analytics from './components/Analytics';
 import Management from './components/Management';
+import ConfirmationModal from './components/ConfirmationModal';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(() => {
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Persistência Automática
   useEffect(() => {
@@ -44,16 +46,13 @@ const App: React.FC = () => {
   }, [state]);
 
   const handleLogin = (user: User) => {
-    // Busca permissões reais do estado para o usuário que está logando
     const realUser = state.users.find(u => u.email === user.email) || user;
     setState(prev => ({ ...prev, currentUser: realUser }));
     setActiveTab('dashboard');
   };
 
-  const handleLogout = () => {
-    if (window.confirm("Deseja realmente sair do sistema?")) {
-      setState(prev => ({ ...prev, currentUser: null }));
-    }
+  const performLogout = () => {
+    setState(prev => ({ ...prev, currentUser: null }));
   };
 
   if (!state.currentUser) {
@@ -77,15 +76,27 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout 
-      activeTab={activeTab} 
-      setActiveTab={setActiveTab} 
-      userRole={state.currentUser.role}
-      onLogout={handleLogout}
-      user={state.currentUser}
-    >
-      {renderContent()}
-    </Layout>
+    <>
+      <Layout 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        userRole={state.currentUser.role}
+        onLogout={() => setShowLogoutConfirm(true)}
+        user={state.currentUser}
+      >
+        {renderContent()}
+      </Layout>
+
+      <ConfirmationModal 
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={performLogout}
+        title="Sair do Sistema"
+        message="Deseja realmente encerrar sua sessão atual?"
+        confirmText="Sair Agora"
+        type="warning"
+      />
+    </>
   );
 };
 

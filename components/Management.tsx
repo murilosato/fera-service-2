@@ -15,7 +15,8 @@ import {
   Building,
   ToggleLeft,
   ToggleRight,
-  Circle
+  Circle,
+  ChevronDown
 } from 'lucide-react';
 
 interface ManagementProps {
@@ -228,6 +229,22 @@ const Management: React.FC<ManagementProps> = ({ state, setState }) => {
                          onChange={e => setUserForm({...userForm, email: e.target.value})}
                        />
                     </div>
+                    <div className="space-y-1 md:col-span-2">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Função / Nível de Acesso</label>
+                       <div className="relative">
+                        <select 
+                          required
+                          className="w-full bg-slate-50 border border-slate-200 p-3 rounded text-[11px] font-black uppercase outline-none focus:border-emerald-500 appearance-none"
+                          value={userForm.role}
+                          onChange={e => setUserForm({...userForm, role: e.target.value as UserRole})}
+                        >
+                          <option value={UserRole.MASTER}>Diretoria Master</option>
+                          <option value={UserRole.ADMIN}>Gerência de Unidade</option>
+                          <option value={UserRole.OPERATIONAL}>Operacional / Campo</option>
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                       </div>
+                    </div>
                  </div>
                  
                  <div className="space-y-4">
@@ -236,7 +253,7 @@ const Management: React.FC<ManagementProps> = ({ state, setState }) => {
                        {Object.keys(defaultPermissions).map(key => (
                          <div key={key} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-100 hover:border-emerald-200 transition-all">
                             <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">
-                              {key === 'production' ? 'PRODUÇÃO' : key === 'finance' ? 'FINANCEIRO' : key === 'inventory' ? 'ALMOXARIFADO' : key === 'employees' ? 'EQUIPE' : key === 'analytics' ? 'ANALYTICS' : key === 'ai' ? 'FERA BOT' : key.toUpperCase()}
+                              {key === 'production' ? 'PRODUÇÃO' : key === 'finance' ? 'FINANCEIRO' : key === 'inventory' ? 'ALMOXARIFADO' : key === 'employees' ? 'RH' : key === 'analytics' ? 'ANALYTICS' : key === 'ai' ? 'FERA BOT' : key.toUpperCase()}
                             </span>
                             <button 
                               type="button"

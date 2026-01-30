@@ -2,6 +2,7 @@
 import React from 'react';
 import { AppState, CashIn, CashOut } from '../types';
 import { Plus, ArrowDownCircle, ArrowUpCircle, Download, X, Wallet, Trash2 } from 'lucide-react';
+import ConfirmationModal from './ConfirmationModal';
 
 interface FinanceProps {
   state: AppState;
@@ -15,6 +16,7 @@ const formatMoney = (value: number) => {
 const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
   const [activeTab, setActiveTab] = React.useState<'in' | 'out'>('in');
   const [showForm, setShowForm] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState<{ isOpen: boolean; id: string; type: 'in' | 'out' } | null>(null);
   const [formData, setFormData] = React.useState({
     value: '',
     date: new Date().toISOString().split('T')[0],
@@ -22,14 +24,12 @@ const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
     type: ''
   });
 
-  const deleteEntry = (id: string) => {
-    if(window.confirm("Deseja realmente excluir este lançamento? Esta ação é irreversível.")) {
+  const performDelete = () => {
+    if (!confirmDelete) return;
+    const { id, type } = confirmDelete;
+    if (type === 'in') {
       setState(prev => ({ ...prev, cashIn: prev.cashIn.filter(c => c.id !== id) }));
-    }
-  };
-
-  const deleteExit = (id: string) => {
-    if(window.confirm("Deseja realmente excluir este lançamento?")) {
+    } else {
       setState(prev => ({ ...prev, cashOut: prev.cashOut.filter(c => c.id !== id) }));
     }
   };
@@ -135,7 +135,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
                    <td className={`px-6 py-4 text-sm font-black text-right ${activeTab === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>R$ {formatMoney(item.value)}</td>
                    <td className="px-6 py-4 text-center">
                       <button 
-                        onClick={() => activeTab === 'in' ? deleteEntry(item.id) : deleteExit(item.id)}
+                        onClick={() => setConfirmDelete({ isOpen: true, id: item.id, type: activeTab })}
                         className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
                       >
                          <Trash2 size={16} />
@@ -181,6 +181,15 @@ const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
            </div>
         </div>
       )}
+
+      <ConfirmationModal 
+        isOpen={!!confirmDelete?.isOpen}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={performDelete}
+        title="Excluir Lançamento"
+        message="Deseja realmente excluir este lançamento? Esta ação é irreversível."
+        confirmText="Excluir Agora"
+      />
     </div>
   );
 };

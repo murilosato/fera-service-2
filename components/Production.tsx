@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
 import { Plus, Trash2, CheckCircle2, Clock, LayoutGrid, AlertCircle, MapPin, Calendar, X, ChevronDown, ChevronUp, Calculator, Ruler, CalendarDays } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ProductionProps {
   state: AppState;
@@ -18,6 +19,9 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'open' | 'closed'>('open');
   const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null);
   
+  // Estado para Confirmações
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; areaId: string; serviceId?: string } | null>(null);
+
   // Estado para Finalização de O.S.
   const [finalizingAreaId, setFinalizingAreaId] = useState<string | null>(null);
   const [closingDate, setClosingDate] = useState(new Date().toISOString().split('T')[0]);
@@ -44,10 +48,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   };
 
   const handleAddArea = () => {
-    if (!newArea.name || !newArea.startReference) {
-      alert("Por favor, preencha o número da O.S. e o logradouro.");
-      return;
-    }
+    if (!newArea.name || !newArea.startReference) return;
     const area: Area = {
       id: Math.random().toString(36).substr(2, 9),
       companyId: state.currentUser?.companyId || 'default-company',
@@ -72,10 +73,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
   const handleAddService = (areaId: string) => {
     const qty = parseFloat(newService.quantity);
-    if (isNaN(qty) || qty <= 0) {
-      alert("Insira uma metragem/quantidade válida.");
-      return;
-    }
+    if (isNaN(qty) || qty <= 0) return;
 
     const unitValue = state.serviceRates[newService.type] || 0;
     const totalValue = unitValue * qty;
@@ -101,14 +99,20 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     setNewService({ ...newService, quantity: '' });
   };
 
-  const deleteService = (areaId: string, serviceId: string) => {
-    if(!window.confirm("Deseja remover este serviço da O.S.?")) return;
-    setState(prev => ({
-      ...prev,
-      areas: prev.areas.map(a => 
-        a.id === areaId ? { ...a, services: a.services.filter(s => s.id !== serviceId) } : a
-      )
-    }));
+  const performDelete = () => {
+    if (!confirmDelete) return;
+    const { areaId, serviceId } = confirmDelete;
+
+    if (serviceId) {
+      setState(prev => ({
+        ...prev,
+        areas: prev.areas.map(a => 
+          a.id === areaId ? { ...a, services: a.services.filter(s => s.id !== serviceId) } : a
+        )
+      }));
+    } else {
+      setState(prev => ({ ...prev, areas: prev.areas.filter(a => a.id !== areaId) }));
+    }
   };
 
   const handleFinalize = () => {
@@ -121,11 +125,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     
     setFinalizingAreaId(null);
     setActiveFilter('closed');
-  };
-
-  const deleteArea = (areaId: string) => {
-    if(!window.confirm("Deseja EXCLUIR permanentemente esta O.S. e todos os seus serviços?")) return;
-    setState(prev => ({ ...prev, areas: prev.areas.filter(a => a.id !== areaId) }));
   };
 
   const filteredAreas = state.areas.filter(a => {
@@ -149,7 +148,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         </button>
       </header>
 
-      {/* MODAL / FORM NOVA O.S. */}
+      {/* FORM NOVA O.S. */}
       {isAddingArea && (
         <div className="bg-white p-6 rounded-[24px] border border-emerald-100 shadow-xl animate-in slide-in-from-top-4 duration-300">
           <div className="flex justify-between items-center mb-6">
@@ -206,7 +205,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         </div>
       )}
 
-      {/* MODAL DE FECHAMENTO DE O.S. */}
+      {/* FECHAMENTO DE O.S. */}
       {finalizingAreaId && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[24px] w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 duration-200">
@@ -322,7 +321,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                            Encerrar
                          </button>
                        )}
-                       <button onClick={() => deleteArea(area.id)} className="p-3 text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={20} /></button>
+                       <button onClick={() => setConfirmDelete({ isOpen: true, areaId: area.id })} className="p-3 text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={20} /></button>
                     </div>
                   </div>
                 </div>
@@ -331,8 +330,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                 {isExpanded && (
                   <div className="border-t border-slate-50 bg-slate-50/50 p-6 animate-in slide-in-from-top-2">
                      <div className="flex flex-col lg:flex-row gap-6">
-                        
-                        {/* Formulário de Novo Serviço */}
                         {!area.endDate && (
                           <div className="lg:w-1/3 bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
                              <div className="flex items-center gap-2 text-blue-600 mb-2">
@@ -371,7 +368,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                           </div>
                         )}
 
-                        {/* Lista de Serviços Lançados */}
                         <div className="flex-1 overflow-hidden">
                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                              <Calendar size={14} /> Histórico de Produção da O.S.
@@ -399,22 +395,13 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                                            <td className="px-5 py-3 text-[11px] font-black text-emerald-600 text-right">{formatMoney(s.totalValue)}</td>
                                            {!area.endDate && (
                                              <td className="px-5 py-3 text-center">
-                                                <button onClick={() => deleteService(area.id, s.id)} className="text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => setConfirmDelete({ isOpen: true, areaId: area.id, serviceId: s.id })} className="text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={14} /></button>
                                              </td>
                                            )}
                                         </tr>
                                       ))
                                     )}
                                  </tbody>
-                                 {area.services.length > 0 && (
-                                   <tfoot className="bg-slate-50 font-black">
-                                      <tr>
-                                         <td colSpan={3} className="px-5 py-3 text-right text-[10px] text-slate-400 uppercase">Resumo Acumulado:</td>
-                                         <td className="px-5 py-3 text-right text-[12px] text-slate-900">{formatMoney(totalOS)}</td>
-                                         {!area.endDate && <td></td>}
-                                      </tr>
-                                   </tfoot>
-                                 )}
                               </table>
                            </div>
                         </div>
@@ -426,6 +413,17 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
           })
         )}
       </div>
+
+      <ConfirmationModal 
+        isOpen={!!confirmDelete?.isOpen}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={performDelete}
+        title={confirmDelete?.serviceId ? "Remover Serviço" : "Excluir O.S."}
+        message={confirmDelete?.serviceId 
+          ? "Deseja remover este serviço da O.S.? Esta ação não pode ser desfeita." 
+          : "Deseja EXCLUIR permanentemente esta O.S. e todos os seus serviços?"}
+        confirmText="Excluir Agora"
+      />
     </div>
   );
 };

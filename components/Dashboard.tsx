@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppState } from '../types';
 import { 
   BarChart, 
@@ -10,7 +10,6 @@ import {
   Tooltip, 
   ResponsiveContainer,
   Cell,
-  ReferenceLine,
   Legend
 } from 'recharts';
 import { 
@@ -18,19 +17,11 @@ import {
   AlertTriangle, 
   Wallet, 
   Map, 
-  Package, 
-  Target, 
   ArrowUpRight, 
-  BarChart3, 
-  ChevronRight, 
-  AlertCircle, 
   Calendar, 
   Filter, 
   X, 
-  Percent,
-  Smartphone,
-  Download,
-  Info
+  Percent
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -44,7 +35,6 @@ type MetricType = 'production' | 'revenue' | 'balance' | 'stock';
 const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
   const [activeMetric, setActiveMetric] = useState<MetricType>('production');
   const [showFilter, setShowFilter] = useState(false);
-  const [showInstallModal, setShowInstallModal] = useState(false);
   
   const [rangeMonths, setRangeMonths] = useState(6);
   const [endPeriod, setEndPeriod] = useState(() => {
@@ -155,14 +145,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         </div>
         
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowInstallModal(true)}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-lg shadow-sm hover:bg-emerald-700 transition-all active:scale-95"
-          >
-            <Download size={16} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Baixar App</span>
-          </button>
-
           <div className="relative">
             <button 
               onClick={() => setShowFilter(!showFilter)}
@@ -201,28 +183,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           </div>
         </div>
       </header>
-
-      {/* Banner de Instalação (PWA) */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-[24px] p-6 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl border border-white/5 overflow-hidden relative">
-         <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Smartphone size={120} />
-         </div>
-         <div className="flex items-center gap-5 relative z-10 text-center md:text-left">
-            <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-               <Smartphone size={28} />
-            </div>
-            <div>
-               <h3 className="text-lg font-black uppercase tracking-tight">Fera Service no seu Celular</h3>
-               <p className="text-slate-400 text-xs font-medium max-w-md">Instale o aplicativo para ter acesso rápido aos lançamentos de campo, offline e notificações em tempo real.</p>
-            </div>
-         </div>
-         <button 
-           onClick={() => setShowInstallModal(true)}
-           className="bg-white text-slate-900 px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-emerald-400 hover:text-slate-900 transition-all shadow-lg active:scale-95 relative z-10"
-         >
-            INSTALAR AGORA
-         </button>
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
@@ -353,55 +313,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           </button>
         </div>
       </div>
-
-      {/* Modal de Instruções de Instalação */}
-      {showInstallModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 bg-slate-900 text-white flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Download size={24} className="text-emerald-500" />
-                <h3 className="text-sm font-black uppercase tracking-[0.2em]">Instalar Aplicativo</h3>
-              </div>
-              <button onClick={() => setShowInstallModal(false)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-8 space-y-8">
-               <div className="space-y-6">
-                  <div className="flex gap-4">
-                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-black text-slate-900 text-xs">1</div>
-                     <div>
-                        <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Para Android (Chrome)</p>
-                        <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Toque nos <span className="text-slate-900">três pontos</span> no canto superior e selecione <span className="text-emerald-600">"Instalar Aplicativo"</span> ou "Adicionar à tela inicial".</p>
-                     </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-black text-slate-900 text-xs">2</div>
-                     <div>
-                        <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Para iPhone (Safari)</p>
-                        <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Toque no ícone de <span className="text-slate-900">Compartilhar</span> (quadrado com seta) e selecione <span className="text-emerald-600">"Adicionar à Tela de Início"</span>.</p>
-                     </div>
-                  </div>
-
-                  <div className="bg-blue-50 p-4 rounded-2xl flex items-start gap-3 border border-blue-100">
-                     <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                     <p className="text-[9px] font-black text-blue-800 uppercase leading-relaxed tracking-tight">Isso permite usar o sistema como um App nativo, com mais espaço de tela e acesso imediato.</p>
-                  </div>
-               </div>
-
-               <button 
-                 onClick={() => setShowInstallModal(false)}
-                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-emerald-600 transition-all active:scale-95"
-               >
-                  ENTENDI, VOU INSTALAR
-               </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
