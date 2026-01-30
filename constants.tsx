@@ -4,19 +4,23 @@ import { AppState, ServiceType, UserRole } from './types';
 export const INITIAL_STATE: AppState = {
   areas: [],
   employees: [
-    { id: 'e1', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultDailyRate: 85.00 },
-    { id: 'e2', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultDailyRate: 75.00 }
+    { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultDailyRate: 85.00 },
+    { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultDailyRate: 75.00 }
   ],
   attendanceRecords: [],
   inventory: [
-    { id: 'i1', name: 'Fio de Nylon', category: 'insumos', currentQty: 10, minQty: 5, unitValue: 45.0 },
-    { id: 'i2', name: 'Óleo 2T', category: 'insumos', currentQty: 3, minQty: 10, unitValue: 35.0 }
+    { id: 'i1', companyId: 'fera-main', name: 'Fio de Nylon', category: 'insumos', currentQty: 10, minQty: 5, unitValue: 45.0 },
+    { id: 'i2', companyId: 'fera-main', name: 'Óleo 2T', category: 'insumos', currentQty: 3, minQty: 10, unitValue: 35.0 }
   ],
   inventoryExits: [],
   cashIn: [],
   cashOut: [],
-  monthlyGoalM2: 50000,
-  monthlyGoalRevenue: 100000, // Valor padrão R$ 100.000,00
+  monthlyGoals: {
+    [`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`]: {
+      production: 50000,
+      revenue: 100000
+    }
+  },
   serviceRates: {
     [ServiceType.VARRICAO_KM]: 150.00,
     [ServiceType.CAPINA_MANUAL_M2]: 2.50,
@@ -38,6 +42,7 @@ export const INITIAL_STATE: AppState = {
   users: [
     {
       id: 'master-1',
+      companyId: 'fera-main',
       email: 'admin@feraservice.com',
       name: 'Diretoria Master',
       role: UserRole.MASTER,

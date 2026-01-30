@@ -48,6 +48,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
     if (activeTab === 'in') {
       const newItem: CashIn = {
         id: Math.random().toString(36).substr(2, 9),
+        companyId: state.currentUser?.companyId || 'default-company',
         date: formData.date,
         value: valueNum,
         reference: formData.reference,
@@ -57,6 +58,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
     } else {
       const newItem: CashOut = {
         id: Math.random().toString(36).substr(2, 9),
+        companyId: state.currentUser?.companyId || 'default-company',
         date: formData.date,
         value: valueNum,
         type: formData.type || 'Geral'

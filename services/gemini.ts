@@ -6,14 +6,19 @@ export const askAssistant = async (history: { role: 'user' | 'bot'; text: string
   // Inicialização usando a API KEY do ambiente conforme as diretrizes
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
+  // Obter meta do mês atual para o contexto (Formato YYYY-MM)
+  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const currentGoal = state.monthlyGoals[currentMonthKey] || { production: 0, revenue: 0 };
+
   // Compilação do contexto operacional para a IA "enxergar" o sistema
+  // Fix: substitui 'monthlyGoalM2' (inexistente) pelo valor da meta do mês atual
   const context = {
     totalAreas: state.areas.length,
     productionM2: state.areas.reduce((acc, area) => acc + area.services.reduce((sAcc, s) => sAcc + s.areaM2, 0), 0),
     totalRevenue: state.areas.reduce((acc, area) => acc + area.services.reduce((sAcc, s) => sAcc + s.totalValue, 0), 0),
     cashBalance: state.cashIn.reduce((acc, c) => acc + c.value, 0) - state.cashOut.reduce((acc, c) => acc + c.value, 0),
     lowStockItems: state.inventory.filter(i => i.currentQty <= i.minQty).map(i => i.name),
-    goalM2: state.monthlyGoalM2,
+    goalM2: currentGoal.production,
     activeEmployees: state.employees.filter(e => e.status === 'active').length
   };
 
@@ -36,6 +41,7 @@ export const askAssistant = async (history: { role: 'user' | 'bot'; text: string
       }
     });
 
+    // Acessa a propriedade .text diretamente da resposta
     return response.text;
   } catch (error) {
     console.error("Erro no Fera Bot:", error);

@@ -9,7 +9,10 @@ import {
   Loader2, 
   ArrowRight, 
   Zap, 
-  Smartphone
+  Smartphone,
+  Download,
+  X,
+  Info
 } from 'lucide-react';
 
 interface LoginProps {
@@ -23,6 +26,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +48,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans antialiased">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans antialiased relative">
+      {/* Botão Flutuante de Instalação */}
+      <button 
+        onClick={() => setShowInstallModal(true)}
+        className="fixed top-6 right-6 flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-full shadow-sm hover:shadow-md hover:border-emerald-500 text-slate-600 transition-all active:scale-95 group z-10"
+      >
+        <Download size={16} className="group-hover:text-emerald-600" />
+        <span className="text-[10px] font-black uppercase tracking-widest">Baixar App</span>
+      </button>
+
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
            <div className="w-16 h-16 bg-emerald-600 rounded flex items-center justify-center text-white shadow-xl mx-auto mb-4">
@@ -114,10 +127,66 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
           </div>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-4">
            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">Ambiente Seguro & Criptografado</p>
+           
+           <button 
+             onClick={() => setShowInstallModal(true)}
+             className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline flex items-center justify-center gap-2 mx-auto"
+           >
+              <Download size={14} /> Deseja baixar o App?
+           </button>
         </div>
       </div>
+
+      {/* Modal de Instruções de Instalação */}
+      {showInstallModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 bg-slate-900 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Download size={24} className="text-emerald-500" />
+                <h3 className="text-sm font-black uppercase tracking-[0.2em]">Instalar Aplicativo</h3>
+              </div>
+              <button onClick={() => setShowInstallModal(false)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+               <div className="space-y-6">
+                  <div className="flex gap-4">
+                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-black text-slate-900 text-xs">1</div>
+                     <div>
+                        <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Para Android (Chrome)</p>
+                        <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Toque nos <span className="text-slate-900">três pontos</span> no canto superior e selecione <span className="text-emerald-600">"Instalar Aplicativo"</span> ou "Adicionar à tela inicial".</p>
+                     </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-black text-slate-900 text-xs">2</div>
+                     <div>
+                        <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Para iPhone (Safari)</p>
+                        <p className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Toque no ícone de <span className="text-slate-900">Compartilhar</span> (quadrado com seta) e selecione <span className="text-emerald-600">"Adicionar à Tela de Início"</span>.</p>
+                     </div>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-2xl flex items-start gap-3 border border-blue-100">
+                     <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                     <p className="text-[9px] font-black text-blue-800 uppercase leading-relaxed tracking-tight">Isso permite usar o sistema como um App nativo, com mais espaço de tela e acesso imediato.</p>
+                  </div>
+               </div>
+
+               <button 
+                 onClick={() => setShowInstallModal(false)}
+                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-emerald-600 transition-all active:scale-95"
+               >
+                  ENTENDI, VOU INSTALAR
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

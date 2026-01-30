@@ -1,7 +1,7 @@
 
 export enum ServiceType {
   VARRICAO_KM = 'Varrição (KM)',
-  CAPINA_MANUAL_M2 = 'C. Manual (m²)',
+  CAPINA_MANUAL_M2 = 'C. Manual (m²))',
   ROCADA_MECANIZADA_M2 = 'Roçada Meq (m²)',
   ROCADA_TRATOR_M2 = 'Roç. c/ Trator (m²)',
   BOCA_DE_LOBO = 'Boca de Lobo',
@@ -23,19 +23,27 @@ export interface UserPermissions {
   ai: boolean;
 }
 
+export interface Company {
+  id: string;
+  name: string;
+  plan: string;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
   role: UserRole;
   avatarUrl?: string;
-  companyId?: string;
+  companyId: string; // Obrigatório no SaaS
   status: 'ativo' | 'suspenso';
   permissions: UserPermissions;
+  company?: Company;
 }
 
 export interface Area {
   id: string;
+  companyId: string;
   name: string;
   startDate: string;
   endDate?: string;
@@ -47,6 +55,7 @@ export interface Area {
 
 export interface Service {
   id: string;
+  companyId: string;
   areaId: string;
   type: ServiceType;
   areaM2: number;
@@ -57,30 +66,50 @@ export interface Service {
 
 export interface Employee {
   id: string;
+  companyId: string;
   name: string;
   role: string;
   status: 'active' | 'inactive';
   defaultDailyRate?: number;
   cpf?: string;
+  phone?: string;
+  pixKey?: string;
   birthDate?: string;
   address?: string;
-  phone?: string;
   paymentType?: 'pix' | 'bank';
-  pixKey?: string;
   bankAccount?: string;
 }
 
 export interface AttendanceRecord {
   id: string;
+  companyId: string;
   employeeId: string;
   date: string;
-  value: number;
   status: 'present' | 'absent';
+  value: number;
   paymentStatus?: 'pago' | 'pendente';
+}
+
+export interface CashIn {
+  id: string;
+  companyId: string;
+  date: string;
+  value: number;
+  reference: string;
+  type: string;
+}
+
+export interface CashOut {
+  id: string;
+  companyId: string;
+  date: string;
+  value: number;
+  type: string;
 }
 
 export interface InventoryItem {
   id: string;
+  companyId: string;
   name: string;
   category: 'peças' | 'insumos' | 'EPIs' | 'outros';
   currentQty: number;
@@ -90,6 +119,7 @@ export interface InventoryItem {
 
 export interface InventoryExit {
   id: string;
+  companyId: string;
   itemId: string;
   quantity: number;
   date: string;
@@ -97,20 +127,9 @@ export interface InventoryExit {
   observation: string;
 }
 
-export interface CashIn {
-  id: string;
-  date: string;
-  value: number;
-  reference: string;
-  type: string;
-}
-
-export interface CashOut {
-  id: string;
-  date: string;
-  value: number;
-  type: string;
-  proofUrl?: string;
+export interface MonthlyGoal {
+  production: number;
+  revenue: number;
 }
 
 export interface AppState {
@@ -121,11 +140,11 @@ export interface AppState {
   inventoryExits: InventoryExit[];
   cashIn: CashIn[];
   cashOut: CashOut[];
-  monthlyGoalM2: number;
-  monthlyGoalRevenue: number; // Nova propriedade
+  monthlyGoals: Record<string, MonthlyGoal>;
   serviceRates: Record<ServiceType, number>;
   serviceGoals: Record<ServiceType, number>;
   financeCategories: string[];
   currentUser: User | null;
   users: User[];
+  isSyncing?: boolean; // Estado de loading do Supabase
 }

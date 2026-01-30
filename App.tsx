@@ -17,47 +17,36 @@ import Management from './components/Management';
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(() => {
     try {
-      const saved = localStorage.getItem('gestor_urbano_state');
-      if (!saved) return { ...INITIAL_STATE, currentUser: null };
-      
-      const parsed = JSON.parse(saved);
-      return {
-        ...INITIAL_STATE,
-        ...parsed,
-        attendanceRecords: parsed.attendanceRecords || [],
-        employees: parsed.employees || INITIAL_STATE.employees,
-        areas: parsed.areas || INITIAL_STATE.areas,
-        inventory: parsed.inventory || INITIAL_STATE.inventory,
-        cashIn: parsed.cashIn || INITIAL_STATE.cashIn,
-        cashOut: parsed.cashOut || INITIAL_STATE.cashOut,
-        users: parsed.users || INITIAL_STATE.users,
-        currentUser: parsed.currentUser || null
-      };
+      const saved = localStorage.getItem('fera_service_state_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...INITIAL_STATE,
+          ...parsed,
+          isSyncing: false
+        };
+      }
     } catch (e) {
-      console.warn("Erro ao restaurar estado. Usando inicial.", e);
-      return { ...INITIAL_STATE, currentUser: null };
+      console.warn("Falha ao carregar estado local:", e);
     }
+    return { ...INITIAL_STATE, currentUser: null, isSyncing: false };
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // Persistência Automática
   useEffect(() => {
     try {
-      localStorage.setItem('gestor_urbano_state', JSON.stringify(state));
+      localStorage.setItem('fera_service_state_v2', JSON.stringify(state));
     } catch (e) {
-      console.error("Falha ao salvar estado:", e);
+      console.error("Erro ao salvar no armazenamento local:", e);
     }
   }, [state]);
 
   const handleLogin = (user: User) => {
-    // Busca o usuário real no estado para ter as permissões atualizadas
-    const realUser = state.users.find(u => u.email === user.email);
-    // Fix: User status should be checked against 'suspenso'
-    if (realUser?.status === 'suspenso') {
-      alert("Sua conta está suspensa. Entre em contato com o Master Admin.");
-      return;
-    }
-    setState(prev => ({ ...prev, currentUser: realUser || user }));
+    // Busca permissões reais do estado para o usuário que está logando
+    const realUser = state.users.find(u => u.email === user.email) || user;
+    setState(prev => ({ ...prev, currentUser: realUser }));
     setActiveTab('dashboard');
   };
 

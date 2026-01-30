@@ -123,6 +123,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
     } else {
       const newRecord: AttendanceRecord = {
         id: Math.random().toString(36).substr(2, 9),
+        companyId: state.currentUser?.companyId || 'default-company',
         employeeId: empId,
         date: date,
         status: 'present',
@@ -176,6 +177,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
     } else {
       const emp: Employee = {
         id: Math.random().toString(36).substr(2, 9),
+        companyId: state.currentUser?.companyId || 'default-company',
         name: employeeForm.name,
         role: employeeForm.role,
         status: 'active',

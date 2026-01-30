@@ -84,6 +84,7 @@ const Management: React.FC<ManagementProps> = ({ state, setState }) => {
     } else {
       const newUser: User = {
         id: Math.random().toString(36).substr(2, 9),
+        companyId: state.currentUser?.companyId || 'default-company',
         name: userForm.name!,
         email: userForm.email!,
         role: userForm.role || UserRole.OPERATIONAL,

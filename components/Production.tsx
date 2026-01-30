@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, Clock, LayoutGrid, AlertCircle, MapPin, Calendar, X, ChevronDown, ChevronUp, Calculator, Ruler } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Clock, LayoutGrid, AlertCircle, MapPin, Calendar, X, ChevronDown, ChevronUp, Calculator, Ruler, CalendarDays } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 
 interface ProductionProps {
@@ -18,6 +18,10 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'open' | 'closed'>('open');
   const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null);
   
+  // Estado para Finalização de O.S.
+  const [finalizingAreaId, setFinalizingAreaId] = useState<string | null>(null);
+  const [closingDate, setClosingDate] = useState(new Date().toISOString().split('T')[0]);
+
   // Estados para Nova O.S.
   const [newArea, setNewArea] = useState<Partial<Area>>({
     name: '',
@@ -28,7 +32,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     services: []
   });
 
-  // Estados para Novo Serviço (Data removida para automação)
+  // Estados para Novo Serviço
   const [newService, setNewService] = useState({
     type: ServiceType.VARRICAO_KM,
     quantity: ''
@@ -46,6 +50,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     }
     const area: Area = {
       id: Math.random().toString(36).substr(2, 9),
+      companyId: state.currentUser?.companyId || 'default-company',
       name: newArea.name!,
       startDate: newArea.startDate!,
       startReference: newArea.startReference!,
@@ -77,12 +82,13 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
     const service: Service = {
       id: Math.random().toString(36).substr(2, 9),
+      companyId: state.currentUser?.companyId || 'default-company',
       areaId,
       type: newService.type,
       areaM2: qty,
       unitValue,
       totalValue,
-      serviceDate: new Date().toISOString().split('T')[0] // Registro automático na data atual
+      serviceDate: new Date().toISOString().split('T')[0]
     };
 
     setState(prev => ({
@@ -105,14 +111,16 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     }));
   };
 
-  const finalizeArea = (areaId: string) => {
-    const endDate = prompt("Data de conclusão:", new Date().toISOString().split('T')[0]);
-    if (endDate) {
-      setState(prev => ({
-        ...prev,
-        areas: prev.areas.map(a => a.id === areaId ? { ...a, endDate } : a)
-      }));
-    }
+  const handleFinalize = () => {
+    if (!finalizingAreaId) return;
+    
+    setState(prev => ({
+      ...prev,
+      areas: prev.areas.map(a => a.id === finalizingAreaId ? { ...a, endDate: closingDate } : a)
+    }));
+    
+    setFinalizingAreaId(null);
+    setActiveFilter('closed');
   };
 
   const deleteArea = (areaId: string) => {
@@ -198,6 +206,35 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         </div>
       )}
 
+      {/* MODAL DE FECHAMENTO DE O.S. */}
+      {finalizingAreaId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="font-black text-xs text-slate-900 uppercase tracking-widest">Encerrar Ordem de Serviço</h3>
+               <button onClick={() => setFinalizingAreaId(null)} className="text-slate-300"><X size={20} /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Data de Conclusão</label>
+                <input 
+                  type="date" 
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-bold outline-none focus:border-emerald-500"
+                  value={closingDate}
+                  onChange={e => setClosingDate(e.target.value)}
+                />
+              </div>
+              <button 
+                onClick={handleFinalize}
+                className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-900/10 active:scale-95 transition-all"
+              >
+                Confirmar Encerramento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FILTROS */}
       <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200">
         <button 
@@ -227,7 +264,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
             const isExpanded = expandedAreaId === area.id;
 
             return (
-              <div key={area.id} className={`bg-white rounded-[24px] border ${area.endDate ? 'border-emerald-100' : 'border-slate-200'} shadow-sm overflow-hidden transition-all duration-300`}>
+              <div key={area.id} className={`bg-white rounded-[24px] border ${area.endDate ? 'border-emerald-100 shadow-emerald-900/5' : 'border-slate-200 shadow-sm'} overflow-hidden transition-all duration-300`}>
                 <div className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div className="flex items-center gap-4 flex-1">
                     <div className={`w-12 h-12 ${area.endDate ? 'bg-emerald-600' : 'bg-slate-900'} text-white rounded-2xl flex items-center justify-center shadow-lg`}>
@@ -240,9 +277,28 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                            {area.endDate ? 'Finalizada' : 'Ativa'}
                          </span>
                       </div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                        {area.startReference} {area.endReference ? `➜ ${area.endReference}` : ''}
-                      </p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                          {area.startReference} {area.endReference ? `➜ ${area.endReference}` : ''}
+                        </p>
+                        {area.endDate ? (
+                          <div className="flex items-center gap-3 mt-1">
+                            <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg">
+                               <CalendarDays size={10} className="text-blue-500" />
+                               <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Início: {formatDate(area.startDate)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-lg">
+                               <CheckCircle2 size={10} className="text-emerald-500" />
+                               <span className="text-[9px] font-black text-emerald-700 uppercase tracking-tighter">Fim: {formatDate(area.endDate)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 mt-1 bg-slate-50 w-fit px-2 py-1 rounded-lg">
+                            <CalendarDays size={10} className="text-slate-400" />
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Aberta em: {formatDate(area.startDate)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -259,7 +315,12 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                        </button>
                        {!area.endDate && (
-                         <button onClick={() => finalizeArea(area.id)} className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-md">Encerrar</button>
+                         <button 
+                          onClick={() => setFinalizingAreaId(area.id)} 
+                          className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-md"
+                         >
+                           Encerrar
+                         </button>
                        )}
                        <button onClick={() => deleteArea(area.id)} className="p-3 text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={20} /></button>
                     </div>

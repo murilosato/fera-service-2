@@ -107,6 +107,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
         ...prev.inventoryExits,
         {
           id: Math.random().toString(36).substr(2, 9),
+          companyId: state.currentUser?.companyId || 'default-company',
           itemId: selectedItemId,
           quantity: qty,
           date: new Date().toISOString().split('T')[0],
@@ -147,6 +148,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
     
     const item: InventoryItem = {
       id: Math.random().toString(36).substr(2, 9),
+      companyId: state.currentUser?.companyId || 'default-company',
       name: newItem.name!,
       category: newItem.category as any,
       currentQty: newItem.currentQty || 0,
