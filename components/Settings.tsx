@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppState, ServiceType } from '../types';
-import { Save, Info, Target, ListTree, Plus, Trash2, ShieldCheck, DollarSign, Calendar, ChevronRight } from 'lucide-react';
+import { Save, Info, Target, ListTree, Plus, Trash2, ShieldCheck, DollarSign, Calendar, ChevronRight, Database, RefreshCw } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 
 interface SettingsProps {
@@ -12,6 +12,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ state, setState }) => {
   const [newCategory, setNewCategory] = useState('');
   const [confirmDeleteGoal, setConfirmDeleteGoal] = useState<{ isOpen: boolean; monthKey: string } | null>(null);
+  const [showCloudResetConfirm, setShowCloudResetConfirm] = useState(false);
   
   const [goalForm, setGoalForm] = useState({
     month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
@@ -60,13 +61,28 @@ const Settings: React.FC<SettingsProps> = ({ state, setState }) => {
     });
   };
 
+  const handleResetCloud = () => {
+    localStorage.removeItem('FERA_SUPABASE_URL');
+    localStorage.removeItem('FERA_SUPABASE_ANON_KEY');
+    window.location.reload();
+  };
+
   const sortedMonthKeys = Object.keys(state.monthlyGoals).sort().reverse();
 
   return (
     <div className="space-y-6 pb-24">
-      <header>
-        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Configurações Operacionais</h2>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Personalização de Parâmetros e Objetivos Temporais</p>
+      <header className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Configurações Operacionais</h2>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Personalização de Parâmetros e Objetivos Temporais</p>
+        </div>
+        
+        <button 
+          onClick={() => setShowCloudResetConfirm(true)}
+          className="flex items-center gap-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+        >
+          <Database size={14} /> Gerenciar Cloud
+        </button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -130,6 +146,22 @@ const Settings: React.FC<SettingsProps> = ({ state, setState }) => {
                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">{state.financeCategories.map(cat => (<div key={cat} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 group"><span className="text-[10px] font-black text-slate-600 uppercase">{cat}</span><button onClick={() => removeCategory(cat)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14} /></button></div>))}</div>
               </div>
            </div>
+
+           <div className="bg-slate-900 text-white p-8 rounded-[32px] border border-white/5 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <RefreshCw size={20} className="text-blue-400" />
+                <h4 className="font-black text-xs uppercase tracking-widest">Sincronização Cloud</h4>
+              </div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed mb-6">
+                Este terminal está conectado a uma infraestrutura Supabase. Para alterar o banco de dados ou resetar as chaves de acesso:
+              </p>
+              <button 
+                onClick={() => setShowCloudResetConfirm(true)}
+                className="w-full py-3 bg-white/10 hover:bg-rose-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+              >
+                Resetar Conexão Supabase
+              </button>
+           </div>
         </div>
       </div>
 
@@ -140,6 +172,16 @@ const Settings: React.FC<SettingsProps> = ({ state, setState }) => {
         title="Excluir Metas"
         message={`Deseja realmente excluir as metas do período ${confirmDeleteGoal?.monthKey?.split('-').reverse().join('/')}?`}
         confirmText="Excluir Agora"
+      />
+
+      <ConfirmationModal 
+        isOpen={showCloudResetConfirm}
+        onClose={() => setShowCloudResetConfirm(false)}
+        onConfirm={handleResetCloud}
+        title="Resetar Conexão Cloud"
+        message="Esta ação irá remover as chaves da URL e Anon Key do seu navegador. Você precisará reconfigurá-las para acessar o sistema novamente."
+        confirmText="Resetar Agora"
+        type="warning"
       />
     </div>
   );

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, UserRole, User } from './types';
 import { INITIAL_STATE } from './constants';
+import { supabase, getCurrentProfile, isSupabaseConfigured } from './lib/supabase';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Production from './components/Production';
@@ -14,8 +15,10 @@ import Login from './components/Login';
 import Analytics from './components/Analytics';
 import Management from './components/Management';
 import ConfirmationModal from './components/ConfirmationModal';
+import SupabaseSetup from './components/SupabaseSetup';
 
 const App: React.FC = () => {
+  const [isConfigured, setIsConfigured] = useState(isSupabaseConfigured());
   const [state, setState] = useState<AppState>(() => {
     try {
       const saved = localStorage.getItem('fera_service_state_v2');
@@ -36,18 +39,41 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Persistência Automática
+  // Persistência Automática (Local fallback)
   useEffect(() => {
-    try {
-      localStorage.setItem('fera_service_state_v2', JSON.stringify(state));
-    } catch (e) {
-      console.error("Erro ao salvar no armazenamento local:", e);
+    if (isConfigured) {
+      try {
+        localStorage.setItem('fera_service_state_v2', JSON.stringify(state));
+      } catch (e) {
+        console.error("Erro ao salvar no armazenamento local:", e);
+      }
     }
-  }, [state]);
+  }, [state, isConfigured]);
+
+  // Sincronização com Supabase Profile
+  useEffect(() => {
+    if (isConfigured) {
+      const syncProfile = async () => {
+        const profile = await getCurrentProfile();
+        if (profile) {
+          const user: User = {
+            id: profile.id,
+            email: profile.email || '',
+            name: profile.full_name,
+            role: profile.role,
+            companyId: profile.company_id,
+            status: profile.status,
+            permissions: profile.permissions
+          };
+          setState(prev => ({ ...prev, currentUser: user }));
+        }
+      };
+      syncProfile();
+    }
+  }, [isConfigured]);
 
   const handleLogin = (user: User) => {
-    const realUser = state.users.find(u => u.email === user.email) || user;
-    setState(prev => ({ ...prev, currentUser: realUser }));
+    setState(prev => ({ ...prev, currentUser: user }));
     setActiveTab('dashboard');
   };
 
@@ -55,6 +81,12 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, currentUser: null }));
   };
 
+  // 1. Prioridade: Se não estiver configurado, mostra a tela de setup do banco
+  if (!isConfigured) {
+    return <SupabaseSetup onConfigured={() => setIsConfigured(true)} />;
+  }
+
+  // 2. Se não houver usuário logado, mostra tela de login (integrada ao Supabase futuramente)
   if (!state.currentUser) {
     return <Login onLogin={handleLogin} users={state.users} />;
   }
