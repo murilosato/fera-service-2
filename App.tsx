@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, UserRole, User } from './types';
 import { INITIAL_STATE } from './constants';
-import { supabase, getCurrentProfile, isSupabaseConfigured } from './lib/supabase';
+import { supabase, fetchUserProfile, isSupabaseConfigured, signOut } from './lib/supabase';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Production from './components/Production';
@@ -19,76 +19,90 @@ import SupabaseSetup from './components/SupabaseSetup';
 
 const App: React.FC = () => {
   const [isConfigured, setIsConfigured] = useState(isSupabaseConfigured());
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [state, setState] = useState<AppState>(() => {
     try {
       const saved = localStorage.getItem('fera_service_state_v2');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          ...INITIAL_STATE,
-          ...parsed,
-          isSyncing: false
-        };
-      }
-    } catch (e) {
-      console.warn("Falha ao carregar estado local:", e);
-    }
+      if (saved) return { ...INITIAL_STATE, ...JSON.parse(saved), isSyncing: false, currentUser: null };
+    } catch (e) {}
     return { ...INITIAL_STATE, currentUser: null, isSyncing: false };
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Persistência Automática (Local fallback)
+  // Listener de Autenticação Real do Supabase
   useEffect(() => {
-    if (isConfigured) {
-      try {
-        localStorage.setItem('fera_service_state_v2', JSON.stringify(state));
-      } catch (e) {
-        console.error("Erro ao salvar no armazenamento local:", e);
-      }
+    if (!isConfigured) {
+      setIsLoadingProfile(false);
+      return;
     }
-  }, [state, isConfigured]);
 
-  // Sincronização com Supabase Profile
-  useEffect(() => {
-    if (isConfigured) {
-      const syncProfile = async () => {
-        const profile = await getCurrentProfile();
-        if (profile) {
-          const user: User = {
-            id: profile.id,
-            email: profile.email || '',
-            name: profile.full_name,
-            role: profile.role,
-            companyId: profile.company_id,
-            status: profile.status,
-            permissions: profile.permissions
-          };
-          setState(prev => ({ ...prev, currentUser: user }));
-        }
-      };
-      syncProfile();
-    }
+    // 1. Verificar sessão inicial
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    checkSession();
+
+    // 2. Ouvir mudanças (Login, Logout, Token Refreshed)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await loadProfile(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setState(prev => ({ ...prev, currentUser: null }));
+        setIsLoadingProfile(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [isConfigured]);
 
-  const handleLogin = (user: User) => {
-    setState(prev => ({ ...prev, currentUser: user }));
-    setActiveTab('dashboard');
+  const loadProfile = async (userId: string) => {
+    setIsLoadingProfile(true);
+    const profile = await fetchUserProfile(userId);
+    if (profile) {
+      const user: User = {
+        id: profile.id,
+        email: profile.email || '',
+        name: profile.full_name,
+        role: profile.role,
+        companyId: profile.company_id,
+        status: profile.status,
+        permissions: profile.permissions
+      };
+      setState(prev => ({ ...prev, currentUser: user }));
+    }
+    setIsLoadingProfile(false);
   };
 
-  const performLogout = () => {
-    setState(prev => ({ ...prev, currentUser: null }));
+  const handleLogout = async () => {
+    await signOut();
+    setShowLogoutConfirm(false);
   };
 
-  // 1. Prioridade: Se não estiver configurado, mostra a tela de setup do banco
   if (!isConfigured) {
     return <SupabaseSetup onConfigured={() => setIsConfigured(true)} />;
   }
 
-  // 2. Se não houver usuário logado, mostra tela de login (integrada ao Supabase futuramente)
+  if (isLoadingProfile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-emerald-600 mb-4" size={40} />
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Autenticando sessão...</p>
+      </div>
+    );
+  }
+
   if (!state.currentUser) {
-    return <Login onLogin={handleLogin} users={state.users} />;
+    return <Login onLogin={() => {}} users={[]} />;
   }
 
   const renderContent = () => {
@@ -122,14 +136,20 @@ const App: React.FC = () => {
       <ConfirmationModal 
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
-        onConfirm={performLogout}
+        onConfirm={handleLogout}
         title="Sair do Sistema"
-        message="Deseja realmente encerrar sua sessão atual?"
+        message="Deseja realmente encerrar sua sessão segura?"
         confirmText="Sair Agora"
         type="warning"
       />
     </>
   );
 };
+
+const Loader2 = ({ size, className }: { size: number, className: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
 
 export default App;
