@@ -79,20 +79,6 @@ export interface AttendanceRecord {
   paymentStatus?: 'pago' | 'pendente';
 }
 
-export interface AppState {
-  areas: Area[];
-  employees: Employee[];
-  attendanceRecords: AttendanceRecord[];
-  inventory: InventoryItem[];
-  inventoryExits: InventoryExit[];
-  cashIn: CashIn[];
-  cashOut: CashOut[];
-  monthlyGoalM2: number;
-  serviceRates: Record<ServiceType, number>;
-  currentUser: User | null;
-  users: User[];
-}
-
 export interface InventoryItem {
   id: string;
   name: string;
@@ -125,4 +111,21 @@ export interface CashOut {
   value: number;
   type: string;
   proofUrl?: string;
+}
+
+export interface AppState {
+  areas: Area[];
+  employees: Employee[];
+  attendanceRecords: AttendanceRecord[];
+  inventory: InventoryItem[];
+  inventoryExits: InventoryExit[];
+  cashIn: CashIn[];
+  cashOut: CashOut[];
+  monthlyGoalM2: number;
+  monthlyGoalRevenue: number; // Nova propriedade
+  serviceRates: Record<ServiceType, number>;
+  serviceGoals: Record<ServiceType, number>;
+  financeCategories: string[];
+  currentUser: User | null;
+  users: User[];
 }

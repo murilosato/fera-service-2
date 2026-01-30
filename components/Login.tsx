@@ -51,7 +51,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, users }) => {
               <Zap size={32} fill="white" />
            </div>
            <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">Fera Service</h1>
-           <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3 opacity-60">Portal de Gestão Urbana</p>
+           <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3 opacity-60">Gestão de Dados</p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded shadow-2xl overflow-hidden">

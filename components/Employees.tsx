@@ -83,8 +83,9 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
     return {
       totalValue: records.reduce((acc, r) => acc + r.value, 0),
       totalAttendances: records.length,
-      totalPaid: records.filter(r => r.paymentStatus === 'paid').reduce((acc, r) => acc + r.value, 0),
-      totalPending: records.filter(r => r.paymentStatus !== 'paid').reduce((acc, r) => acc + r.value, 0)
+      // Fix: paymentStatus uses 'pago' and 'pendente'
+      totalPaid: records.filter(r => r.paymentStatus === 'pago').reduce((acc, r) => acc + r.value, 0),
+      totalPending: records.filter(r => r.paymentStatus !== 'pago').reduce((acc, r) => acc + r.value, 0)
     };
   }, [state.attendanceRecords, currentMonthStr]);
 
@@ -94,7 +95,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
     );
     const presentDays = records.filter(r => r.status === 'present').length;
     const totalValue = records.reduce((acc, r) => acc + (r.status === 'present' ? r.value : 0), 0);
-    const totalPending = records.filter(r => r.status === 'present' && r.paymentStatus !== 'paid').reduce((acc, r) => acc + r.value, 0);
+    // Fix: paymentStatus uses 'pago' and 'pendente'
+    const totalPending = records.filter(r => r.status === 'present' && r.paymentStatus !== 'pago').reduce((acc, r) => acc + r.value, 0);
     return { presentDays, totalValue, totalPending, totalRecords: records.length };
   };
 
@@ -113,7 +115,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
           ...record, 
           status: nextStatus, 
           value: nextStatus === 'present' ? (employee?.defaultDailyRate || 80) : 0,
-          paymentStatus: nextStatus === 'present' ? 'pending' : undefined
+          // Fix: paymentStatus uses 'pago' and 'pendente'
+          paymentStatus: nextStatus === 'present' ? 'pendente' : undefined
         };
         return { ...prev, attendanceRecords: updated };
       });
@@ -124,7 +127,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
         date: date,
         status: 'present',
         value: employee?.defaultDailyRate || 80,
-        paymentStatus: 'pending'
+        // Fix: paymentStatus uses 'pago' and 'pendente'
+        paymentStatus: 'pendente'
       };
       setState(prev => ({ ...prev, attendanceRecords: [...(prev.attendanceRecords || []), newRecord] }));
     }
@@ -134,7 +138,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
     setState(prev => ({
       ...prev,
       attendanceRecords: (prev.attendanceRecords || []).map(r => 
-        r.id === recordId ? { ...r, paymentStatus: r.paymentStatus === 'paid' ? 'pending' : 'paid' } : r
+        // Fix: paymentStatus uses 'pago' and 'pendente'
+        r.id === recordId ? { ...r, paymentStatus: r.paymentStatus === 'pago' ? 'pendente' : 'pago' } : r
       )
     }));
   };
@@ -230,7 +235,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
       const formattedDate = rec.date.split('-').reverse().join('/');
       const statusLabel = rec.status === 'present' ? 'PRESENTE' : 'AUSENTE';
       const valueLabel = rec.status === 'present' ? formatMoney(rec.value) : '0,00';
-      const paymentLabel = rec.paymentStatus === 'paid' ? 'PAGO' : 'PENDENTE';
+      // Fix: paymentStatus uses 'pago' and 'pendente'
+      const paymentLabel = rec.paymentStatus === 'pago' ? 'PAGO' : 'PENDENTE';
       
       if (rec.status === 'present') {
         totalValue += rec.value;
@@ -336,7 +342,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
               const dStr = date.toISOString().split('T')[0];
               const records = (state.attendanceRecords || []).filter(r => r.date === dStr);
               const isToday = new Date().toISOString().split('T')[0] === dStr;
-              const hasPending = records.some(r => r.status === 'present' && r.paymentStatus !== 'paid');
+              // Fix: paymentStatus uses 'pago' and 'pendente'
+              const hasPending = records.some(r => r.status === 'present' && r.paymentStatus !== 'pago');
 
               return (
                 <button 
@@ -477,7 +484,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
                
                const personalSummary = history.reduce((acc, r) => {
                  if (r.status === 'present') {
-                   if (r.paymentStatus === 'paid') acc.paid += r.value;
+                   // Fix: paymentStatus uses 'pago' and 'pendente'
+                   if (r.paymentStatus === 'pago') acc.paid += r.value;
                    else acc.pending += r.value;
                  }
                  return acc;
@@ -546,10 +554,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState }) => {
                              {rec.status === 'present' && (
                                <button 
                                  onClick={() => togglePaymentStatus(rec.id)}
-                                 className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${rec.paymentStatus === 'paid' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}
+                                 // Fix: paymentStatus uses 'pago' and 'pendente'
+                                 className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${rec.paymentStatus === 'pago' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}
                                >
-                                 {rec.paymentStatus === 'paid' ? <CheckCircle size={14} /> : <Clock size={14} />}
-                                 {rec.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}
+                                 {rec.paymentStatus === 'pago' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                                 {rec.paymentStatus === 'pago' ? 'Pago' : 'Pendente'}
                                </button>
                              )}
                           </div>

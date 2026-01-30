@@ -52,7 +52,8 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     // Busca o usuário real no estado para ter as permissões atualizadas
     const realUser = state.users.find(u => u.email === user.email);
-    if (realUser?.status === 'suspended') {
+    // Fix: User status should be checked against 'suspenso'
+    if (realUser?.status === 'suspenso') {
       alert("Sua conta está suspensa. Entre em contato com o Master Admin.");
       return;
     }
