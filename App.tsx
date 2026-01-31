@@ -1,11 +1,3 @@
-const App: React.FC = () => {
-
-  // 🔴 PRIMEIRA VERIFICAÇÃO DE TODAS
-  if (!isSupabaseConfigured) {
-    return <SupabaseSetup onConfigured={() => window.location.reload()} />;
-  }
-
-
 import { useState, useEffect, useRef } from 'react';
 import { AppState, UserRole, User } from './types';
 import { INITIAL_STATE } from './constants';
@@ -32,12 +24,18 @@ import Analytics from './components/Analytics';
 import Management from './components/Management';
 import ConfirmationModal from './components/ConfirmationModal';
 
-const App: React.FC = () => {
+const App = () => {
 
+  /* =====================================================
+     1️⃣ SE NÃO ESTIVER CONFIGURADO → MOSTRA SETUP
+     ===================================================== */
+  if (!isSupabaseConfigured) {
+    return <SupabaseSetup onConfigured={() => window.location.reload()} />;
+  }
 
-  /* ===============================
-     2️⃣ STATES BÁSICOS
-     =============================== */
+  /* =====================================================
+     2️⃣ STATES
+     ===================================================== */
   const [isInitializing, setIsInitializing] = useState(true);
   const [state, setState] = useState<AppState>(INITIAL_STATE);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -45,17 +43,15 @@ const App: React.FC = () => {
   const [initError, setInitError] = useState<string | null>(null);
   const isSyncingRef = useRef(false);
 
-  /* ===============================
-     3️⃣ SINCRONIZAÇÃO DE DADOS
-     =============================== */
+  /* =====================================================
+     3️⃣ SINCRONIZAÇÃO
+     ===================================================== */
   const syncData = async (userId: string) => {
     if (!supabase || isSyncingRef.current) return;
-
     isSyncingRef.current = true;
 
     try {
       const profile = await fetchUserProfile(userId);
-
       if (!profile || !profile.company_id) {
         setState(prev => ({ ...prev, currentUser: null }));
         return;
@@ -76,50 +72,31 @@ const App: React.FC = () => {
       setState(prev => ({
         ...prev,
         currentUser: userData,
-        ...(companyData || {}),
-        isSyncing: false
+        ...(companyData || {})
       }));
-
-    } catch (err) {
-      console.error('Erro na sincronização:', err);
-      setInitError('Falha ao sincronizar dados.');
+    } catch (e) {
+      console.error(e);
+      setInitError('Falha ao sincronizar dados');
     } finally {
       setIsInitializing(false);
       isSyncingRef.current = false;
     }
   };
 
-  /* ===============================
-     4️⃣ BOOTSTRAP INICIAL
-     =============================== */
+  /* =====================================================
+     4️⃣ BOOTSTRAP
+     ===================================================== */
   useEffect(() => {
     if (!supabase) {
       setIsInitializing(false);
       return;
     }
 
-    let mounted = true;
-
-    const failSafe = setTimeout(() => {
-      if (mounted) {
-        console.warn('Fail-safe acionado');
-        setIsInitializing(false);
-      }
-    }, 10000);
-
     const init = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        if (data.session?.user) {
-          await syncData(data.session.user.id);
-        } else {
-          setIsInitializing(false);
-        }
-      } catch (e) {
-        console.error('Erro no init:', e);
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        await syncData(data.session.user.id);
+      } else {
         setIsInitializing(false);
       }
     };
@@ -127,15 +104,11 @@ const App: React.FC = () => {
     init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-
-        if (event === 'SIGNED_IN' && session?.user) {
+      async (_event, session) => {
+        if (session?.user) {
           setIsInitializing(true);
           await syncData(session.user.id);
-        }
-
-        if (event === 'SIGNED_OUT') {
+        } else {
           setState({ ...INITIAL_STATE, currentUser: null });
           setIsInitializing(false);
         }
@@ -143,64 +116,35 @@ const App: React.FC = () => {
     );
 
     return () => {
-      mounted = false;
-      clearTimeout(failSafe);
       listener.subscription.unsubscribe();
     };
   }, []);
 
-  /* ===============================
-     5️⃣ LOADING
-     =============================== */
+  /* =====================================================
+     5️⃣ LOADER
+     ===================================================== */
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
-        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <h2 className="mt-6 font-black text-white uppercase tracking-[0.3em] text-xs">
-          Fera Service Cloud
-        </h2>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 animate-pulse">
-          Inicializando sistema...
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950">
+        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <p className="mt-4 text-xs text-slate-400 uppercase">
+          Inicializando sistema…
         </p>
-        {initError && (
-          <p className="mt-4 text-[9px] text-rose-500 font-black uppercase">
-            {initError}
-          </p>
-        )}
+        {initError && <p className="text-red-500 text-xs mt-2">{initError}</p>}
       </div>
     );
   }
 
-  /* ===============================
+  /* =====================================================
      6️⃣ LOGIN
-     =============================== */
+     ===================================================== */
   if (!state.currentUser) {
     return <Login onLogin={() => {}} users={[]} />;
   }
 
-  /* ===============================
-     7️⃣ CONTEÚDO
-     =============================== */
-  const renderContent = () => {
-    const props = { state, setState, setActiveTab };
-
-    switch (activeTab) {
-      case 'dashboard': return <Dashboard {...props} />;
-      case 'production': return <Production {...props} />;
-      case 'finance': return <Finance {...props} />;
-      case 'inventory': return <Inventory {...props} />;
-      case 'employees': return <Employees {...props} />;
-      case 'analytics': return <Analytics state={state} />;
-      case 'management': return <Management state={state} setState={setState} />;
-      case 'ai': return <AIAssistant state={state} />;
-      case 'settings': return <Settings {...props} />;
-      default: return <Dashboard {...props} />;
-    }
-  };
-
-  /* ===============================
-     8️⃣ LAYOUT FINAL
-     =============================== */
+  /* =====================================================
+     7️⃣ APP
+     ===================================================== */
   return (
     <>
       <Layout
@@ -210,7 +154,15 @@ const App: React.FC = () => {
         user={state.currentUser}
         onLogout={() => setShowLogoutConfirm(true)}
       >
-        {renderContent()}
+        {activeTab === 'dashboard' && <Dashboard state={state} setState={setState} setActiveTab={setActiveTab} />}
+        {activeTab === 'production' && <Production state={state} setState={setState} setActiveTab={setActiveTab} />}
+        {activeTab === 'finance' && <Finance state={state} setState={setState} setActiveTab={setActiveTab} />}
+        {activeTab === 'inventory' && <Inventory state={state} setState={setState} setActiveTab={setActiveTab} />}
+        {activeTab === 'employees' && <Employees state={state} setState={setState} setActiveTab={setActiveTab} />}
+        {activeTab === 'analytics' && <Analytics state={state} />}
+        {activeTab === 'management' && <Management state={state} setState={setState} />}
+        {activeTab === 'ai' && <AIAssistant state={state} />}
+        {activeTab === 'settings' && <Settings state={state} setState={setState} setActiveTab={setActiveTab} />}
       </Layout>
 
       <ConfirmationModal
