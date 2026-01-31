@@ -1,26 +1,24 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
+// ==========================================================
+// CONFIGURAÇÃO DOS BASTIDORES (BACKEND)
+// Substitua o placeholder abaixo pela sua URL real do Supabase
+// ==========================================================
+const SUPABASE_URL = 'https://zbntnglatvuijefqfjhx.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_KiZXFlucpA_RSEuYyot5GA_eQdaTKC2';
-
-const getKeys = () => {
-  const url = localStorage.getItem('FERA_SUPABASE_URL') || '';
-  return { url, key: SUPABASE_ANON_KEY };
-};
-
-export const isSupabaseConfigured = () => {
-  const { url } = getKeys();
-  return !!url;
-};
 
 let supabaseInstance: any = null;
 
 export const getSupabaseClient = () => {
   if (supabaseInstance) return supabaseInstance;
-  const { url } = getKeys();
-  if (!url) return null;
+  
+  if (!SUPABASE_URL || SUPABASE_URL.includes('SUA_URL_AQUI')) {
+    console.error("ERRO: URL do Supabase não configurada em lib/supabase.ts");
+    return null;
+  }
 
-  supabaseInstance = createClient(url, SUPABASE_ANON_KEY, {
+  supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -29,6 +27,7 @@ export const getSupabaseClient = () => {
   return supabaseInstance;
 };
 
+// Proxy para facilitar o uso do cliente em todo o app
 export const supabase: any = new Proxy({}, {
   get: (target, prop) => {
     const client = getSupabaseClient();
@@ -38,34 +37,31 @@ export const supabase: any = new Proxy({}, {
           getSession: async () => ({ data: { session: null } }),
           onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
         };
-        return { error: new Error("URL do Supabase não configurada.") };
+        return { error: new Error("Supabase não configurado.") };
       };
     }
     return client[prop];
   }
 });
 
+export const isSupabaseConfigured = () => {
+  return !!SUPABASE_URL && !SUPABASE_URL.includes('SUA_URL_AQUI');
+};
+
 export const fetchUserProfile = async (userId: string) => {
   const client = getSupabaseClient();
   if (!client) return null;
 
   try {
-    // Tenta buscar o perfil
     const { data, error } = await client
       .from('profiles')
       .select('*, companies(*)')
       .eq('id', userId)
-      .maybeSingle(); // Usamos maybeSingle para não estourar erro caso não exista
+      .maybeSingle();
 
-    if (error) {
-      console.error("Erro na busca de perfil:", error.message);
-      return null;
-    }
+    if (error) throw error;
 
-    // Se o perfil não existe (ex: usuário criado manualmente no dashboard sem trigger)
-    // podemos retornar um perfil temporário baseado nos dados do Auth para não travar o login
     if (!data) {
-      console.warn("Perfil não encontrado no banco público. Verifique os triggers.");
       const { data: { user } } = await client.auth.getUser();
       if (user) {
         return {
@@ -81,10 +77,9 @@ export const fetchUserProfile = async (userId: string) => {
         };
       }
     }
-
     return data;
   } catch (e) {
-    console.error("Falha crítica ao buscar perfil:", e);
+    console.error("Erro ao buscar perfil:", e);
     return null;
   }
 };
@@ -93,7 +88,5 @@ export const signOut = async () => {
   const client = getSupabaseClient();
   if (client) {
     await client.auth.signOut();
-    localStorage.removeItem('sb-access-token');
-    localStorage.removeItem('sb-refresh-token');
   }
 };

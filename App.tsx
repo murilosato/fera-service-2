@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, UserRole, User } from './types';
 import { INITIAL_STATE } from './constants';
-import { supabase, fetchUserProfile, isSupabaseConfigured, signOut } from './lib/supabase';
+import { supabase, fetchUserProfile, signOut } from './lib/supabase';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Production from './components/Production';
@@ -48,11 +48,10 @@ const App: React.FC = () => {
         };
         setState(prev => ({ ...prev, currentUser: user }));
       } else {
-        // Se falhar em carregar perfil, desloga por segurança
         await signOut();
       }
     } catch (err) {
-      console.error("Erro no loadProfile:", err);
+      console.error("Erro ao carregar perfil:", err);
     } finally {
       setIsLoadingProfile(false);
     }
@@ -60,19 +59,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      const url = localStorage.getItem('FERA_SUPABASE_URL');
-      if (!url) {
-        setIsLoadingProfile(false);
-        return;
-      }
-
+      // Tenta recuperar sessão existente
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session?.user) {
         await loadProfile(session.user.id);
       } else {
         setIsLoadingProfile(false);
       }
 
+      // Escuta mudanças de autenticação (login/logout)
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
           await loadProfile(session.user.id);
@@ -100,34 +96,12 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Verificando Credenciais...</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Iniciando Fera Service...</p>
       </div>
     );
   }
 
-  if (!localStorage.getItem('FERA_SUPABASE_URL')) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-6 text-center">
-        <div className="bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-[40px] max-w-sm">
-          <h2 className="text-white font-black uppercase tracking-tighter text-xl mb-4">Conectar Servidor</h2>
-          <p className="text-slate-400 text-xs font-bold uppercase leading-relaxed mb-6">Insira a URL do projeto Supabase para ativar o Fera Service.</p>
-          <input 
-            type="text" 
-            placeholder="https://xyz.supabase.co" 
-            className="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl text-xs text-emerald-400 font-bold mb-4 outline-none focus:border-emerald-500"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                localStorage.setItem('FERA_SUPABASE_URL', (e.target as HTMLInputElement).value);
-                window.location.reload();
-              }
-            }}
-          />
-          <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Pressione ENTER para conectar</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Se não estiver logado, exibe a tela de Login imediatamente
   if (!state.currentUser) {
     return <Login onLogin={() => {}} users={[]} />;
   }
