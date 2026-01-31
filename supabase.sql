@@ -17,8 +17,6 @@ drop table if exists companies cascade;
 create extension if not exists "uuid-ossp";
 
 -- 3. CRIAÇÃO DAS TABELAS
-
--- Empresas (SaaS)
 create table companies (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
@@ -26,7 +24,6 @@ create table companies (
   created_at timestamp with time zone default now()
 );
 
--- Perfis de Usuários (Vinculados ao Auth do Supabase)
 create table profiles (
   id uuid primary key references auth.users on delete cascade,
   company_id uuid references companies(id) on delete cascade,
@@ -44,43 +41,41 @@ create table profiles (
   created_at timestamp with time zone default now()
 );
 
--- 4. FUNÇÃO DE GATILHO PARA CRIAÇÃO AUTOMÁTICA DE PERFIL
--- Esta função é disparada pelo Supabase Auth quando um usuário se cadastra
+-- 4. FUNÇÃO DE GATILHO (AUTOMATIZAÇÃO)
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   default_company_id uuid;
 begin
-  -- 1. Cria uma empresa padrão para o novo usuário
   insert into public.companies (name)
-  values ('Nova Unidade ' || new.email)
+  values ('Fera Service - ' || new.email)
   returning id into default_company_id;
 
-  -- 2. Insere o perfil vinculado à nova empresa
   insert into public.profiles (id, company_id, full_name, role)
   values (
     new.id, 
     default_company_id, 
     coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
-    'DIRETORIA_MASTER' -- O primeiro usuário da empresa é sempre Master
+    'DIRETORIA_MASTER'
   );
   
   return new;
 end;
 $$ language plpgsql security definer;
 
--- 5. CONFIGURAÇÃO DO GATILHO (TRIGGER)
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- 6. TABELAS OPERACIONAIS (Restante do esquema)
+-- 5. TABELAS OPERACIONAIS
 create table areas (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
   name text not null,
   start_date date not null default current_date,
+  end_date date,
   start_reference text,
+  end_reference text,
   observations text,
   created_at timestamp with time zone default now()
 );
@@ -160,7 +155,7 @@ create table monthly_goals (
   unique(company_id, month_key)
 );
 
--- 7. SEGURANÇA (RLS)
+-- 6. SEGURANÇA (RLS)
 alter table companies enable row level security;
 alter table profiles enable row level security;
 alter table areas enable row level security;
@@ -172,7 +167,9 @@ alter table cash_flow enable row level security;
 alter table attendance_records enable row level security;
 alter table monthly_goals enable row level security;
 
--- 8. POLÍTICAS (Isolamento por Empresa)
+-- 7. POLÍTICAS (Isolamento por Empresa)
+create policy "Users can create companies" on companies for insert with check (auth.role() = 'authenticated');
+create policy "Company viewing" on companies for select using (true);
 create policy "Users can see their own profile" on profiles for all using (auth.uid() = id);
 create policy "Company Access Areas" on areas for all using (company_id = (select company_id from profiles where id = auth.uid()));
 create policy "Company Access Services" on services for all using (company_id = (select company_id from profiles where id = auth.uid()));

@@ -44,7 +44,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
 
   const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // Helper robusto para gerar chaves de meses
   const monthlySeries = useMemo(() => {
     const months = [];
     const [year, month] = endPeriod.split('-').map(Number);
@@ -63,7 +62,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     return months;
   }, [endPeriod, rangeMonths]);
 
-  // Dados do gráfico: Agrupa serviços e inclui as metas individuais de cada mês
   const chartData = useMemo(() => {
     return monthlySeries.map(m => {
       let prod = 0;
@@ -81,7 +79,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       const inc = state.cashIn.filter(c => c.date.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
       const out = state.cashOut.filter(c => c.date.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
       
-      // Busca a meta específica do mês ou usa 0 se não existir
       const goal = state.monthlyGoals[m.key] || { production: 0, revenue: 0 };
 
       return {
@@ -211,16 +208,16 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm min-h-[450px]">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm min-h-[450px] w-full">
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">
               Histórico Mensal: {activeMetric === 'production' ? 'Produção vs Metas' : activeMetric === 'revenue' ? 'Faturamento vs Metas' : activeMetric.toUpperCase()}
             </h3>
           </div>
 
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <div className="h-80 w-full" style={{ minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
                 <YAxis fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
@@ -239,13 +236,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                   iconType="circle"
                   formatter={(value) => <span className="text-[10px] font-black uppercase text-slate-400 ml-1">{value.includes('Goal') ? 'Meta' : 'Realizado'}</span>}
                 />
-                
-                <Bar 
-                  name="Realizado"
-                  dataKey={activeMetric} 
-                  radius={[4, 4, 0, 0]} 
-                  barSize={20}
-                >
+                <Bar name="Realizado" dataKey={activeMetric} radius={[4, 4, 0, 0]} barSize={20}>
                    {chartData.map((entry: any, index) => {
                      let color = '#0f172a';
                      if(activeMetric === 'balance') color = entry.balance >= 0 ? '#10b981' : '#ef4444';
@@ -254,15 +245,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                      return <Cell key={`cell-${index}`} fill={color} />;
                    })}
                 </Bar>
-
                 {(activeMetric === 'production' || activeMetric === 'revenue') && (
-                  <Bar 
-                    name="Meta"
-                    dataKey={activeMetric === 'production' ? 'productionGoal' : 'revenueGoal'} 
-                    fill="#e2e8f0"
-                    radius={[4, 4, 0, 0]} 
-                    barSize={20}
-                  />
+                  <Bar name="Meta" dataKey={activeMetric === 'production' ? 'productionGoal' : 'revenueGoal'} fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={20} />
                 )}
               </BarChart>
             </ResponsiveContainer>

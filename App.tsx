@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppState, UserRole, User } from './types';
 import { INITIAL_STATE } from './constants';
 import { supabase, fetchUserProfile, signOut, fetchCompleteCompanyData } from './lib/supabase';
@@ -21,8 +21,13 @@ const App: React.FC = () => {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
+  const isSyncingRef = useRef(false);
 
   const syncData = async (userId: string) => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
+    
     try {
       const profile = await fetchUserProfile(userId);
       if (profile && profile.company_id) {
@@ -44,45 +49,73 @@ const App: React.FC = () => {
           ...(companyData || {}),
           isSyncing: false
         }));
+      } else {
+        setState(prev => ({ ...prev, currentUser: null }));
       }
     } catch (err) {
-      console.error("Falha na sincronização:", err);
+      console.error("Erro crítico na sincronização:", err);
+      setInitError("Falha na sincronização cloud.");
     } finally {
       setIsInitializing(false);
+      isSyncingRef.current = false;
     }
   };
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        await syncData(session.user.id);
-      } else {
+    let mounted = true;
+    
+    // Fail-safe: Se em 10 segundos não inicializar, força a saída do loader
+    const failSafeTimer = setTimeout(() => {
+      if (mounted && isInitializing) {
+        console.warn("Fail-safe de inicialização ativado.");
         setIsInitializing(false);
       }
+    }, 10000);
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          setIsInitializing(true);
-          await syncData(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          setState({ ...INITIAL_STATE, currentUser: null });
-          setIsInitializing(false);
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          if (session?.user) {
+            await syncData(session.user.id);
+          } else {
+            setIsInitializing(false);
+          }
         }
-      });
-
-      return () => subscription.unsubscribe();
+      } catch (e) {
+        console.error("Erro no init:", e);
+        if (mounted) setIsInitializing(false);
+      }
     };
+
     init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        setIsInitializing(true);
+        await syncData(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setState({ ...INITIAL_STATE, currentUser: null });
+        setIsInitializing(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      clearTimeout(failSafeTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
         <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
         <h2 className="mt-6 font-black text-white uppercase tracking-[0.3em] text-xs">Fera Service Cloud</h2>
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 animate-pulse">Sincronizando Banco de Dados...</p>
+        {initError && <p className="mt-4 text-[9px] text-rose-500 font-black uppercase">{initError}</p>}
       </div>
     );
   }

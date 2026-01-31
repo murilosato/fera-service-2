@@ -26,14 +26,19 @@ export const fetchUserProfile = async (userId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data: company } = await supabase
+    const { data: company, error: compError } = await supabase
       .from('companies')
-      .insert([{ name: 'Fera Service Unidade' }])
+      .insert([{ name: 'Unidade - ' + (user.email?.split('@')[0] || 'Nova') }])
       .select()
       .single();
 
+    if (compError) {
+      console.error("Erro ao criar empresa manual:", compError);
+      return null;
+    }
+
     if (company) {
-      const { data: newProfile } = await supabase
+      const { data: newProfile, error: profError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
@@ -45,11 +50,15 @@ export const fetchUserProfile = async (userId: string) => {
         .select('*, companies(*)')
         .single();
       
+      if (profError) {
+        console.error("Erro ao criar perfil manual:", profError);
+        return null;
+      }
       return newProfile;
     }
     return null;
   } catch (err) {
-    console.error("Erro no Perfil:", err);
+    console.error("Erro fatal no fetchUserProfile:", err);
     return null;
   }
 };
@@ -68,19 +77,19 @@ export const fetchCompleteCompanyData = async (companyId: string | null) => {
       supabase.from('monthly_goals').select('*').eq('company_id', companyId)
     ]);
 
-    // Mapeamento de Metas
     const goalsMap: Record<string, any> = {};
     goalsRes.data?.forEach(g => {
       goalsMap[g.month_key] = { production: Number(g.production_goal), revenue: Number(g.revenue_goal) };
     });
 
-    // Mapeamento de Áreas e Serviços
     const areas = (areasRes.data || []).map(area => ({
       id: area.id,
       companyId: area.company_id,
       name: area.name,
       startDate: area.start_date,
+      endDate: area.end_date,
       startReference: area.start_reference,
+      endReference: area.end_reference,
       observations: area.observations,
       services: (area.services || []).map((s: any) => ({
         id: s.id,
@@ -95,7 +104,11 @@ export const fetchCompleteCompanyData = async (companyId: string | null) => {
 
     return {
       areas,
-      employees: employeesRes.data || [],
+      employees: (employeesRes.data || []).map(e => ({
+        ...e,
+        paymentModality: e.payment_modality,
+        defaultValue: Number(e.default_value)
+      })),
       inventory: (inventoryRes.data || []).map(i => ({
         id: i.id,
         name: i.name,
@@ -135,12 +148,19 @@ export const dbSave = async (table: string, data: any) => {
     delete data.id;
   }
 
+  // Mapeamento automático CamelCase para Snake_Case para tabelas específicas
+  if (table === 'areas') {
+    if (data.startDate) { data.start_date = data.startDate; delete data.startDate; }
+    if (data.endDate) { data.end_date = data.endDate; delete data.endDate; }
+    if (data.startReference) { data.start_reference = data.startReference; delete data.startReference; }
+    if (data.endReference) { data.end_reference = data.endReference; delete data.endReference; }
+  }
+
   if (table === 'services' && data.areaM2 !== undefined) {
     data.area_m2 = data.areaM2;
     delete data.areaM2;
   }
   
-  // Mapeamento para inventory_exits
   if (table === 'inventory_exits' && data.itemId !== undefined) {
     data.item_id = data.itemId;
     delete data.itemId;
