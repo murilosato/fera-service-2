@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppState, CashIn, CashOut } from '../types';
-import { Plus, ArrowDownCircle, ArrowUpCircle, X, Wallet, Trash2, Clock } from 'lucide-react';
+import { Plus, ArrowDownCircle, ArrowUpCircle, X, Wallet, Trash2, Clock, Loader2 } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -34,23 +34,31 @@ const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
   const handleSaveMove = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(formData.value);
-    if (isNaN(val) || val <= 0) return;
+    if (isNaN(val) || val <= 0) {
+      alert("Insira um valor válido");
+      return;
+    }
+
+    if (!state.currentUser?.companyId || state.currentUser.companyId === 'setup-pending') {
+      alert("Aguarde a sincronização do perfil...");
+      return;
+    }
 
     setIsLoading(true);
     try {
       await dbSave('cash_flow', {
-        company_id: state.currentUser?.companyId,
+        company_id: state.currentUser.companyId,
         type: activeTab,
         value: val,
         date: formData.date,
-        reference: formData.reference,
+        reference: formData.reference || 'Sem referência',
         category: formData.category || 'Geral'
       });
       await refreshData();
       setShowForm(false);
       setFormData({ value: '', date: new Date().toISOString().split('T')[0], reference: '', category: '' });
-    } catch (e) {
-      alert("Erro ao registrar no banco.");
+    } catch (e: any) {
+      alert("Erro ao registrar: " + (e.message || "Erro de conexão"));
     } finally {
       setIsLoading(false);
     }
@@ -74,69 +82,96 @@ const Finance: React.FC<FinanceProps> = ({ state, setState }) => {
     <div className="space-y-6">
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-black text-slate-900 uppercase">Financeiro Cloud</h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase">Registros em tempo real</p>
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Fluxo de Caixa</h2>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Controle de receitas e despesas cloud</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="bg-slate-900 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all">
-          <Plus size={16} className="inline mr-2" /> Novo Lançamento
+        <button onClick={() => setShowForm(true)} className="bg-slate-900 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg flex items-center gap-2">
+          <Plus size={16} /> Novo Lançamento
         </button>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-           <ArrowUpCircle className="text-emerald-500" size={32} />
-           <div><p className="text-[9px] font-black text-slate-400 uppercase">Entradas</p><p className="text-lg font-black">R$ {formatMoney(totalIn)}</p></div>
+        <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center gap-4">
+           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+              <ArrowUpCircle size={24} />
+           </div>
+           <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Entradas</p><p className="text-lg font-black text-emerald-600">R$ {formatMoney(totalIn)}</p></div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-           <ArrowDownCircle className="text-rose-500" size={32} />
-           <div><p className="text-[9px] font-black text-slate-400 uppercase">Saídas</p><p className="text-lg font-black">R$ {formatMoney(totalOut)}</p></div>
+        <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex items-center gap-4">
+           <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center">
+              <ArrowDownCircle size={24} />
+           </div>
+           <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Saídas</p><p className="text-lg font-black text-rose-600">R$ {formatMoney(totalOut)}</p></div>
         </div>
-        <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl flex items-center gap-4">
-           <Wallet className="text-emerald-400" size={32} />
-           <div><p className="text-[9px] font-black text-slate-400 uppercase">Saldo</p><p className="text-lg font-black">R$ {formatMoney(balance)}</p></div>
+        <div className="bg-slate-900 text-white p-6 rounded-[24px] shadow-xl flex items-center gap-4">
+           <div className="w-12 h-12 bg-white/10 text-emerald-400 rounded-2xl flex items-center justify-center">
+              <Wallet size={24} />
+           </div>
+           <div><p className="text-[9px] font-black text-slate-400/60 uppercase tracking-widest">Saldo Disponível</p><p className="text-lg font-black">R$ {formatMoney(balance)}</p></div>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
-        <div className="flex bg-slate-50 p-1 border-b">
-           <button onClick={() => setActiveTab('in')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-2xl transition-all ${activeTab === 'in' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}>Entradas</button>
-           <button onClick={() => setActiveTab('out')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-2xl transition-all ${activeTab === 'out' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}>Saídas</button>
+      <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
+        <div className="flex bg-slate-50 p-1.5 border-b border-slate-100">
+           <button onClick={() => setActiveTab('in')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-2xl transition-all tracking-widest ${activeTab === 'in' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}>Visualizar Entradas</button>
+           <button onClick={() => setActiveTab('out')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-2xl transition-all tracking-widest ${activeTab === 'out' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}>Visualizar Saídas</button>
         </div>
-        <table className="w-full text-left">
-           <thead className="text-[9px] font-black uppercase text-slate-400 bg-slate-50/50">
-              <tr><th className="px-6 py-4">Data</th><th className="px-6 py-4">Referência</th><th className="px-6 py-4 text-right">Valor</th><th className="px-6 py-4 text-center">Ação</th></tr>
-           </thead>
-           <tbody className="divide-y divide-slate-100">
-              {(activeTab === 'in' ? state.cashIn : state.cashOut).map((item: any) => (
-                <tr key={item.id} className="hover:bg-slate-50/50">
-                   <td className="px-6 py-4 text-[11px] font-bold text-slate-500">{item.date}</td>
-                   <td className="px-6 py-4 text-[11px] font-black uppercase">{item.reference || 'Geral'}</td>
-                   <td className={`px-6 py-4 text-right font-black ${activeTab === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>R$ {formatMoney(item.value)}</td>
-                   <td className="px-6 py-4 text-center">
-                      <button onClick={() => setConfirmDelete({ isOpen: true, id: item.id })} className="text-slate-200 hover:text-rose-500"><Trash2 size={16} /></button>
-                   </td>
-                </tr>
-              ))}
-           </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="text-[9px] font-black uppercase text-slate-400 bg-slate-50/50 tracking-widest">
+                <tr><th className="px-8 py-4">Data</th><th className="px-8 py-4">Referência / Descrição</th><th className="px-8 py-4 text-right">Valor do Título</th><th className="px-8 py-4 text-center">Ação</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+                {(activeTab === 'in' ? state.cashIn : state.cashOut).length === 0 ? (
+                  <tr><td colSpan={4} className="px-8 py-10 text-center text-[10px] font-bold text-slate-300 uppercase italic">Nenhum registro encontrado</td></tr>
+                ) : (
+                  (activeTab === 'in' ? state.cashIn : state.cashOut).map((item: any) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-8 py-4 text-[11px] font-bold text-slate-500">{item.date.split('-').reverse().join('/')}</td>
+                      <td className="px-8 py-4 text-[11px] font-black uppercase text-slate-700">{item.reference}</td>
+                      <td className={`px-8 py-4 text-right font-black ${activeTab === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>R$ {formatMoney(item.value)}</td>
+                      <td className="px-8 py-4 text-center">
+                          <button onClick={() => setConfirmDelete({ isOpen: true, id: item.id })} className="p-2 text-slate-200 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-           <form onSubmit={handleSaveMove} className="bg-white rounded-[32px] w-full max-w-sm p-8 space-y-6">
-              <div className="flex justify-between items-center"><h3 className="font-black uppercase text-xs">Novo Lançamento</h3><button type="button" onClick={() => setShowForm(false)}><X /></button></div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+           <form onSubmit={handleSaveMove} className="bg-white rounded-[40px] w-full max-w-sm p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+                <div>
+                  <h3 className="font-black uppercase text-xs text-slate-900 tracking-tight">Novo Lançamento</h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">{activeTab === 'in' ? 'Entrada de Receita' : 'Saída de Despesa'}</p>
+                </div>
+                <button type="button" onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-50 rounded-full"><X size={20} /></button>
+              </div>
               <div className="space-y-4">
-                 <input type="number" step="0.01" required className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs" placeholder="Valor (R$)" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} />
-                 <input type="date" required className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
-                 <input className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs uppercase" placeholder="Referência (ex: Aluguel)" value={formData.reference} onChange={e => setFormData({...formData, reference: e.target.value})} />
-                 <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl">
-                   {isLoading ? <Clock className="animate-spin inline mr-2" size={14} /> : 'SALVAR NO BANCO'}
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor (R$)</label>
+                    <input type="number" step="0.01" required className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-black text-xs outline-none focus:border-slate-900" placeholder="0,00" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data do Lançamento</label>
+                    <input type="date" required className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-black text-xs outline-none" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Descrição / Referência</label>
+                    <input className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-black text-xs uppercase outline-none focus:border-slate-900" placeholder="Ex: Aluguel de Máquina" value={formData.reference} onChange={e => setFormData({...formData, reference: e.target.value})} />
+                 </div>
+                 <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3">
+                   {isLoading ? <Loader2 className="animate-spin" size={18} /> : 'EFETIVAR LANÇAMENTO'}
                  </button>
               </div>
            </form>
         </div>
       )}
-      <ConfirmationModal isOpen={!!confirmDelete?.isOpen} onClose={() => setConfirmDelete(null)} onConfirm={handleDelete} title="Excluir Registro" message="Esta ação é permanente." />
+      <ConfirmationModal isOpen={!!confirmDelete?.isOpen} onClose={() => setConfirmDelete(null)} onConfirm={handleDelete} title="Excluir Registro" message="Esta ação é permanente e não poderá ser desfeita no banco de dados." />
     </div>
   );
 };

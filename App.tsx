@@ -25,13 +25,13 @@ const App: React.FC = () => {
   const syncData = async (userId: string) => {
     try {
       const profile = await fetchUserProfile(userId);
-      if (profile) {
+      if (profile && profile.company_id) {
         const userData: User = {
           id: profile.id,
           email: profile.email || '',
           name: profile.full_name || 'Usuário',
           role: profile.role || UserRole.OPERATIONAL,
-          companyId: profile.company_id || 'setup-pending',
+          companyId: profile.company_id,
           status: profile.status || 'ativo',
           permissions: profile.permissions || INITIAL_STATE.users[0].permissions
         };
@@ -54,10 +54,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      // Timeout de segurança: se em 8 segundos não inicializar, libera a tela
-      const safetyTimeout = setTimeout(() => setIsInitializing(false), 8000);
-
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session?.user) {
         await syncData(session.user.id);
       } else {
@@ -66,6 +64,7 @@ const App: React.FC = () => {
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
+          setIsInitializing(true);
           await syncData(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           setState({ ...INITIAL_STATE, currentUser: null });
@@ -73,21 +72,17 @@ const App: React.FC = () => {
         }
       });
 
-      clearTimeout(safetyTimeout);
-      return () => {
-        subscription.unsubscribe();
-        clearTimeout(safetyTimeout);
-      };
+      return () => subscription.unsubscribe();
     };
     init();
   }, []);
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-        <h2 className="mt-4 font-black text-slate-900 uppercase">Fera Service</h2>
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">Conectando ao Banco de Dados...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950">
+        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <h2 className="mt-6 font-black text-white uppercase tracking-[0.3em] text-xs">Fera Service Cloud</h2>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 animate-pulse">Sincronizando Banco de Dados...</p>
       </div>
     );
   }

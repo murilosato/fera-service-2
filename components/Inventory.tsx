@@ -16,9 +16,11 @@ import {
   ChevronDown,
   Filter,
   CheckCircle2,
-  Tag
+  Tag,
+  Loader2
 } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface InventoryProps {
   state: AppState;
@@ -30,6 +32,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [confirmReversal, setConfirmReversal] = useState<{ isOpen: boolean; movementId: string } | null>(null);
   
   const [selectedItemId, setSelectedItemId] = useState('');
@@ -61,6 +64,13 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
     return dateStr.split('-').reverse().join('/');
   };
 
+  const refreshData = async () => {
+    if (state.currentUser?.companyId) {
+      const data = await fetchCompleteCompanyData(state.currentUser.companyId);
+      if (data) setState(prev => ({ ...prev, ...data }));
+    }
+  };
+
   const filteredItems = state.inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
@@ -75,73 +85,105 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [state.inventory, itemSearchText]);
 
-  const handleMovement = (type: 'in' | 'out') => {
-    if (!selectedItemId) return;
+  const handleMovement = async (type: 'in' | 'out') => {
+    if (!selectedItemId) {
+      alert("Selecione um item.");
+      return;
+    }
     const qty = parseInt(movementQty);
-    if (isNaN(qty) || qty <= 0) return;
+    if (isNaN(qty) || qty <= 0) {
+      alert("Quantidade inválida.");
+      return;
+    }
 
-    setState(prev => ({
-      ...prev,
-      inventory: prev.inventory.map(i => {
-        if (i.id !== selectedItemId) return i;
-        const newQty = type === 'in' ? i.currentQty + qty : i.currentQty - qty;
-        return { ...i, currentQty: newQty };
-      }),
-      inventoryExits: [
-        ...prev.inventoryExits,
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          companyId: state.currentUser?.companyId || 'default-company',
-          itemId: selectedItemId,
-          quantity: qty,
-          date: new Date().toISOString().split('T')[0],
-          destination: type === 'in' ? 'Reposição' : 'Operação Diária',
-          observation: type === 'in' ? 'Entrada centralizada' : 'Saída centralizada'
-        }
-      ]
-    }));
+    setIsLoading(true);
+    try {
+      const item = state.inventory.find(i => i.id === selectedItemId);
+      if (!item) return;
 
-    setMovementQty('1');
-    setSelectedItemId('');
-    setItemSearchText('');
+      const newQty = type === 'in' ? item.currentQty + qty : item.currentQty - qty;
+
+      // 1. Atualiza o saldo do item
+      await dbSave('inventory', {
+        id: item.id,
+        current_qty: newQty
+      });
+
+      // 2. Registra o log de movimentação
+      await dbSave('inventory_exits', {
+        company_id: state.currentUser?.companyId,
+        itemId: selectedItemId,
+        quantity: qty,
+        date: new Date().toISOString().split('T')[0],
+        destination: type === 'in' ? 'Reposição' : 'Operação Diária',
+        observation: type === 'in' ? 'Entrada registrada via sistema' : 'Saída registrada via sistema'
+      });
+
+      await refreshData();
+      setMovementQty('1');
+      setSelectedItemId('');
+      setItemSearchText('');
+    } catch (e: any) {
+      alert("Erro ao processar movimentação: " + e.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const performReversal = () => {
+  const performReversal = async () => {
     if (!confirmReversal) return;
-    const { movementId } = confirmReversal;
-    const movement = state.inventoryExits.find(m => m.id === movementId);
-    if (!movement) return;
+    setIsLoading(true);
+    try {
+      const { movementId } = confirmReversal;
+      const movement = state.inventoryExits.find(m => m.id === movementId);
+      if (!movement) return;
 
-    const isEntry = movement.destination === 'Reposição';
-
-    setState(prev => ({
-      ...prev,
-      inventory: prev.inventory.map(i => {
-        if (i.id !== movement.itemId) return i;
+      const item = state.inventory.find(i => i.id === movement.itemId);
+      if (item) {
+        const isEntry = movement.destination === 'Reposição';
         const adjustment = isEntry ? -movement.quantity : movement.quantity;
-        return { ...i, currentQty: i.currentQty + adjustment };
-      }),
-      inventoryExits: prev.inventoryExits.filter(m => m.id !== movementId)
-    }));
+        
+        // Estorna o saldo
+        await dbSave('inventory', {
+          id: item.id,
+          current_qty: item.currentQty + adjustment
+        });
+      }
+
+      // Deleta o registro de movimentação
+      await dbDelete('inventory_exits', movementId);
+      
+      await refreshData();
+      setConfirmReversal(null);
+    } catch (e: any) {
+      alert("Erro ao estornar: " + e.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAddItem = (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.name) return;
     
-    const item: InventoryItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      companyId: state.currentUser?.companyId || 'default-company',
-      name: newItem.name!,
-      category: newItem.category as any,
-      currentQty: newItem.currentQty || 0,
-      minQty: newItem.minQty || 0,
-      unitValue: newItem.unitValue
-    };
-
-    setState(prev => ({ ...prev, inventory: [...prev.inventory, item] }));
-    setShowAddForm(false);
-    setNewItem({ name: '', category: 'insumos', currentQty: 0, minQty: 0, unitValue: 0 });
+    setIsLoading(true);
+    try {
+      await dbSave('inventory', {
+        company_id: state.currentUser?.companyId,
+        name: newItem.name,
+        category: newItem.category,
+        current_qty: newItem.currentQty || 0,
+        min_qty: newItem.minQty || 0,
+        unit_value: newItem.unitValue || 0
+      });
+      await refreshData();
+      setShowAddForm(false);
+      setNewItem({ name: '', category: 'insumos', currentQty: 0, minQty: 0, unitValue: 0 });
+    } catch (e: any) {
+      alert("Erro ao cadastrar produto: " + e.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -149,7 +191,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-tight uppercase">Almoxarifado</h2>
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Lançamento e Controle de Saldo</p>
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Lançamento e Controle de Saldo Cloud</p>
         </div>
         <button 
           onClick={() => setShowAddForm(true)}
@@ -203,7 +245,14 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
           </div>
 
           <div className="md:col-span-2 space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantidade</label><input type="number" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" value={movementQty} onChange={e => setMovementQty(e.target.value)} /></div>
-          <div className="md:col-span-4 flex gap-2"><button onClick={() => handleMovement('out')} className="flex-1 bg-white border-2 border-slate-100 text-slate-600 p-4 rounded-2xl font-black uppercase text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all flex items-center justify-center gap-2"><ArrowDownCircle size={16} /> Saída</button><button onClick={() => handleMovement('in')} className="flex-1 bg-blue-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100"><ArrowUpCircle size={16} /> Entrada</button></div>
+          <div className="md:col-span-4 flex gap-2">
+            <button disabled={isLoading} onClick={() => handleMovement('out')} className="flex-1 bg-white border-2 border-slate-100 text-slate-600 p-4 rounded-2xl font-black uppercase text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all flex items-center justify-center gap-2">
+              {isLoading ? <Loader2 className="animate-spin" size={16}/> : <><ArrowDownCircle size={16} /> Saída</>}
+            </button>
+            <button disabled={isLoading} onClick={() => handleMovement('in')} className="flex-1 bg-blue-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
+              {isLoading ? <Loader2 className="animate-spin" size={16}/> : <><ArrowUpCircle size={16} /> Entrada</>}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -238,7 +287,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
       </div>
 
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3"><HistoryIcon size={18} className="text-blue-600" /><h3 className="font-black text-sm text-slate-800 uppercase tracking-tight">Histórico Recente</h3></div>
+        <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex items-center gap-3"><HistoryIcon size={18} className="text-blue-600" /><h3 className="font-black text-sm text-slate-800 uppercase tracking-tight">Histórico Recente Cloud</h3></div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b border-slate-100 tracking-widest">
@@ -271,7 +320,9 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome do Produto</label><input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Ex: Fio de Nylon" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} /></div>
               <div className="grid grid-cols-2 gap-4"><div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Qtd Inicial</label><input type="number" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:ring-2 focus:ring-blue-500/20" value={newItem.currentQty} onChange={e => setNewItem({...newItem, currentQty: parseInt(e.target.value)})} /></div><div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Qtd Mínima</label><input type="number" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:ring-2 focus:ring-blue-500/20" value={newItem.minQty} onChange={e => setNewItem({...newItem, minQty: parseInt(e.target.value)})} /></div></div>
               <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Categoria</label><select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none" value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value as any})}><option value="peças">Peças</option><option value="insumos">Insumos</option><option value="EPIs">EPIs</option><option value="outros">Outros</option></select></div>
-              <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-900/20 active:scale-95 transition-all mt-4">Salvar Cadastro</button>
+              <button disabled={isLoading} type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-900/20 active:scale-95 transition-all mt-4">
+                {isLoading ? <Loader2 className="animate-spin mx-auto" size={18}/> : 'Salvar Cadastro'}
+              </button>
             </form>
           </div>
         </div>
@@ -282,7 +333,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState }) => {
         onClose={() => setConfirmReversal(null)}
         onConfirm={performReversal}
         title="Estornar Lançamento"
-        message="Deseja realmente estornar este lançamento de estoque? Os saldos serão recalculados automaticamente."
+        message="Deseja realmente estornar este lançamento de estoque? Os saldos serão recalculados automaticamente no banco de dados."
         confirmText="Estornar Agora"
         type="warning"
       />
