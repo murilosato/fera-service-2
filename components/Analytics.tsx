@@ -135,8 +135,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                       <p className="text-[9px] font-bold uppercase text-slate-400">Endereço:</p>
                       <p className="text-[10px] font-black uppercase leading-relaxed">{selectedEmployee?.address || 'Não cadastrado'}</p>
                       <div className="pt-2 border-t border-white/10 space-y-1">
-                         <p className="text-[9px] font-bold uppercase flex justify-between"><span>TIPO:</span> <span className="text-emerald-400">{selectedEmployee?.paymentType?.toUpperCase()}</span></p>
-                         <p className="text-[9px] font-bold uppercase flex justify-between"><span>CHAVE:</span> <span className="text-white truncate max-w-[150px]">{selectedEmployee?.pixKey || selectedEmployee?.bankAccount || '--'}</span></p>
+                         <p className="text-[9px] font-bold uppercase flex justify-between"><span>TIPO:</span> <span className="text-emerald-400">{selectedEmployee?.paymentModality?.toUpperCase()}</span></p>
+                         <p className="text-[9px] font-bold uppercase flex justify-between"><span>CHAVE:</span> <span className="text-white truncate max-w-[150px]">{selectedEmployee?.pixKey || '--'}</span></p>
                       </div>
                    </div>
                 </div>
@@ -181,8 +181,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                  </div>
                  <div className="space-y-2">
                     <p className="font-black border-b border-slate-900 pb-1">Dados Bancários / Pix</p>
-                    <p><span className="font-black">Modalidade:</span> {selectedEmployee?.paymentType?.toUpperCase()}</p>
-                    <p><span className="font-black">Identificador:</span> {selectedEmployee?.pixKey || selectedEmployee?.bankAccount || '--'}</p>
+                    <p><span className="font-black">Modalidade:</span> {selectedEmployee?.paymentModality?.toUpperCase()}</p>
+                    <p><span className="font-black">Identificador:</span> {selectedEmployee?.pixKey || '--'}</p>
                     <div className="pt-4">
                        <p className="text-sm font-black bg-slate-100 p-2 border border-slate-900 flex justify-between">
                           TOTAL BRUTO: <span className="text-emerald-700">{formatMoney(totalToPay)}</span>

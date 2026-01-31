@@ -35,7 +35,7 @@ export interface User {
   name: string;
   role: UserRole;
   avatarUrl?: string;
-  companyId: string; // Obrigatório no SaaS
+  companyId: string;
   status: 'ativo' | 'suspenso';
   permissions: UserPermissions;
   company?: Company;
@@ -70,14 +70,12 @@ export interface Employee {
   name: string;
   role: string;
   status: 'active' | 'inactive';
-  defaultDailyRate?: number;
+  defaultValue: number;
+  paymentModality: string;
   cpf?: string;
   phone?: string;
   pixKey?: string;
-  birthDate?: string;
   address?: string;
-  paymentType?: 'pix' | 'bank';
-  bankAccount?: string;
 }
 
 export interface AttendanceRecord {
@@ -87,7 +85,7 @@ export interface AttendanceRecord {
   date: string;
   status: 'present' | 'absent';
   value: number;
-  paymentStatus?: 'pago' | 'pendente';
+  paymentStatus: string;
 }
 
 export interface CashIn {
@@ -111,7 +109,7 @@ export interface InventoryItem {
   id: string;
   companyId: string;
   name: string;
-  category: 'peças' | 'insumos' | 'EPIs' | 'outros';
+  category: string;
   currentQty: number;
   minQty: number;
   unitValue?: number;
@@ -146,5 +144,5 @@ export interface AppState {
   financeCategories: string[];
   currentUser: User | null;
   users: User[];
-  isSyncing?: boolean; // Estado de loading do Supabase
+  isSyncing?: boolean;
 }

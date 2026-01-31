@@ -4,8 +4,9 @@ import { AppState, ServiceType, UserRole } from './types';
 export const INITIAL_STATE: AppState = {
   areas: [],
   employees: [
-    { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultDailyRate: 85.00 },
-    { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultDailyRate: 75.00 }
+    // Fix: Using correct property names 'defaultValue' and 'paymentModality' as per Employee interface
+    { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultValue: 85.00, paymentModality: 'DIARIA' },
+    { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultValue: 75.00, paymentModality: 'DIARIA' }
   ],
   attendanceRecords: [],
   inventory: [
