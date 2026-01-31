@@ -1,6 +1,7 @@
 
 -- 1. LIMPEZA TOTAL (RESET)
--- Remove todas as tabelas e políticas existentes para evitar conflitos de "relação não existe"
+drop trigger if exists on_auth_user_created on auth.users;
+drop function if exists public.handle_new_user();
 drop table if exists monthly_goals cascade;
 drop table if exists attendance_records cascade;
 drop table if exists cash_flow cascade;
@@ -30,7 +31,7 @@ create table profiles (
   id uuid primary key references auth.users on delete cascade,
   company_id uuid references companies(id) on delete cascade,
   full_name text,
-  role text check (role in ('DIRETORIA_MASTER', 'GERENTE_UNIDADE', 'OPERACIONAL')),
+  role text check (role in ('DIRETORIA_MASTER', 'GERENTE_UNIDADE', 'OPERACIONAL')) default 'OPERACIONAL',
   status text default 'ativo',
   permissions jsonb default '{
     "production": true,
@@ -43,20 +44,47 @@ create table profiles (
   created_at timestamp with time zone default now()
 );
 
--- Áreas / Ordens de Serviço
+-- 4. FUNÇÃO DE GATILHO PARA CRIAÇÃO AUTOMÁTICA DE PERFIL
+-- Esta função é disparada pelo Supabase Auth quando um usuário se cadastra
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  default_company_id uuid;
+begin
+  -- 1. Cria uma empresa padrão para o novo usuário
+  insert into public.companies (name)
+  values ('Nova Unidade ' || new.email)
+  returning id into default_company_id;
+
+  -- 2. Insere o perfil vinculado à nova empresa
+  insert into public.profiles (id, company_id, full_name, role)
+  values (
+    new.id, 
+    default_company_id, 
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    'DIRETORIA_MASTER' -- O primeiro usuário da empresa é sempre Master
+  );
+  
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- 5. CONFIGURAÇÃO DO GATILHO (TRIGGER)
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- 6. TABELAS OPERACIONAIS (Restante do esquema)
 create table areas (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
   name text not null,
   start_date date not null default current_date,
-  end_date date,
   start_reference text,
-  end_reference text,
   observations text,
   created_at timestamp with time zone default now()
 );
 
--- Serviços Realizados (Metragem/Produção)
 create table services (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
@@ -69,7 +97,6 @@ create table services (
   created_at timestamp with time zone default now()
 );
 
--- Funcionários / Colaboradores
 create table employees (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
@@ -80,12 +107,9 @@ create table employees (
   payment_modality text default 'DIARIA',
   cpf text,
   phone text,
-  pix_key text,
-  address text,
   created_at timestamp with time zone default now()
 );
 
--- Estoque (Produtos)
 create table inventory (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
@@ -93,11 +117,9 @@ create table inventory (
   category text,
   current_qty numeric default 0,
   min_qty numeric default 0,
-  unit_value numeric default 0,
   created_at timestamp with time zone default now()
 );
 
--- Movimentações de Estoque (Saídas/Entradas)
 create table inventory_exits (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
@@ -105,11 +127,9 @@ create table inventory_exits (
   quantity numeric not null,
   date date not null default current_date,
   destination text,
-  observation text,
   created_at timestamp with time zone default now()
 );
 
--- Fluxo de Caixa (Financeiro)
 create table cash_flow (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
@@ -117,11 +137,9 @@ create table cash_flow (
   value numeric not null,
   date date not null default current_date,
   reference text,
-  category text,
   created_at timestamp with time zone default now()
 );
 
--- Registro de Presença (Frequência)
 create table attendance_records (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
@@ -133,7 +151,6 @@ create table attendance_records (
   created_at timestamp with time zone default now()
 );
 
--- Metas Mensais
 create table monthly_goals (
   id uuid primary key default uuid_generate_v4(),
   company_id uuid not null references companies(id) on delete cascade,
@@ -143,7 +160,7 @@ create table monthly_goals (
   unique(company_id, month_key)
 );
 
--- 4. SEGURANÇA (RLS - Row Level Security)
+-- 7. SEGURANÇA (RLS)
 alter table companies enable row level security;
 alter table profiles enable row level security;
 alter table areas enable row level security;
@@ -155,33 +172,13 @@ alter table cash_flow enable row level security;
 alter table attendance_records enable row level security;
 alter table monthly_goals enable row level security;
 
--- 5. POLÍTICAS DE ACESSO (Isolamento por Empresa)
-
--- Perfil: O usuário só vê o seu próprio perfil
-create policy "Users can see their own profile" on profiles
-  for all using (auth.uid() = id);
-
--- Políticas Genéricas: O usuário acessa dados se o company_id for o mesmo do seu perfil
-create policy "Company Access Areas" on areas for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
-
-create policy "Company Access Services" on services for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
-
-create policy "Company Access Employees" on employees for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
-
-create policy "Company Access Inventory" on inventory for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
-
-create policy "Company Access Inventory Exits" on inventory_exits for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
-
-create policy "Company Access Cash Flow" on cash_flow for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
-
-create policy "Company Access Attendance" on attendance_records for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
-
-create policy "Company Access Goals" on monthly_goals for all 
-  using (company_id = (select company_id from profiles where id = auth.uid()));
+-- 8. POLÍTICAS (Isolamento por Empresa)
+create policy "Users can see their own profile" on profiles for all using (auth.uid() = id);
+create policy "Company Access Areas" on areas for all using (company_id = (select company_id from profiles where id = auth.uid()));
+create policy "Company Access Services" on services for all using (company_id = (select company_id from profiles where id = auth.uid()));
+create policy "Company Access Employees" on employees for all using (company_id = (select company_id from profiles where id = auth.uid()));
+create policy "Company Access Inventory" on inventory for all using (company_id = (select company_id from profiles where id = auth.uid()));
+create policy "Company Access Inventory Exits" on inventory_exits for all using (company_id = (select company_id from profiles where id = auth.uid()));
+create policy "Company Access Cash Flow" on cash_flow for all using (company_id = (select company_id from profiles where id = auth.uid()));
+create policy "Company Access Attendance" on attendance_records for all using (company_id = (select company_id from profiles where id = auth.uid()));
+create policy "Company Access Goals" on monthly_goals for all using (company_id = (select company_id from profiles where id = auth.uid()));
