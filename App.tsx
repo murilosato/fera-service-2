@@ -1,3 +1,11 @@
+const App: React.FC = () => {
+
+  // 🔴 PRIMEIRA VERIFICAÇÃO DE TODAS
+  if (!isSupabaseConfigured) {
+    return <SupabaseSetup onConfigured={() => window.location.reload()} />;
+  }
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { AppState, UserRole, User } from './types';
 import { INITIAL_STATE } from './constants';
@@ -26,12 +34,6 @@ import ConfirmationModal from './components/ConfirmationModal';
 
 const App: React.FC = () => {
 
-  /* ===============================
-     1️⃣ SE NÃO ESTIVER CONFIGURADO
-     =============================== */
-  if (!isSupabaseConfigured) {
-    return <SupabaseSetup onConfigured={() => window.location.reload()} />;
-  }
 
   /* ===============================
      2️⃣ STATES BÁSICOS
