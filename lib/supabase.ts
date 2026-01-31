@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { createClient } from '@supabase/supabase-js';
 
 // Lê as chaves que o usuário salvou
 const SUPABASE_URL = localStorage.getItem('FERA_SUPABASE_URL') || '';
