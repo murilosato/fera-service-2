@@ -2,8 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
 // ==========================================================
-// CONFIGURAÇÃO DOS BASTIDORES (BACKEND)
-// Substitua o placeholder abaixo pela sua URL real do Supabase
+// CONFIGURAÇÃO DOS BASTIDORES (FIXA)
 // ==========================================================
 const SUPABASE_URL = 'https://zbntnglatvuijefqfjhx.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_KiZXFlucpA_RSEuYyot5GA_eQdaTKC2';
@@ -45,7 +44,7 @@ export const supabase: any = new Proxy({}, {
 });
 
 export const isSupabaseConfigured = () => {
-  return !!SUPABASE_URL && !SUPABASE_URL.includes('SUA_URL_AQUI');
+  return !!SUPABASE_URL && SUPABASE_URL.startsWith('https://');
 };
 
 export const fetchUserProfile = async (userId: string) => {
@@ -59,8 +58,12 @@ export const fetchUserProfile = async (userId: string) => {
       .eq('id', userId)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Erro na busca de perfil:", error.message);
+      return null;
+    }
 
+    // Fallback caso o usuário exista no Auth mas não na tabela pública 'profiles'
     if (!data) {
       const { data: { user } } = await client.auth.getUser();
       if (user) {
@@ -79,7 +82,7 @@ export const fetchUserProfile = async (userId: string) => {
     }
     return data;
   } catch (e) {
-    console.error("Erro ao buscar perfil:", e);
+    console.error("Erro crítico ao buscar perfil:", e);
     return null;
   }
 };

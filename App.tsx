@@ -48,6 +48,8 @@ const App: React.FC = () => {
         };
         setState(prev => ({ ...prev, currentUser: user }));
       } else {
+        // Se falhar em carregar perfil mas o Auth estiver logado, 
+        // mantemos o login se houver fallback, senão deslogamos.
         await signOut();
       }
     } catch (err) {
@@ -59,28 +61,33 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      // Tenta recuperar sessão existente
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        await loadProfile(session.user.id);
-      } else {
-        setIsLoadingProfile(false);
-      }
-
-      // Escuta mudanças de autenticação (login/logout)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
+      try {
+        // 1. Tenta recuperar sessão existente no carregamento da página
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
           await loadProfile(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          setState(prev => ({ ...prev, currentUser: null }));
+        } else {
           setIsLoadingProfile(false);
         }
-      });
 
-      return () => {
-        subscription.unsubscribe();
-      };
+        // 2. Escuta mudanças de estado (Login efetuado, Logout, Token renovado)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            await loadProfile(session.user.id);
+          } else if (event === 'SIGNED_OUT') {
+            setState(prev => ({ ...prev, currentUser: null }));
+            setIsLoadingProfile(false);
+          }
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (err) {
+        console.error("Falha na inicialização do Supabase:", err);
+        setIsLoadingProfile(false);
+      }
     };
 
     initApp();
@@ -90,22 +97,26 @@ const App: React.FC = () => {
     await signOut();
     setShowLogoutConfirm(false);
     setState(prev => ({ ...prev, currentUser: null }));
+    setActiveTab('dashboard'); // Reset tab
   };
 
+  // 1. Tela de Carregamento Global
   if (isLoadingProfile) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Iniciando Fera Service...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-center">
+        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+        <h2 className="text-slate-900 font-black uppercase tracking-tighter text-lg">Fera Service</h2>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-2">Autenticando Acesso...</p>
       </div>
     );
   }
 
-  // Se não estiver logado, exibe a tela de Login imediatamente
+  // 2. Tela de Login (Se não houver usuário logado)
   if (!state.currentUser) {
     return <Login onLogin={() => {}} users={[]} />;
   }
 
+  // 3. Aplicação Principal (Se logado)
   const renderContent = () => {
     const commonProps = { state, setState, setActiveTab };
     switch (activeTab) {
@@ -138,9 +149,9 @@ const App: React.FC = () => {
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogout}
-        title="Sair do Sistema"
-        message="Deseja realmente encerrar sua sessão segura?"
-        confirmText="Sair Agora"
+        title="Encerrar Sessão"
+        message="Deseja realmente sair do terminal Fera Service? Você precisará autenticar novamente."
+        confirmText="Encerrar Agora"
         type="warning"
       />
     </>
