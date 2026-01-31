@@ -17,40 +17,58 @@ const isValidUUID = (uuid: any) => {
 
 export const fetchUserProfile = async (userId: string) => {
   if (!supabase) return null;
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*, companies(*)')
-    .eq('id', userId)
-    .maybeSingle();
-  
-  if (error) {
-    console.error("Erro ao buscar perfil:", error);
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*, companies(*)')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Erro ao buscar perfil:", error);
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error("Exceção ao buscar perfil:", e);
     return null;
   }
-  return data;
 };
 
 export const fetchCompleteCompanyData = async (companyId: string) => {
   if (!supabase || !isValidUUID(companyId)) return null;
 
   try {
-    const [areas, emps, inv, exits, flow, att, goals] = await Promise.all([
+    // Usando requisições separadas para que falhas em uma tabela não derrubem todo o app
+    const fetchTable = async (table: string) => {
+      const { data, error } = await supabase.from(table).select('*').eq('company_id', companyId);
+      if (error) {
+        console.warn(`Aviso ao buscar tabela ${table}:`, error.message);
+        return [];
+      }
+      return data || [];
+    };
+
+    const [areasRaw, emps, inv, exits, flow, att, goals] = await Promise.all([
       supabase.from('areas').select('*, services(*)').eq('company_id', companyId).order('created_at', { ascending: false }),
-      supabase.from('employees').select('*').eq('company_id', companyId),
-      supabase.from('inventory').select('*').eq('company_id', companyId),
-      supabase.from('inventory_exits').select('*').eq('company_id', companyId),
-      supabase.from('cash_flow').select('*').eq('company_id', companyId),
-      supabase.from('attendance_records').select('*').eq('company_id', companyId),
-      supabase.from('monthly_goals').select('*').eq('company_id', companyId)
+      fetchTable('employees'),
+      fetchTable('inventory'),
+      fetchTable('inventory_exits'),
+      fetchTable('cash_flow'),
+      fetchTable('attendance_records'),
+      fetchTable('monthly_goals')
     ]);
 
+    // O retorno de áreas usa uma query especial com join de serviços
+    const areasData = (areasRaw as any).data || [];
+
     const goalsMap: Record<string, any> = {};
-    goals.data?.forEach(g => {
+    (goals as any[]).forEach(g => {
       goalsMap[g.month_key] = { production: Number(g.production_goal), revenue: Number(g.revenue_goal) };
     });
 
     return {
-      areas: (areas.data || []).map(a => ({
+      areas: areasData.map((a: any) => ({
         id: a.id,
         companyId: a.company_id,
         name: a.name,
@@ -70,7 +88,7 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
           serviceDate: s.service_date
         }))
       })),
-      employees: (emps.data || []).map(e => ({
+      employees: (emps as any[]).map(e => ({
         id: e.id,
         companyId: e.company_id,
         name: e.name,
@@ -83,7 +101,7 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
         pixKey: e.pix_key,
         address: e.address
       })),
-      inventory: (inv.data || []).map(i => ({
+      inventory: (inv as any[]).map(i => ({
         id: i.id,
         companyId: i.company_id,
         name: i.name,
@@ -92,7 +110,7 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
         minQty: Number(i.min_qty),
         unitValue: i.unit_value ? Number(i.unit_value) : undefined
       })),
-      inventoryExits: (exits.data || []).map(ex => ({
+      inventoryExits: (exits as any[]).map(ex => ({
         id: ex.id,
         companyId: ex.company_id,
         itemId: ex.item_id,
@@ -101,7 +119,7 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
         destination: ex.destination,
         observation: ex.observation
       })),
-      cashIn: (flow.data || []).filter(f => f.type === 'in').map(f => ({
+      cashIn: (flow as any[]).filter(f => f.type === 'in').map(f => ({
         id: f.id,
         companyId: f.company_id,
         date: f.date,
@@ -109,14 +127,14 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
         reference: f.reference,
         type: f.type
       })),
-      cashOut: (flow.data || []).filter(f => f.type === 'out').map(f => ({
+      cashOut: (flow as any[]).filter(f => f.type === 'out').map(f => ({
         id: f.id,
         companyId: f.company_id,
         date: f.date,
         value: Number(f.value),
         type: f.type
       })),
-      attendanceRecords: (att.data || []).map(r => ({
+      attendanceRecords: (att as any[]).map(r => ({
         id: r.id,
         companyId: r.company_id,
         employeeId: r.employee_id,
