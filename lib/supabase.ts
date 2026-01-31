@@ -1,56 +1,73 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = localStorage.getItem('FERA_SUPABASE_URL') || '';
-const SUPABASE_ANON_KEY = localStorage.getItem('FERA_SUPABASE_ANON_KEY') || '';
+// Hardcoded provided credentials to bypass setup screen as requested
+const DEFAULT_URL = 'https://zbntnglatvuijefqfjhx.supabase.co';
+const DEFAULT_KEY = 'sb_publishable_KiZXFlucpA_RSEuYyot5GA_eQdaTKC2';
 
-export const isSupabaseConfigured = SUPABASE_URL.length > 10 && SUPABASE_ANON_KEY.length > 20;
+const SUPABASE_URL = localStorage.getItem('FERA_SUPABASE_URL') || DEFAULT_URL;
+const SUPABASE_ANON_KEY = localStorage.getItem('FERA_SUPABASE_ANON_KEY') || DEFAULT_KEY;
 
-export const supabase = isSupabaseConfigured 
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
-  : null;
+export const isSupabaseConfigured = true; // Always true now as we have defaults
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});
 
 const isValidUUID = (uuid: any) => {
   if (typeof uuid !== 'string') return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
 };
 
+const withTimeout = <T>(promise: PromiseLike<T>, ms: number, timeoutError: string): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutError)), ms);
+    Promise.resolve(promise)
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+};
+
 export const fetchUserProfile = async (userId: string) => {
-  if (!supabase) return null;
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from('profiles')
       .select('*, companies(*)')
       .eq('id', userId)
       .maybeSingle();
-    
-    if (error) {
-      console.error("Erro ao buscar perfil:", error);
-      return null;
-    }
+
+    const { data, error } = await withTimeout(query, 5000, "Timeout perfil");
+    if (error) throw error;
     return data;
   } catch (e) {
-    console.error("Exceção ao buscar perfil:", e);
+    console.error("Erro fetchUserProfile:", e);
     return null;
   }
 };
 
 export const fetchCompleteCompanyData = async (companyId: string) => {
-  if (!supabase || !isValidUUID(companyId)) return null;
+  if (!isValidUUID(companyId)) return null;
 
   try {
-    // Usando requisições separadas para que falhas em uma tabela não derrubem todo o app
     const fetchTable = async (table: string) => {
-      const { data, error } = await supabase.from(table).select('*').eq('company_id', companyId);
-      if (error) {
-        console.warn(`Aviso ao buscar tabela ${table}:`, error.message);
-        return [];
-      }
-      return data || [];
+      const query = supabase.from(table).select('*').eq('company_id', companyId);
+      const { data, error } = await withTimeout(query, 5000, `Timeout ${table}`);
+      return error ? [] : (data || []);
     };
 
+    const areasQuery = supabase.from('areas').select('*, services(*)').eq('company_id', companyId).order('created_at', { ascending: false });
+    
     const [areasRaw, emps, inv, exits, flow, att, goals] = await Promise.all([
-      supabase.from('areas').select('*, services(*)').eq('company_id', companyId).order('created_at', { ascending: false }),
+      withTimeout(areasQuery, 5000, "Timeout áreas"),
       fetchTable('employees'),
       fetchTable('inventory'),
       fetchTable('inventory_exits'),
@@ -59,9 +76,7 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
       fetchTable('monthly_goals')
     ]);
 
-    // O retorno de áreas usa uma query especial com join de serviços
     const areasData = (areasRaw as any).data || [];
-
     const goalsMap: Record<string, any> = {};
     (goals as any[]).forEach(g => {
       goalsMap[g.month_key] = { production: Number(g.production_goal), revenue: Number(g.revenue_goal) };
@@ -146,17 +161,13 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
       monthlyGoals: goalsMap
     };
   } catch (err) {
-    console.error("Erro crítico na carga de dados:", err);
+    console.error("Erro fetchCompleteCompanyData:", err);
     return null;
   }
 };
 
 export const dbSave = async (table: string, data: any) => {
-  if (!supabase) throw new Error("Supabase não configurado");
-
   const payload = { ...data };
-  
-  // Mapping camelCase (JS) to snake_case (Postgres)
   if (payload.companyId) { payload.company_id = payload.companyId; delete payload.companyId; }
   if (payload.startDate) { payload.start_date = payload.startDate; delete payload.startDate; }
   if (payload.endDate) { payload.end_date = payload.endDate; delete payload.endDate; }
@@ -177,11 +188,11 @@ export const dbSave = async (table: string, data: any) => {
 };
 
 export const dbDelete = async (table: string, id: string) => {
-  if (!supabase || !isValidUUID(id)) return;
+  if (!isValidUUID(id)) return;
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) throw error;
 };
 
 export const signOut = async () => {
-  if (supabase) await supabase.auth.signOut();
+  await supabase.auth.signOut();
 };

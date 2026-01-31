@@ -4,13 +4,11 @@ import { AppState, UserRole, User } from './types';
 import { INITIAL_STATE } from './constants';
 import {
   supabase,
-  isSupabaseConfigured,
   fetchUserProfile,
   fetchCompleteCompanyData,
   signOut
 } from './lib/supabase';
 
-import SupabaseSetup from './SupabaseSetup';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Production from './components/Production';
@@ -23,38 +21,25 @@ import Login from './components/Login';
 import Analytics from './components/Analytics';
 import Management from './components/Management';
 import ConfirmationModal from './components/ConfirmationModal';
-import { RefreshCw, Database } from 'lucide-react';
+import { RefreshCw, LogOut, AlertCircle } from 'lucide-react';
 
 const App = () => {
-  if (!isSupabaseConfigured) {
-    return <SupabaseSetup onConfigured={() => window.location.reload()} />;
-  }
-
   const [isInitializing, setIsInitializing] = useState(true);
   const [state, setState] = useState<AppState>(INITIAL_STATE);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
-  const [showFailsafe, setShowFailsafe] = useState(false);
   const isSyncingRef = useRef(false);
 
-  const resetConfig = () => {
-    localStorage.removeItem('FERA_SUPABASE_URL');
-    localStorage.removeItem('FERA_SUPABASE_ANON_KEY');
-    window.location.reload();
-  };
-
   const syncData = async (userId: string) => {
-    if (!supabase || isSyncingRef.current) return;
+    if (isSyncingRef.current) return;
     isSyncingRef.current = true;
 
     try {
-      console.log("Iniciando sincronização para o usuário:", userId);
       const profile = await fetchUserProfile(userId);
       
       if (!profile || !profile.company_id) {
-        console.warn("Perfil não encontrado ou sem empresa vinculada.");
-        setState(prev => ({ ...prev, currentUser: null }));
+        setInitError("Perfil operacional não encontrado.");
         setIsInitializing(false);
         return;
       }
@@ -69,7 +54,6 @@ const App = () => {
         permissions: profile.permissions || INITIAL_STATE.users[0].permissions
       };
 
-      console.log("Perfil carregado. Buscando dados da empresa:", profile.company_id);
       const companyData = await fetchCompleteCompanyData(profile.company_id);
 
       setState(prev => ({
@@ -77,10 +61,10 @@ const App = () => {
         currentUser: userData,
         ...(companyData || {})
       }));
-      console.log("Sincronização completa.");
+      setInitError(null);
     } catch (e: any) {
-      console.error("Erro no sync:", e);
-      setInitError(`Erro: ${e.message || 'Falha na sincronização'}`);
+      console.error("Erro Fatal no Sync:", e);
+      setInitError(`Sincronização falhou: ${e.message}`);
     } finally {
       setIsInitializing(false);
       isSyncingRef.current = false;
@@ -88,82 +72,67 @@ const App = () => {
   };
 
   useEffect(() => {
-    if (!supabase) {
-      setIsInitializing(false);
-      return;
-    }
-
-    // Failsafe: Se demorar mais de 10 segundos, mostra opção de reset
-    const failsafeTimer = setTimeout(() => {
-      if (isInitializing) setShowFailsafe(true);
-    }, 10000);
-
-    const loadSession = async () => {
+    const checkSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        if (data.session?.user) {
-          await syncData(data.session.user.id);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await syncData(session.user.id);
         } else {
           setIsInitializing(false);
         }
       } catch (e) {
-        console.error("Erro ao carregar sessão:", e);
+        console.error("Erro na Sessão:", e);
         setIsInitializing(false);
       }
     };
 
-    loadSession();
+    checkSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Mudança de estado Auth:", event);
-        if (event === 'SIGNED_IN' && session?.user) {
-          setIsInitializing(true);
-          await syncData(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          setState({ ...INITIAL_STATE, currentUser: null });
-          setIsInitializing(false);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setIsInitializing(true);
+        await syncData(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        // Fix: Removed 'USER_DELETED' as it is not present in the current Supabase AuthChangeEvent union type
+        setState({ ...INITIAL_STATE, currentUser: null });
+        setIsInitializing(false);
+        setInitError(null);
       }
-    );
+    });
 
     return () => {
-      clearTimeout(failsafeTimer);
-      listener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-6 text-center">
-        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="mt-6 text-[10px] font-black text-slate-500 uppercase tracking-widest animate-pulse">
-          Sincronizando Banco de Dados Cloud...
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <h2 className="mt-8 font-black text-white uppercase tracking-[0.2em] text-xs">Fera Service Cloud</h2>
+        <p className="mt-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">
+          Iniciando Conexão Segura...
         </p>
         
         {initError && (
-          <div className="mt-8 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl max-w-xs">
-            <p className="text-[9px] text-rose-500 font-black uppercase tracking-widest">{initError}</p>
-          </div>
-        )}
-
-        {showFailsafe && (
-          <div className="mt-12 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <p className="text-[9px] text-slate-600 font-bold uppercase">A conexão está demorando mais que o esperado.</p>
-            <div className="flex flex-col gap-2">
-              <button 
-                onClick={() => window.location.reload()}
-                className="flex items-center justify-center gap-2 bg-slate-800 text-white px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-700 transition-all"
-              >
-                <RefreshCw size={14} /> Tentar Novamente
-              </button>
-              <button 
-                onClick={resetConfig}
-                className="flex items-center justify-center gap-2 bg-rose-600 text-white px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/20"
-              >
-                <Database size={14} /> Resetar Configurações
-              </button>
+          <div className="mt-10 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl max-w-xs">
+            <div className="flex items-center gap-2 mb-2 text-rose-500">
+              <AlertCircle size={14} />
+              <p className="text-[9px] font-black uppercase tracking-widest">Aviso</p>
             </div>
+            <p className="text-[10px] text-rose-200/60 font-medium leading-relaxed mb-4">{initError}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="flex items-center justify-center gap-2 bg-slate-800 text-white w-full py-2 rounded-xl font-black text-[9px] uppercase hover:bg-slate-700 transition-all"
+            >
+              <RefreshCw size={12} /> Recarregar
+            </button>
+            <button 
+              onClick={async () => { await signOut(); window.location.reload(); }}
+              className="mt-2 flex items-center justify-center gap-2 bg-transparent text-slate-500 w-full py-2 font-black text-[9px] uppercase hover:text-white transition-all"
+            >
+              <LogOut size={12} /> Limpar Sessão
+            </button>
           </div>
         )}
       </div>
