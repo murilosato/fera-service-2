@@ -21,7 +21,8 @@ import {
   Calendar, 
   Filter, 
   X, 
-  Percent
+  Percent,
+  Package
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -30,7 +31,7 @@ interface DashboardProps {
   setActiveTab: (tab: string) => void;
 }
 
-type MetricType = 'production' | 'revenue' | 'balance' | 'stock';
+type MetricType = 'production' | 'revenue' | 'balance' | 'inventoryValue';
 
 const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
   const [activeMetric, setActiveMetric] = useState<MetricType>('production');
@@ -70,7 +71,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       state.areas.forEach(area => {
         const isFinished = area.status === 'finished';
         (area.services || []).forEach(s => {
-          // Correção do erro startsWith: check de existência e nome correto do campo serviceDate
           if (s.serviceDate?.startsWith(m.key)) {
             prod += s.areaM2;
             if (isFinished) {
@@ -93,10 +93,11 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         revenue: rev,
         revenueGoal: goal.revenue,
         balance: inc - out,
-        stock: state.inventoryExits.filter(e => e.date?.startsWith(m.key)).reduce((acc, e) => acc + e.quantity, 0),
+        // O valor do estoque é um snapshot atual, não histórico perfeito, mas aqui simulamos o valor atual
+        inventoryValue: state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0)
       };
     });
-  }, [state.areas, state.cashIn, state.cashOut, state.inventoryExits, monthlySeries, state.monthlyGoals]);
+  }, [state.areas, state.cashIn, state.cashOut, state.inventory, monthlySeries, state.monthlyGoals]);
 
   const periodTotals = useMemo(() => {
     const lastMonthKey = monthlySeries[monthlySeries.length - 1].key;
@@ -120,23 +121,26 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     const inc = state.cashIn.filter(c => c.date?.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
     const out = state.cashOut.filter(c => c.date?.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
     
+    const currentInventoryValue = state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0);
+
     return {
       production: prodMonth,
       revenue: revMonth,
       balance: inc - out,
+      inventoryValue: currentInventoryValue,
       goalProd: currentMonthGoal.production,
       goalRev: currentMonthGoal.revenue,
       prodPercentage: currentMonthGoal.production > 0 ? (prodMonth / currentMonthGoal.production) * 100 : 0,
       revPercentage: currentMonthGoal.revenue > 0 ? (revMonth / currentMonthGoal.revenue) * 100 : 0
     };
-  }, [state.areas, state.cashIn, state.cashOut, state.monthlyGoals, monthlySeries]);
+  }, [state.areas, state.cashIn, state.cashOut, state.monthlyGoals, state.inventory, monthlySeries]);
 
   const lowStock = state.inventory.filter(i => i.currentQty <= i.minQty);
 
   const stats = [
     { id: 'production', label: 'PRODUÇÃO MÊS', value: `${periodTotals.production.toLocaleString('pt-BR')} m²`, progress: periodTotals.prodPercentage, icon: Map, color: 'text-blue-600', bg: 'bg-blue-50' },
     { id: 'revenue', label: 'FATURAMENTO MÊS', value: formatMoney(periodTotals.revenue), progress: periodTotals.revPercentage, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { id: 'balance', label: 'SALDO MENSAL', value: formatMoney(periodTotals.balance), icon: Wallet, color: 'text-slate-900', bg: 'bg-slate-100' },
+    { id: 'inventoryValue', label: 'VALOR EM ESTOQUE', value: formatMoney(periodTotals.inventoryValue), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
     { id: 'stock', label: 'ESTOQUE CRÍTICO', value: `${lowStock.length} itens`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
   ];
 
@@ -145,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Monitoramento Estratégico</h2>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Metas Dinâmicas Mensais vs Realizado</p>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Desempenho Global e Patrimonial</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -192,7 +196,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         {stats.map((stat) => (
           <button 
             key={stat.id} 
-            onClick={() => setActiveMetric(stat.id as MetricType)}
+            onClick={() => {
+              if (stat.id !== 'stock') setActiveMetric(stat.id as MetricType);
+              else setActiveTab('inventory');
+            }}
             className={`bg-white p-5 border text-left transition-all relative overflow-hidden group ${activeMetric === stat.id ? 'border-slate-900 ring-4 ring-slate-900/5 shadow-lg' : 'border-slate-200 hover:border-slate-300'}`}
           >
             <div className="flex justify-between items-start mb-4">
@@ -218,7 +225,12 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm min-h-[450px] w-full">
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">
-              Histórico Mensal: {activeMetric === 'production' ? 'Produção vs Metas' : activeMetric === 'revenue' ? 'Faturamento (O.S. Finalizadas)' : activeMetric.toUpperCase()}
+              Histórico Mensal: {
+                activeMetric === 'production' ? 'Produção vs Metas' : 
+                activeMetric === 'revenue' ? 'Faturamento Realizado' : 
+                activeMetric === 'inventoryValue' ? 'Evolução Patrimonial Estoque' : 
+                activeMetric.toUpperCase()
+              }
             </h3>
           </div>
 
@@ -234,7 +246,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                   formatter={(val: any, name: string) => {
                     const label = name.includes('Goal') ? 'Meta do Mês' : 'Realizado';
                     const unit = activeMetric === 'production' ? ' m²' : '';
-                    return [activeMetric === 'revenue' ? formatMoney(val) : `${val.toLocaleString('pt-BR')}${unit}`, label];
+                    return [(activeMetric === 'revenue' || activeMetric === 'inventoryValue') ? formatMoney(val) : `${val.toLocaleString('pt-BR')}${unit}`, label];
                   }}
                 />
                 <Legend 
@@ -249,6 +261,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                      if(activeMetric === 'balance') color = entry.balance >= 0 ? '#10b981' : '#ef4444';
                      if(activeMetric === 'revenue') color = '#059669';
                      if(activeMetric === 'production') color = '#2563eb';
+                     if(activeMetric === 'inventoryValue') color = '#f59e0b';
                      return <Cell key={`cell-${index}`} fill={color} />;
                    })}
                 </Bar>
@@ -293,6 +306,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">
                 {formatMoney(periodTotals.revenue)} / {formatMoney(periodTotals.goalRev)}
               </p>
+            </div>
+
+            <div className="mt-10 p-4 bg-white/5 border border-white/10 rounded-2xl">
+               <div className="flex items-center gap-3 mb-2">
+                  <Package size={16} className="text-orange-400" />
+                  <span className="text-[9px] font-black uppercase text-slate-400">Total Imobilizado (Estoque)</span>
+               </div>
+               <p className="text-xl font-black text-white tracking-tight">{formatMoney(periodTotals.inventoryValue)}</p>
             </div>
           </div>
 

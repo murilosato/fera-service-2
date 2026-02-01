@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
-import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX } from 'lucide-react';
+import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface EmployeesProps {
@@ -29,7 +29,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
   const handleToggleAttendance = async (empId: string, date: string) => {
     const emp = state.employees.find(e => e.id === empId);
-    if (!emp || emp.status === 'inactive') return; // Bloqueia faltas/presenças para inativos
+    if (!emp) return;
+    
+    if (emp.status === 'inactive') {
+      return notify("Não é possível lançar frequência para inativos", "error");
+    }
 
     const existing = state.attendanceRecords.find(r => r.employeeId === empId && r.date === date);
 
@@ -43,11 +47,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       } else {
         await dbSave('attendance_records', {
           companyId: state.currentUser?.companyId,
-          employeeId: empId,
+          employee_id: empId,
           date,
           status: 'present',
           value: emp.defaultValue,
-          paymentStatus: 'pendente'
+          payment_status: 'pendente'
         });
       }
       await refreshData();
@@ -68,11 +72,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     e.preventDefault();
     if (!employeeForm.name) return notify("Nome completo é obrigatório", "error");
     
-    if (employeeForm.cpf) {
-      const isDuplicate = state.employees.some(emp => emp.cpf === employeeForm.cpf && emp.id !== editingId);
-      if (isDuplicate) return notify("Erro: Este CPF já pertence a outro colaborador.", "error");
-    }
-
     setIsLoading(true);
     try {
       await dbSave('employees', {
@@ -121,16 +120,16 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
           <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Equipe & RH</h2>
           <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Controle de Frequência e Status Cadastral</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full md:w-auto">
           <button 
             onClick={() => setShowInactive(!showInactive)} 
-            className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 shadow-sm transition-all ${!showInactive ? 'bg-slate-900 text-white' : 'bg-white border text-slate-600'}`}
+            className={`flex-1 md:flex-none px-5 py-3 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-sm transition-all ${!showInactive ? 'bg-slate-900 text-white' : 'bg-white border text-slate-600'}`}
           >
-             {showInactive ? <Users size={16}/> : <UserX size={16}/>}
-             {showInactive ? 'OCULTAR INATIVOS' : 'MOSTRAR INATIVOS'}
+             {showInactive ? <UserX size={16}/> : <Users size={16}/>}
+             {showInactive ? 'FILTRAR ATIVOS' : 'EXIBIR TODOS'}
           </button>
-          <button onClick={() => { setEditingId(null); setEmployeeForm(initialFormState); setShowForm(true); }} className="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase shadow-xl flex items-center gap-2 tracking-[0.2em] hover:bg-emerald-700 transition-all">
-             <UserPlus size={16} /> NOVO COLABORADOR
+          <button onClick={() => { setEditingId(null); setEmployeeForm(initialFormState); setShowForm(true); }} className="flex-1 md:flex-none bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase shadow-xl flex items-center justify-center gap-2 tracking-[0.2em] hover:bg-emerald-700 transition-all">
+             <UserPlus size={16} /> NOVO CADASTRO
           </button>
         </div>
       </header>
@@ -163,19 +162,19 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredEmployees.map(emp => (
-                <tr key={emp.id} className={`hover:bg-slate-50/50 transition-colors group ${emp.status === 'inactive' ? 'opacity-50' : ''}`}>
+                <tr key={emp.id} className={`hover:bg-slate-50/50 transition-colors group ${emp.status === 'inactive' ? 'opacity-60 bg-slate-50/20' : ''}`}>
                   <td className="sticky left-0 bg-white p-4 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                     <div className="flex justify-between items-center">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className={`text-[10px] font-black uppercase truncate ${emp.status === 'inactive' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{emp.name}</p>
-                          <span className={`w-2 h-2 rounded-full ${emp.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          <p className={`text-[10px] font-black uppercase truncate ${emp.status === 'inactive' ? 'text-slate-400 line-through italic' : 'text-slate-800'}`}>{emp.name}</p>
+                          <span className={`w-2 h-2 rounded-full ${emp.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-slate-300'}`} />
                         </div>
                         <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">{emp.role}</p>
                       </div>
                       <div className="flex items-center gap-1">
                         <button onClick={() => handleEdit(emp)} className="opacity-0 group-hover:opacity-100 p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><Edit2 size={12}/></button>
-                        <button onClick={() => handleToggleStatus(emp)} className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all ${emp.status === 'active' ? 'text-rose-400 hover:bg-rose-50' : 'text-emerald-400 hover:bg-emerald-50'}`}>
+                        <button onClick={() => handleToggleStatus(emp)} title={emp.status === 'active' ? 'Inativar' : 'Ativar'} className={`p-2 rounded-lg transition-all ${emp.status === 'active' ? 'text-slate-300 hover:text-rose-600 hover:bg-rose-50' : 'text-emerald-500 bg-emerald-50'}`}>
                            <Power size={12}/>
                         </button>
                       </div>
@@ -191,7 +190,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                         onClick={() => handleToggleAttendance(emp.id, dateStr)}
                         className={`p-0 border-r h-12 text-center text-[9px] font-black transition-all ${emp.status === 'active' ? 'cursor-pointer hover:brightness-95' : 'cursor-not-allowed'} ${att?.status === 'present' ? 'bg-emerald-500 text-white' : att?.status === 'absent' ? 'bg-rose-500 text-white' : isToday ? 'bg-slate-50 text-slate-900 border-2 border-slate-900' : 'text-slate-200 hover:bg-slate-100'}`}
                       >
-                        {att?.status === 'present' ? 'P' : att?.status === 'absent' ? 'F' : '-'}
+                        {emp.status === 'active' ? (att?.status === 'present' ? 'P' : att?.status === 'absent' ? 'F' : '-') : <X size={10} className="mx-auto opacity-20"/>}
                       </td>
                     );
                   })}
