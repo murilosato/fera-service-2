@@ -32,6 +32,10 @@ const camelToSnake = (obj: any) => {
     else if (k === 'inventoryCategories') newKey = 'inventory_categories';
     else if (k === 'employeeRoles') newKey = 'employee_roles';
     else if (k === 'serviceDate') newKey = 'service_date';
+    else if (k === 'productionGoal') newKey = 'production_goal';
+    else if (k === 'revenueGoal') newKey = 'revenue_goal';
+    else if (k === 'inventoryGoal') newKey = 'inventory_goal';
+    else if (k === 'balanceGoal') newKey = 'balance_goal';
     else {
       newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     }
@@ -113,7 +117,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       }))
     })),
     employees: emps.map((e: any) => ({
-      id: e.id, companyId: e.company_id, name: e.name, role: e.role, status: e.status,
+      id: e.id, companyId: e.company_id, name: e.name, role: e.role, status: e.status || 'active',
       defaultValue: Number(e.default_value), paymentModality: e.payment_modality,
       cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address
     })),
@@ -141,12 +145,15 @@ export const dbSave = async (table: string, data: any) => {
   let query;
   
   if (payload.id) {
-    // IMPORTANTE: Para evitar erro de 'not-null constraint' no Upsert, usamos explicitamente o UPDATE quando há ID.
-    // Assim, o Supabase ignora as colunas não enviadas (como o nome da empresa).
     const { id, ...updateData } = payload;
     query = supabase.from(table).update(updateData).eq('id', id);
   } else {
-    query = supabase.from(table).insert(payload);
+    // Para tabelas como monthly_goals que tem restrição UNIQUE por company_id + month_key
+    if (table === 'monthly_goals') {
+       query = supabase.from(table).upsert(payload, { onConflict: 'company_id, month_key' });
+    } else {
+       query = supabase.from(table).insert(payload);
+    }
   }
   
   const { data: saved, error } = await query.select();
