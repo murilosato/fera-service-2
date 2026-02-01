@@ -61,7 +61,7 @@ export interface Service {
   areaM2: number;
   unitValue: number;
   totalValue: number;
-  serviceDate: string;
+  service_date: string;
 }
 
 export interface Employee {
@@ -95,6 +95,7 @@ export interface CashIn {
   value: number;
   reference: string;
   type: string;
+  category: string;
 }
 
 export interface CashOut {
@@ -103,6 +104,8 @@ export interface CashOut {
   date: string;
   value: number;
   type: string;
+  reference: string;
+  category: string;
 }
 
 export interface InventoryItem {
@@ -128,6 +131,8 @@ export interface InventoryExit {
 export interface MonthlyGoal {
   production: number;
   revenue: number;
+  inventory: number;
+  finance: number;
 }
 
 export interface AppState {

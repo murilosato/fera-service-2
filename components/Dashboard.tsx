@@ -69,7 +69,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       
       state.areas.forEach(area => {
         area.services.forEach(s => {
-          if (s.serviceDate.startsWith(m.key)) {
+          // Fix: Corrigido de serviceDate para service_date conforme interface Service
+          if (s.service_date.startsWith(m.key)) {
             prod += s.areaM2;
             rev += s.totalValue;
           }
@@ -103,7 +104,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     
     state.areas.forEach(area => {
       area.services.forEach(s => {
-        if (s.serviceDate.startsWith(lastMonthKey)) {
+        // Fix: Corrigido de serviceDate para service_date conforme interface Service
+        if (s.service_date.startsWith(lastMonthKey)) {
           prodMonth += s.areaM2;
           revMonth += s.totalValue;
         }

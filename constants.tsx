@@ -4,7 +4,6 @@ import { AppState, ServiceType, UserRole } from './types';
 export const INITIAL_STATE: AppState = {
   areas: [],
   employees: [
-    // Fix: Using correct property names 'defaultValue' and 'paymentModality' as per Employee interface
     { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultValue: 85.00, paymentModality: 'DIARIA' },
     { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultValue: 75.00, paymentModality: 'DIARIA' }
   ],
@@ -19,7 +18,9 @@ export const INITIAL_STATE: AppState = {
   monthlyGoals: {
     [`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`]: {
       production: 50000,
-      revenue: 100000
+      revenue: 100000,
+      inventory: 1000,
+      finance: 20000
     }
   },
   serviceRates: {
@@ -48,6 +49,7 @@ export const INITIAL_STATE: AppState = {
       name: 'Diretoria Master',
       role: UserRole.MASTER,
       status: 'ativo',
+      // Fix: Adicionado a permissão 'ai' que estava faltando conforme a interface UserPermissions
       permissions: {
         production: true,
         finance: true,

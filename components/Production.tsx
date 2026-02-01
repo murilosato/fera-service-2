@@ -264,7 +264,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                               ) : (
                                 area.services?.map(s => (
                                   <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                                     <td className="px-6 py-4 text-[11px] font-bold text-slate-500">{formatDate(s.serviceDate)}</td>
+                                     {/* Fix: Corrigido de serviceDate para service_date conforme interface Service */}
+                                     <td className="px-6 py-4 text-[11px] font-bold text-slate-500">{formatDate(s.service_date)}</td>
                                      <td className="px-6 py-4 text-[11px] font-black uppercase text-slate-800">{s.type}</td>
                                      <td className="px-6 py-4 text-right text-[11px] font-black text-emerald-600">{s.areaM2.toLocaleString('pt-BR')}</td>
                                      <td className="px-6 py-4 text-center">

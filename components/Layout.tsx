@@ -6,7 +6,6 @@ import {
   DollarSign, 
   Package, 
   Users, 
-  MessageSquare,
   Settings,
   LogOut,
   Menu,
@@ -37,7 +36,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
     { id: 'employees', label: 'Equipe & RH', icon: Users, permission: user?.permissions.employees },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, permission: user?.permissions.analytics },
     { id: 'management', label: 'Gestão de Acessos', icon: ShieldCheck, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
-    { id: 'ai', label: 'Fera Bot (IA)', icon: MessageSquare, permission: user?.permissions.ai },
     { id: 'settings', label: 'Configurações', icon: Settings, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
   ];
 
@@ -107,7 +105,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 antialiased">
-      {/* Mobile Header */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="flex items-center gap-2">
            <div className="w-7 h-7 bg-emerald-600 rounded flex items-center justify-center text-white">
