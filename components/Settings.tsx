@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { AppState } from '../types';
-import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users, Calendar, Save } from 'lucide-react';
+import { AppState, ServiceType } from '../types';
+import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users, Calendar, Save, Activity } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
+import { SERVICE_OPTIONS } from '../constants';
 
 interface SettingsProps {
   state: AppState;
@@ -16,7 +17,8 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   
   const [goalForm, setGoalForm] = useState({
     month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
-    type: 'production' as 'production' | 'revenue' | 'inventory' | 'finance',
+    type: 'production' as 'production' | 'revenue',
+    serviceType: ServiceType.ROCADA_MECANIZADA_M2,
     value: ''
   });
 
@@ -74,14 +76,14 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     try {
       const existing = state.monthlyGoals[goalForm.month] || { production: 0, revenue: 0, inventory: 0, finance: 0 };
       
-      // O dbSave já trata a lógica de upsert baseada no month_key e company_id conforme configurado no SQL
       await dbSave('monthly_goals', {
         companyId: state.currentUser?.companyId,
         monthKey: goalForm.month,
         productionGoal: goalForm.type === 'production' ? val : existing.production,
         revenueGoal: goalForm.type === 'revenue' ? val : existing.revenue,
-        inventoryGoal: goalForm.type === 'inventory' ? val : existing.inventory,
-        balanceGoal: goalForm.type === 'finance' ? val : existing.finance
+        // Mantendo compatibilidade com as colunas existentes mas sem interface de edição direta para essas duas
+        inventoryGoal: existing.inventory,
+        balanceGoal: existing.finance
       });
       
       await refreshData();
@@ -95,6 +97,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
 
   const currentGoalDisplay = state.monthlyGoals[goalForm.month];
 
+  // Identifica a unidade baseada no tipo de serviço selecionado
+  const getUnit = () => {
+    if (goalForm.type === 'revenue') return 'R$';
+    return goalForm.serviceType.includes('KM') ? 'KM' : 'm²';
+  };
+
   return (
     <div className="space-y-6 pb-24">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -107,9 +115,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       {/* Planejamento de Metas */}
       <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-8 border border-white/5 relative overflow-hidden">
         <div className="relative z-10">
-          <h3 className="font-black text-sm uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Monitoramento de Desempenho Mensal</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-black text-sm uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Monitoramento de Desempenho Mensal</h3>
+            <span className="bg-white/10 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest text-slate-400">Metas Reais de Campo</span>
+          </div>
           
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6 items-end bg-white/5 p-8 rounded-[32px] border border-white/10">
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-5 gap-4 items-end bg-white/5 p-8 rounded-[32px] border border-white/10">
             <div className="space-y-2">
                <label className="text-[9px] font-black text-slate-500 uppercase ml-1 flex items-center gap-1"><Calendar size={10}/> Mês Alvo</label>
                <input type="month" className="w-full bg-slate-800 border border-white/10 p-4 rounded-2xl text-xs font-black outline-none focus:border-emerald-500 transition-all text-white" value={goalForm.month} onChange={e => setGoalForm({...goalForm, month: e.target.value})} />
@@ -117,14 +128,22 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
             <div className="space-y-2">
                <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">KPI / Indicador</label>
                <select className="w-full bg-slate-800 border border-white/10 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-emerald-500 transition-all text-white" value={goalForm.type} onChange={e => setGoalForm({...goalForm, type: e.target.value as any})}>
-                  <option value="production">PRODUÇÃO (M²)</option>
+                  <option value="production">PRODUÇÃO (VOLUMETRIA)</option>
                   <option value="revenue">FATURAMENTO (R$)</option>
-                  <option value="finance">SALDO CAIXA (R$)</option>
-                  <option value="inventory">ESTOQUE (UN)</option>
                </select>
             </div>
+            
+            {goalForm.type === 'production' && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-left-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Tipo de Serviço</label>
+                <select className="w-full bg-slate-800 border border-white/10 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-blue-500 transition-all text-white" value={goalForm.serviceType} onChange={e => setGoalForm({...goalForm, serviceType: e.target.value as ServiceType})}>
+                   {SERVICE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              </div>
+            )}
+
             <div className="space-y-2">
-               <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Valor Alvo</label>
+               <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Valor Alvo ({getUnit()})</label>
                <input type="number" className="w-full bg-slate-800 border border-white/10 p-4 rounded-2xl text-xs font-black outline-none focus:border-emerald-500 transition-all text-white" placeholder="0.00" value={goalForm.value} onChange={e => setGoalForm({...goalForm, value: e.target.value})} />
             </div>
             <button onClick={handleSaveGoal} disabled={isLoading} className="w-full bg-emerald-500 text-slate-900 py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all hover:bg-emerald-400 flex items-center justify-center gap-2">
@@ -133,16 +152,17 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
             </button>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
              {[
-               { label: 'Produção', val: `${currentGoalDisplay?.production.toLocaleString('pt-BR') || 0} m²`, color: 'text-blue-400' },
-               { label: 'Receita', val: `R$ ${currentGoalDisplay?.revenue.toLocaleString('pt-BR') || 0}`, color: 'text-emerald-400' },
-               { label: 'Saldo Caixa', val: `R$ ${currentGoalDisplay?.finance.toLocaleString('pt-BR') || 0}`, color: 'text-orange-400' },
-               { label: 'Meta Estoque', val: `${currentGoalDisplay?.inventory || 0} UN`, color: 'text-purple-400' }
+               { label: 'Meta de Produção Projetada', val: `${currentGoalDisplay?.production.toLocaleString('pt-BR') || 0} m²/KM`, color: 'text-blue-400', icon: Activity },
+               { label: 'Meta de Faturamento Projetada', val: `R$ ${currentGoalDisplay?.revenue.toLocaleString('pt-BR') || 0}`, color: 'text-emerald-400', icon: DollarSign }
              ].map(i => (
-               <div key={i.label} className="bg-white/5 border border-white/10 p-5 rounded-3xl text-center">
-                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1 tracking-[0.2em]">{i.label}</p>
-                  <p className={`text-sm font-black ${i.color}`}>{i.val}</p>
+               <div key={i.label} className="bg-white/5 border border-white/10 p-6 rounded-[32px] flex items-center gap-6">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 ${i.color}`}><i.icon size={24}/></div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-500 uppercase mb-1 tracking-[0.2em]">{i.label}</p>
+                    <p className={`text-xl font-black ${i.color}`}>{i.val}</p>
+                  </div>
                </div>
              ))}
           </div>

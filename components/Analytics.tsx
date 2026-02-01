@@ -1,8 +1,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AppState } from '../types';
+// Added missing icons Users and DollarSign to resolve 'Cannot find name' errors
 import { 
-  Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone
+  Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone, Database, ArrowRight, TableProperties,
+  Users, DollarSign
 } from 'lucide-react';
 
 interface AnalyticsProps {
@@ -42,11 +44,87 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
 
   const handlePrint = () => {
     setShowPrintView(true);
-    // Pequeno delay para o render do modal de impressão
     setTimeout(() => {
       window.print();
       setShowPrintView(false);
     }, 500);
+  };
+
+  // Lógica de Exportação CSV
+  const downloadCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return alert("Não há dados para exportar neste período.");
+    
+    const headers = Object.keys(data[0]).join(';');
+    const rows = data.map(obj => 
+      Object.values(obj).map(val => 
+        typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val
+      ).join(';')
+    ).join('\n');
+    
+    const csvContent = "\uFEFF" + headers + '\n' + rows;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}_${startDate}_a_${endDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportInventoryExits = () => {
+    const filtered = state.inventoryExits.filter(ex => isWithinRange(ex.date));
+    const data = filtered.map(ex => {
+      const item = state.inventory.find(i => i.id === ex.itemId);
+      return {
+        Data: formatDate(ex.date),
+        Item: item?.name || 'N/A',
+        Categoria: item?.category || 'N/A',
+        Quantidade: ex.quantity,
+        Destino: ex.destination,
+        Observação: ex.observation
+      };
+    });
+    downloadCSV(data, 'Movimentacoes_Estoque');
+  };
+
+  const exportEmployees = () => {
+    const data = state.employees.map(e => ({
+      Nome: e.name,
+      CPF: e.cpf || '---',
+      Cargo: e.role,
+      Status: e.status === 'active' ? 'ATIVO' : 'INATIVO',
+      Telefone: e.phone || '---',
+      ValorDiaria: e.defaultValue,
+      PIX: e.pixKey || '---'
+    }));
+    downloadCSV(data, 'Quadro_Funcionarios');
+  };
+
+  const exportCashFlow = () => {
+    const inc = state.cashIn.filter(c => isWithinRange(c.date)).map(c => ({ Data: formatDate(c.date), Tipo: 'ENTRADA', Categoria: c.category, Referencia: c.reference, Valor: c.value }));
+    const out = state.cashOut.filter(c => isWithinRange(c.date)).map(c => ({ Data: formatDate(c.date), Tipo: 'SAIDA', Categoria: c.category, Referencia: c.reference, Valor: c.value }));
+    downloadCSV([...inc, ...out], 'Fluxo_de_Caixa');
+  };
+
+  const exportProduction = () => {
+    const data: any[] = [];
+    state.areas.forEach(area => {
+      (area.services || []).forEach(s => {
+        if (isWithinRange(s.serviceDate)) {
+          data.push({
+            OS: area.name,
+            DataServico: formatDate(s.serviceDate),
+            Tipo: s.type,
+            Producao: s.areaM2,
+            Referencia: `${area.startReference} a ${area.endReference}`,
+            StatusOS: area.status === 'finished' ? 'FINALIZADA' : 'EM EXECUÇÃO'
+          });
+        }
+      });
+    });
+    downloadCSV(data, 'Relatorio_Producao');
   };
 
   return (
@@ -54,7 +132,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Auditoria & Analytics</h2>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Geração de Fichas para Acerto e PDF</p>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Geração de Fichas e Central de Exportação</p>
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 p-2 rounded-xl shadow-sm">
           <Calendar size={14} className="text-slate-400" />
@@ -64,8 +142,32 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
         </div>
       </header>
 
+      {/* Central de Exportação em CSV */}
+      <section className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden print:hidden">
+         <div className="relative z-10">
+            <h3 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 mb-8"><Database size={20} className="text-blue-400"/> Central de Exportação Estratégica</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+               {[
+                 { label: 'Movimentações Estoque', icon: TableProperties, action: exportInventoryExits, color: 'hover:bg-blue-600' },
+                 { label: 'Quadro Funcionários', icon: Users, action: exportEmployees, color: 'hover:bg-emerald-600' },
+                 { label: 'Fluxo de Caixa', icon: DollarSign, action: exportCashFlow, color: 'hover:bg-orange-600' },
+                 { label: 'Produção Campo', icon: MapPin, action: exportProduction, color: 'hover:bg-indigo-600' }
+               ].map(item => (
+                 <button key={item.label} onClick={item.action} className={`bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col items-center gap-4 transition-all hover:scale-105 group ${item.color}`}>
+                    <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all"><item.icon size={24}/></div>
+                    <div className="text-center">
+                       <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">Extrair Relatório</p>
+                       <p className="text-[11px] font-black uppercase tracking-tighter">{item.label}</p>
+                    </div>
+                    <Download size={14} className="mt-2 opacity-30 group-hover:opacity-100 transition-opacity" />
+                 </button>
+               ))}
+            </div>
+         </div>
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print:hidden">
-        <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm lg:col-span-1 h-[calc(100vh-250px)] flex flex-col">
+        <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm lg:col-span-1 h-[calc(100vh-450px)] flex flex-col">
           <div className="p-4 border-b border-slate-100">
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
@@ -104,7 +206,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Hash size={12}/> CPF: <span className="text-white">{selectedEmployee.cpf || '--'}</span></div>
-                            {/* Fix: Added Smartphone icon import to resolve undefined variable error */}
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Smartphone size={12}/> CONTATO: <span className="text-white">{selectedEmployee.phone || '--'}</span></div>
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><CreditCard size={12}/> PIX: <span className="text-white truncate max-w-[150px]">{selectedEmployee.pixKey || '--'}</span></div>
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><MapPin size={12}/> ENDEREÇO: <span className="text-white truncate max-w-[150px]">{selectedEmployee.address || '--'}</span></div>
@@ -216,10 +317,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                     <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Responsável Unidade</div>
                     <p className="text-[8px] font-bold text-slate-400 uppercase">Fera Service Corporativo</p>
                  </div>
-              </div>
-              
-              <div className="mt-20 text-center border-t border-slate-100 pt-10 opacity-30">
-                 <p className="text-[8px] font-black uppercase tracking-[0.5em]">Gerado automaticamente via Terminal Cloud v4.0.0</p>
               </div>
            </div>
         </div>
