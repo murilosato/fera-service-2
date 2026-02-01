@@ -22,7 +22,9 @@ import {
   Filter, 
   X, 
   Percent,
-  Package
+  Package,
+  ArrowUpCircle,
+  ArrowDownCircle
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -31,7 +33,8 @@ interface DashboardProps {
   setActiveTab: (tab: string) => void;
 }
 
-type MetricType = 'production' | 'revenue' | 'balance' | 'inventoryValue';
+// Removido inventoryValue das opções de gráfico histórico (eixo X)
+type MetricType = 'production' | 'revenue' | 'balance';
 
 const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
   const [activeMetric, setActiveMetric] = useState<MetricType>('production');
@@ -93,8 +96,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         revenue: rev,
         revenueGoal: goal.revenue,
         balance: inc - out,
-        // O valor do estoque é um snapshot atual, não histórico perfeito, mas aqui simulamos o valor atual
-        inventoryValue: state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0)
+        income: inc,
+        expense: out
       };
     });
   }, [state.areas, state.cashIn, state.cashOut, state.inventory, monthlySeries, state.monthlyGoals]);
@@ -197,8 +200,12 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           <button 
             key={stat.id} 
             onClick={() => {
-              if (stat.id !== 'stock') setActiveMetric(stat.id as MetricType);
-              else setActiveTab('inventory');
+              // Se for Valor em Estoque ou Estoque Crítico, apenas redireciona
+              if (stat.id === 'inventoryValue' || stat.id === 'stock') {
+                setActiveTab('inventory');
+              } else {
+                setActiveMetric(stat.id as MetricType);
+              }
             }}
             className={`bg-white p-5 border text-left transition-all relative overflow-hidden group ${activeMetric === stat.id ? 'border-slate-900 ring-4 ring-slate-900/5 shadow-lg' : 'border-slate-200 hover:border-slate-300'}`}
           >
@@ -222,54 +229,90 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm min-h-[450px] w-full">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">
-              Histórico Mensal: {
-                activeMetric === 'production' ? 'Produção vs Metas' : 
-                activeMetric === 'revenue' ? 'Faturamento Realizado' : 
-                activeMetric === 'inventoryValue' ? 'Evolução Patrimonial Estoque' : 
-                activeMetric.toUpperCase()
-              }
-            </h3>
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm min-h-[450px] w-full">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">
+                Histórico Mensal: {
+                  activeMetric === 'production' ? 'Produção vs Metas' : 
+                  activeMetric === 'revenue' ? 'Faturamento Realizado' : 
+                  activeMetric.toUpperCase()
+                }
+              </h3>
+            </div>
+
+            <div className="h-80 w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
+                  <YAxis fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    cursor={{fill: '#f8fafc'}} 
+                    contentStyle={{ border: 'none', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '11px', fontWeight: '900' }}
+                    formatter={(val: any, name: string) => {
+                      const label = name.includes('Goal') ? 'Meta do Mês' : 'Realizado';
+                      const unit = activeMetric === 'production' ? ' m²' : '';
+                      return (activeMetric === 'revenue') ? formatMoney(val) : `${val.toLocaleString('pt-BR')}${unit}`, label;
+                    }}
+                  />
+                  <Legend 
+                    verticalAlign="top" 
+                    align="right" 
+                    iconType="circle"
+                    formatter={(value) => <span className="text-[10px] font-black uppercase text-slate-400 ml-1">{value.includes('Goal') ? 'Meta' : 'Realizado'}</span>}
+                  />
+                  <Bar name="Realizado" dataKey={activeMetric} radius={[4, 4, 0, 0]} barSize={20}>
+                    {chartData.map((entry: any, index) => {
+                      let color = '#0f172a';
+                      if(activeMetric === 'balance') color = entry.balance >= 0 ? '#10b981' : '#ef4444';
+                      if(activeMetric === 'revenue') color = '#059669';
+                      if(activeMetric === 'production') color = '#2563eb';
+                      return <Cell key={`cell-${index}`} fill={color} />;
+                    })}
+                  </Bar>
+                  {(activeMetric === 'production' || activeMetric === 'revenue') && (
+                    <Bar name="Meta" dataKey={activeMetric === 'production' ? 'productionGoal' : 'revenueGoal'} fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={20} />
+                  )}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          <div className="h-80 w-full" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
-                <YAxis fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
-                <Tooltip 
-                  cursor={{fill: '#f8fafc'}} 
-                  contentStyle={{ border: 'none', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '11px', fontWeight: '900' }}
-                  formatter={(val: any, name: string) => {
-                    const label = name.includes('Goal') ? 'Meta do Mês' : 'Realizado';
-                    const unit = activeMetric === 'production' ? ' m²' : '';
-                    return [(activeMetric === 'revenue' || activeMetric === 'inventoryValue') ? formatMoney(val) : `${val.toLocaleString('pt-BR')}${unit}`, label];
-                  }}
-                />
-                <Legend 
-                  verticalAlign="top" 
-                  align="right" 
-                  iconType="circle"
-                  formatter={(value) => <span className="text-[10px] font-black uppercase text-slate-400 ml-1">{value.includes('Goal') ? 'Meta' : 'Realizado'}</span>}
-                />
-                <Bar name="Realizado" dataKey={activeMetric} radius={[4, 4, 0, 0]} barSize={20}>
-                   {chartData.map((entry: any, index) => {
-                     let color = '#0f172a';
-                     if(activeMetric === 'balance') color = entry.balance >= 0 ? '#10b981' : '#ef4444';
-                     if(activeMetric === 'revenue') color = '#059669';
-                     if(activeMetric === 'production') color = '#2563eb';
-                     if(activeMetric === 'inventoryValue') color = '#f59e0b';
-                     return <Cell key={`cell-${index}`} fill={color} />;
-                   })}
-                </Bar>
-                {(activeMetric === 'production' || activeMetric === 'revenue') && (
-                  <Bar name="Meta" dataKey={activeMetric === 'production' ? 'productionGoal' : 'revenueGoal'} fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={20} />
-                )}
-              </BarChart>
-            </ResponsiveContainer>
+          {/* NOVO VISUAL DE FLUXO DE CAIXA MÊS A MÊS */}
+          <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm overflow-hidden">
+             <div className="flex items-center justify-between mb-6">
+                <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                   <Wallet size={16} className="text-blue-500" /> Demonstrativo de Fluxo de Caixa (Mensal)
+                </h3>
+             </div>
+             <div className="overflow-x-auto">
+               <table className="w-full text-left">
+                  <thead className="bg-slate-50 text-[9px] font-black uppercase text-slate-400 border-b">
+                     <tr>
+                        <th className="px-6 py-4">Mês de Referência</th>
+                        <th className="px-6 py-4 text-emerald-600"><div className="flex items-center gap-1"><ArrowUpCircle size={10}/> Entradas</div></th>
+                        <th className="px-6 py-4 text-rose-600"><div className="flex items-center gap-1"><ArrowDownCircle size={10}/> Saídas</div></th>
+                        <th className="px-6 py-4 text-right">Saldo Operacional</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y text-[11px] font-black uppercase text-slate-700">
+                     {chartData.map((month, idx) => (
+                       <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-3.5 text-slate-500">{month.fullName}</td>
+                          <td className="px-6 py-3.5 text-emerald-600">{formatMoney(month.income)}</td>
+                          <td className="px-6 py-3.5 text-rose-600">{formatMoney(month.expense)}</td>
+                          <td className={`px-6 py-3.5 text-right ${month.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                             <div className="flex items-center justify-end gap-2">
+                                {formatMoney(month.balance)}
+                                {month.balance >= 0 ? <TrendingUp size={12}/> : <AlertTriangle size={12}/>}
+                             </div>
+                          </td>
+                       </tr>
+                     ))}
+                  </tbody>
+               </table>
+             </div>
           </div>
         </div>
 
@@ -314,6 +357,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                   <span className="text-[9px] font-black uppercase text-slate-400">Total Imobilizado (Estoque)</span>
                </div>
                <p className="text-xl font-black text-white tracking-tight">{formatMoney(periodTotals.inventoryValue)}</p>
+               <p className="text-[8px] text-slate-500 uppercase font-bold mt-1 italic">* Valor atual calculado por saldo x último custo</p>
             </div>
           </div>
 

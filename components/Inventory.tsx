@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppState, InventoryItem } from '../types';
-import { Package, Plus, Search, X, Loader2, History, Trash2, Filter, AlertTriangle, CheckCircle2, List, Undo2, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { Package, Plus, Search, X, Loader2, History, Trash2, Filter, AlertTriangle, CheckCircle2, List, Undo2, ArrowRightLeft, DollarSign, Edit2, Save } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -19,11 +19,14 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
   const [itemSearchText, setItemSearchText] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [movementQty, setMovementQty] = useState('1');
-  const [movementPrice, setMovementPrice] = useState('0'); // Novo campo para valor de entrada
+  const [movementPrice, setMovementPrice] = useState('0');
   const [movementDest, setMovementDest] = useState('');
   const [newItem, setNewItem] = useState({ name: '', category: '', currentQty: '0', minQty: '0', unitValue: '0' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'ok'>('all');
   const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string } | null>(null);
+  
+  // Estado para edição rápida de preço
+  const [editingPrice, setEditingPrice] = useState<{ id: string, value: string } | null>(null);
 
   const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -32,6 +35,20 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
       const data = await fetchCompleteCompanyData(state.currentUser?.companyId || null, state.currentUser?.role === 'DIRETORIA_MASTER');
       if (data) setState(prev => ({ ...prev, ...data }));
     }
+  };
+
+  const handleUpdatePrice = async (itemId: string) => {
+    if (!editingPrice) return;
+    const newVal = parseFloat(editingPrice.value.replace(',', '.'));
+    if (isNaN(newVal)) return notify("Valor inválido", "error");
+
+    setIsLoading(true);
+    try {
+      await dbSave('inventory', { id: itemId, unitValue: newVal });
+      await refreshData();
+      setEditingPrice(null);
+      notify("Preço atualizado!");
+    } catch (e) { notify("Erro ao atualizar preço", "error"); } finally { setIsLoading(false); }
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -75,11 +92,10 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
         return notify("Saldo insuficiente para retirada", "error");
       }
 
-      // Atualiza saldo e preço de custo (se for entrada)
       await dbSave('inventory', { 
         id: item.id, 
         currentQty: newQty,
-        unitValue: type === 'in' ? price : item.unitValue // Atualiza o preço médio/último na entrada
+        unitValue: type === 'in' ? price : item.unitValue
       });
 
       await dbSave('inventory_exits', {
@@ -107,8 +123,8 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
     try {
       await dbDelete('inventory_exits', confirmDelete.id);
       await refreshData();
-      notify("Registro excluído do histórico");
-    } catch (e) { notify("Erro ao excluir registro", "error"); } finally { 
+      notify("Registro excluído!");
+    } catch (e) { notify("Erro ao excluir", "error"); } finally { 
       setIsLoading(false); 
       setConfirmDelete(null);
     }
@@ -144,7 +160,6 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
 
       {!showHistory ? (
         <>
-          {/* Terminal de Movimentação com campo de Valor */}
           <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm relative z-40">
             <h3 className="text-[9px] font-black text-slate-400 uppercase mb-4 tracking-widest flex items-center gap-2"><ArrowRightLeft size={14}/> Terminal de Lançamento e Precificação</h3>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
@@ -184,7 +199,6 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
             </div>
           </div>
 
-          {/* Lista de Saldos com Valor Total Imobilizado */}
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                <div className="flex items-center gap-2 text-slate-500 font-black text-[10px] uppercase tracking-widest"><Filter size={16}/> Gestão de Saldos e Custos</div>
@@ -200,7 +214,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                   <tr>
                     <th className="px-8 py-5">Produto</th>
                     <th className="px-8 py-5 text-center">Saldo Atual</th>
-                    <th className="px-8 py-5 text-right">Último Custo</th>
+                    <th className="px-8 py-5 text-right">Valor Unitário</th>
                     <th className="px-8 py-5 text-right">Valor em Estoque</th>
                     <th className="px-8 py-5 text-center">Status</th>
                   </tr>
@@ -209,6 +223,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                   {filteredItems.map(item => {
                     const isCritical = item.currentQty <= item.minQty;
                     const totalValue = (item.currentQty || 0) * (item.unitValue || 0);
+                    const isEditing = editingPrice?.id === item.id;
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-8 py-4 font-black">
@@ -216,7 +231,32 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                            <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">{item.category}</p>
                         </td>
                         <td className={`px-8 py-4 text-center font-black ${isCritical ? 'text-rose-600' : 'text-slate-900'}`}>{item.currentQty}</td>
-                        <td className="px-8 py-4 text-right text-slate-400 font-bold">{formatMoney(item.unitValue || 0)}</td>
+                        <td className="px-8 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2 group">
+                            {isEditing ? (
+                              <>
+                                <input 
+                                  autoFocus
+                                  className="w-24 bg-white border border-slate-300 rounded px-2 py-1 text-right text-[10px] font-black outline-none focus:border-blue-500"
+                                  value={editingPrice.value}
+                                  onChange={e => setEditingPrice({...editingPrice, value: e.target.value})}
+                                />
+                                <button onClick={() => handleUpdatePrice(item.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Save size={14}/></button>
+                                <button onClick={() => setEditingPrice(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded"><X size={14}/></button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-500 font-bold">{formatMoney(item.unitValue || 0)}</span>
+                                <button 
+                                  onClick={() => setEditingPrice({ id: item.id, value: String(item.unitValue || 0) })}
+                                  className="p-1 text-slate-200 group-hover:text-blue-500 transition-colors"
+                                >
+                                  <Edit2 size={12}/>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-8 py-4 text-right text-emerald-600 font-black">{formatMoney(totalValue)}</td>
                         <td className="px-8 py-4 text-center">
                            {isCritical ? (
@@ -244,7 +284,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
         </>
       ) : (
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-300">
-          <div className="p-6 border-b bg-slate-50/50 flex justify-between items-center">
+          <div className="p-6 border-b bg-slate-50/50">
              <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Histórico Detalhado de Movimentações</h3>
           </div>
           <div className="overflow-x-auto">
@@ -252,30 +292,35 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b">
                  <tr>
                     <th className="px-8 py-5">Data</th>
+                    <th className="px-8 py-5">Item</th>
                     <th className="px-8 py-5">Destino / Origem</th>
                     <th className="px-8 py-5 text-center">Qtd</th>
-                    <th className="px-8 py-5">Observações / Detalhes</th>
+                    <th className="px-8 py-5">Observações</th>
                     <th className="px-8 py-5 text-center">Ações</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-slate-100 text-[10px] font-black uppercase text-slate-600">
-                 {state.inventoryExits.map(exit => (
-                   <tr key={exit.id} className="hover:bg-slate-50/30 transition-colors group">
-                     <td className="px-8 py-4">{exit.date.split('-').reverse().join('/')}</td>
-                     <td className="px-8 py-4">
-                       <span className={`px-2 py-1 rounded-lg text-[8px] font-black ${exit.quantity > 0 ? 'text-blue-600 bg-blue-50' : 'text-orange-600 bg-orange-50'}`}>
-                         {exit.destination}
-                       </span>
-                     </td>
-                     <td className={`px-8 py-4 text-center font-black ${exit.quantity > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {exit.quantity > 0 ? '+' : ''}{exit.quantity}
-                     </td>
-                     <td className="px-8 py-4 text-slate-400 italic">{exit.observation}</td>
-                     <td className="px-8 py-4 text-center">
-                        <button onClick={() => setConfirmDelete({ isOpen: true, id: exit.id })} className="p-2 text-slate-200 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
-                     </td>
-                   </tr>
-                 ))}
+                 {state.inventoryExits.map(exit => {
+                   const item = state.inventory.find(i => i.id === exit.itemId);
+                   return (
+                     <tr key={exit.id} className="hover:bg-slate-50/30 transition-colors group">
+                       <td className="px-8 py-4">{exit.date.split('-').reverse().join('/')}</td>
+                       <td className="px-8 py-4 text-slate-900 font-black">{item?.name || 'Item Removido'}</td>
+                       <td className="px-8 py-4">
+                         <span className={`px-2 py-1 rounded-lg text-[8px] font-black ${exit.quantity > 0 ? 'text-blue-600 bg-blue-50' : 'text-orange-600 bg-orange-50'}`}>
+                           {exit.destination}
+                         </span>
+                       </td>
+                       <td className={`px-8 py-4 text-center font-black ${exit.quantity > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {exit.quantity > 0 ? '+' : ''}{exit.quantity}
+                       </td>
+                       <td className="px-8 py-4 text-slate-400 italic">{exit.observation}</td>
+                       <td className="px-8 py-4 text-center">
+                          <button onClick={() => setConfirmDelete({ isOpen: true, id: exit.id })} className="p-2 text-slate-200 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                       </td>
+                     </tr>
+                   );
+                 })}
                </tbody>
             </table>
           </div>
