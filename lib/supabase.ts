@@ -8,13 +8,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true }
 });
 
-const isValidUUID = (uuid: any) => typeof uuid === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+const isValidUUID = (uuid: any) => typeof uuid === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{12}$/i.test(uuid) || (typeof uuid === 'string' && uuid.length > 10);
 
 const camelToSnake = (obj: any) => {
-  if (!obj || typeof obj !== 'object') return obj;
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
   const n: any = {};
   Object.keys(obj).forEach(k => {
     let newKey = k;
+    // Mapeamentos específicos para compatibilidade com o banco
     if (k === 'companyId') newKey = 'company_id';
     else if (k === 'itemId') newKey = 'item_id';
     else if (k === 'areaId') newKey = 'area_id';
@@ -37,10 +38,9 @@ const camelToSnake = (obj: any) => {
       newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     }
     
-    // IMPORTANTE: Se o valor for uma string vazia e a chave sugerir uma data, enviamos null
-    // Isso evita o erro "invalid input syntax for type date: ''"
     let val = obj[k];
-    if (val === '' && (newKey.includes('date') || newKey.includes('_at'))) {
+    // Correção para datas: string vazia vira NULL para o PostgreSQL
+    if (val === '' && (newKey.includes('date') || newKey.includes('_at') || newKey === 'end_date')) {
       val = null;
     }
     
@@ -130,12 +130,14 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
 export const dbSave = async (table: string, data: any) => {
   const payload = camelToSnake(data);
   const { data: saved, error } = await supabase.from(table).upsert(payload).select();
-  if (error) throw error;
+  if (error) {
+    console.error(`Erro ao salvar na tabela ${table}:`, error);
+    throw error;
+  }
   return saved;
 };
 
 export const dbDelete = async (table: string, id: string) => {
-  if (!isValidUUID(id)) return;
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) throw error;
 };

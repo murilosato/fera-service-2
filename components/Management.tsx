@@ -65,31 +65,39 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email || !form.name) return notify("Dados obrigatórios faltando", "error");
+    if (!editingId && !form.password) return notify("Senha obrigatória para novos usuários", "error");
     
     setIsLoading(true);
     try {
-      if (!editingId && form.password) {
-        const { error } = await supabase.auth.signUp({ 
+      let targetUserId = editingId;
+
+      if (!editingId) {
+        // 1. Cria usuário no Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({ 
           email: form.email.trim().toLowerCase(), 
           password: form.password,
           options: {
             data: { full_name: form.name.toUpperCase() }
           }
         });
-        if (error) throw error;
+        if (authError) throw authError;
+        targetUserId = authData.user?.id || null;
       }
 
-      await dbSave('profiles', {
-        id: editingId || undefined,
-        full_name: form.name.toUpperCase(),
-        email: form.email.toLowerCase(),
-        role: form.role,
-        companyId: form.role === UserRole.MASTER ? null : form.companyId,
-        permissions: form.permissions,
-        status: 'ativo'
-      });
+      // 2. Cria ou Atualiza Perfil (Garante company_id correto e email)
+      if (targetUserId) {
+        await dbSave('profiles', {
+          id: targetUserId,
+          full_name: form.name.toUpperCase(),
+          email: form.email.toLowerCase().trim(),
+          role: form.role,
+          companyId: form.role === UserRole.MASTER ? null : form.companyId,
+          permissions: form.permissions,
+          status: 'ativo'
+        });
+      }
       
-      notify(editingId ? "Perfil atualizado" : "Nova credencial criada");
+      notify(editingId ? "Perfil atualizado" : "Nova credencial criada com sucesso");
       setShowForm(false);
       fetchData();
     } catch (e: any) { notify(e.message, "error"); } finally { setIsLoading(false); }
@@ -114,7 +122,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
         {isMaster && (
           <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm flex flex-col h-[calc(100vh-250px)]">
             <div className="p-5 bg-slate-50 border-b flex items-center gap-3 text-[10px] font-black uppercase text-slate-400 tracking-widest"><Globe size={14} className="text-blue-500"/> Unidades</div>
-            <div className="flex-1 overflow-auto p-3 space-y-1">
+            <div className="flex-1 overflow-auto p-3 space-y-1 scrollbar-hide">
                {companies.map(c => (
                  <button key={c.id} onClick={() => setSelectedCompanyId(c.id)} className={`w-full text-left p-4 rounded-2xl transition-all ${selectedCompanyId === c.id ? 'bg-slate-900 text-white shadow-xl' : 'hover:bg-slate-50 text-slate-600'}`}>
                     <p className="text-[10px] font-black uppercase truncate">{c.name}</p>
@@ -134,7 +142,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
           <div className="flex-1 overflow-auto">
             <table className="w-full text-left">
               <thead className="bg-slate-50 text-[9px] font-black uppercase text-slate-400 border-b">
-                <tr><th className="px-8 py-5">Nome</th><th className="px-8 py-5">E-mail</th><th className="px-8 py-5">Nível</th><th className="px-8 py-5 text-center">Configurar</th></tr>
+                <tr><th className="px-8 py-5">Nome Completo</th><th className="px-8 py-5">E-mail</th><th className="px-8 py-5">Nível</th><th className="px-8 py-5 text-center">Configurar</th></tr>
               </thead>
               <tbody className="divide-y text-[11px] font-black uppercase text-slate-700">
                 {filteredProfiles.length === 0 ? (
@@ -142,7 +150,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
                 ) : (
                   filteredProfiles.map(p => (
                     <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-8 py-5">{p.full_name}</td>
+                      <td className="px-8 py-5 font-black uppercase">{p.full_name}</td>
                       <td className="px-8 py-5 lowercase font-normal">{p.email || '---'}</td>
                       <td className="px-8 py-5">
                          <span className={`px-4 py-1.5 rounded-xl text-[8px] tracking-widest text-white ${p.role === UserRole.MASTER ? 'bg-slate-900' : p.role === UserRole.ADMIN ? 'bg-blue-600' : 'bg-emerald-600'}`}>
@@ -173,21 +181,21 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
 
               <div className="space-y-4">
                 <div className="space-y-1">
-                   <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Nome Completo</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Nome Completo</label>
                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900 transition-all" placeholder="IDENTIFICAÇÃO DO USUÁRIO" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                 </div>
 
                 <div className="space-y-1">
-                   <label className="text-[10px] font-black text-slate-500 uppercase ml-1">E-mail</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">E-mail</label>
                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all" placeholder="usuario@feraservice.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
                 </div>
 
                 {!editingId && (
                   <div className="space-y-1">
-                     <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Senha</label>
+                     <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Senha</label>
                      <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
-                        <input required type={showPassword ? 'text' : 'password'} className="w-full bg-slate-50 border border-slate-200 pl-11 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="No mínimo 6 caracteres" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+                        <input required type={showPassword ? 'text' : 'password'} className="w-full bg-slate-50 border border-slate-200 pl-11 pr-12 py-3.5 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-emerald-600 transition-all" placeholder="No mínimo 6 caracteres" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300">
                            {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
                         </button>
@@ -197,7 +205,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Nível</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Nível Hierárquico</label>
                       <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" value={form.role} onChange={e => setForm({...form, role: e.target.value as any})}>
                         <option value={UserRole.OPERATIONAL}>OPERACIONAL</option>
                         <option value={UserRole.ADMIN}>GERENTE UNIDADE</option>
@@ -205,7 +213,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
                       </select>
                    </div>
                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Unidade</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Unidade Associada</label>
                       <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white disabled:opacity-50" value={form.companyId} onChange={e => setForm({...form, companyId: e.target.value})} disabled={form.role === UserRole.MASTER}>
                         <option value="">Selecione...</option>
                         {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -227,7 +235,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
               </div>
 
               <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
-                {isLoading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} SALVAR ACESSO
+                {isLoading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} SALVAR CREDENCIAL
               </button>
            </form>
         </div>
