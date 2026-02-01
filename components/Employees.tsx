@@ -34,14 +34,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     try {
       if (existing) {
         if (existing.status === 'present') {
-          // Muda para ausente (Falta)
           await dbSave('attendance_records', { ...existing, status: 'absent', value: 0 });
         } else {
-          // Remove o registro (vazio)
           await dbDelete('attendance_records', existing.id);
         }
       } else {
-        // Cria como presente (P)
         await dbSave('attendance_records', {
           companyId: state.currentUser?.companyId,
           employeeId: empId,
@@ -59,7 +56,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     e.preventDefault();
     if (!employeeForm.name) return notify("Nome completo é obrigatório", "error");
     
-    // Validação de CPF Único
     if (employeeForm.cpf) {
       const isDuplicate = state.employees.some(emp => emp.cpf === employeeForm.cpf && emp.id !== editingId);
       if (isDuplicate) return notify("Erro: Este CPF já pertence a outro colaborador.", "error");
@@ -176,34 +172,34 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-           <form onSubmit={handleSaveEmployee} className="bg-white rounded-[40px] w-full max-w-md p-10 space-y-8 shadow-2xl animate-in zoom-in-95 border border-slate-100 overflow-y-auto max-h-[95vh]">
+           <form onSubmit={handleSaveEmployee} className="bg-white rounded-[40px] w-full max-w-md p-10 space-y-6 shadow-2xl overflow-y-auto max-h-[95vh] border border-slate-100">
               <div className="flex justify-between items-center border-b border-slate-50 pb-6">
                  <div>
-                   <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">{editingId ? 'Editar Colaborador' : 'Novo Perfil de Equipe'}</h3>
-                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Sincronização Cloud em tempo real</p>
+                   <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">{editingId ? 'Editar Perfil' : 'Novo Colaborador'}</h3>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Dados Sincronizados em Nuvem</p>
                  </div>
                  <button type="button" onClick={() => setShowForm(false)} className="p-3 hover:bg-slate-50 rounded-full transition-all text-slate-300"><X size={20}/></button>
               </div>
               
               <div className="space-y-4">
                 <div className="space-y-1">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">NOME COMPLETO *</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Nome Completo</label>
                    <div className="relative group">
-                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500" size={16}/>
-                      <input required className="w-full bg-slate-50 border border-slate-200 pl-12 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900 transition-all" placeholder="DIGITE O NOME" value={employeeForm.name} onChange={e => setEmployeeForm({...employeeForm, name: e.target.value})} />
+                      <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
+                      <input required className="w-full bg-slate-50 border border-slate-200 pl-12 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900 transition-all" placeholder="Digite o nome completo" value={employeeForm.name} onChange={e => setEmployeeForm({...employeeForm, name: e.target.value})} />
                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">CPF *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1">CPF</label>
                       <div className="relative group">
                          <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
-                         <input required className="w-full bg-slate-50 border border-slate-200 pl-11 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="APENAS NÚMEROS" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: e.target.value})} />
+                         <input required className="w-full bg-slate-50 border border-slate-200 pl-11 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="000.000.000-00" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: e.target.value})} />
                       </div>
                    </div>
                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">TELEFONE</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Telefone</label>
                       <div className="relative group">
                          <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
                          <input className="w-full bg-slate-50 border border-slate-200 pl-11 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="(00) 00000-0000" value={employeeForm.phone} onChange={e => setEmployeeForm({...employeeForm, phone: e.target.value})} />
@@ -213,42 +209,38 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">CARGO / FUNÇÃO *</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Função</label>
                       <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" value={employeeForm.role} onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}>
                          {state.employeeRoles.map(r => <option key={r} value={r}>{r}</option>)}
                       </select>
                    </div>
                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">VALOR DIÁRIA (R$)</label>
-                      <div className="relative group">
-                         <input type="number" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="0.00" value={employeeForm.defaultValue} onChange={e => setEmployeeForm({...employeeForm, defaultValue: e.target.value})} />
-                      </div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Valor Diária (R$)</label>
+                      <input type="number" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="0.00" value={employeeForm.defaultValue} onChange={e => setEmployeeForm({...employeeForm, defaultValue: e.target.value})} />
                    </div>
                 </div>
 
                 <div className="space-y-1">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">CHAVE PIX (PARA PAGAMENTOS)</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Chave PIX</label>
                    <div className="relative group">
                       <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
-                      <input className="w-full bg-slate-50 border border-slate-200 pl-12 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="CHAVE PIX OU CONTA" value={employeeForm.pixKey} onChange={e => setEmployeeForm({...employeeForm, pixKey: e.target.value})} />
+                      <input className="w-full bg-slate-50 border border-slate-200 pl-12 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="Chave para pagamento" value={employeeForm.pixKey} onChange={e => setEmployeeForm({...employeeForm, pixKey: e.target.value})} />
                    </div>
                 </div>
 
                 <div className="space-y-1">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">ENDEREÇO RESIDENCIAL</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Endereço</label>
                    <div className="relative group">
                       <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
-                      <input className="w-full bg-slate-50 border border-slate-200 pl-12 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="CIDADE / BAIRRO / LOGRADOURO" value={employeeForm.address} onChange={e => setEmployeeForm({...employeeForm, address: e.target.value})} />
+                      <input className="w-full bg-slate-50 border border-slate-200 pl-12 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="Endereço residencial" value={employeeForm.address} onChange={e => setEmployeeForm({...employeeForm, address: e.target.value})} />
                    </div>
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-slate-50">
-                 <button disabled={isLoading} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black uppercase text-[10px] tracking-[0.3em] flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/20 active:scale-95 transition-all hover:bg-emerald-600">
-                   {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Save size={18}/>}
-                   {editingId ? 'ATUALIZAR DADOS CADASTRAIS' : 'FINALIZAR CADASTRO NO CLOUD'}
-                 </button>
-              </div>
+              <button disabled={isLoading} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all hover:bg-emerald-600">
+                {isLoading ? <Loader2 className="animate-spin" /> : <Save size={18}/>}
+                SALVAR CADASTRO
+              </button>
            </form>
         </div>
       )}

@@ -14,12 +14,37 @@ const camelToSnake = (obj: any) => {
   if (!obj || typeof obj !== 'object') return obj;
   const n: any = {};
   Object.keys(obj).forEach(k => {
-    if (k === 'companyId') n['company_id'] = obj[k];
-    else if (k === 'itemId') n['item_id'] = obj[k];
+    let newKey = k;
+    if (k === 'companyId') newKey = 'company_id';
+    else if (k === 'itemId') newKey = 'item_id';
+    else if (k === 'areaId') newKey = 'area_id';
+    else if (k === 'employeeId') newKey = 'employee_id';
+    else if (k === 'monthKey') newKey = 'month_key';
+    else if (k === 'startDate') newKey = 'start_date';
+    else if (k === 'endDate') newKey = 'end_date';
+    else if (k === 'startReference') newKey = 'start_reference';
+    else if (k === 'endReference') newKey = 'end_reference';
+    else if (k === 'unitValue') newKey = 'unit_value';
+    else if (k === 'totalValue') newKey = 'total_value';
+    else if (k === 'areaM2') newKey = 'area_m2';
+    else if (k === 'currentQty') newKey = 'current_qty';
+    else if (k === 'minQty') newKey = 'min_qty';
+    else if (k === 'paymentStatus') newKey = 'payment_status';
+    else if (k === 'financeCategories') newKey = 'finance_categories';
+    else if (k === 'inventoryCategories') newKey = 'inventory_categories';
+    else if (k === 'employeeRoles') newKey = 'employee_roles';
     else {
-      const newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-      n[newKey] = obj[k];
+      newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     }
+    
+    // IMPORTANTE: Se o valor for uma string vazia e a chave sugerir uma data, enviamos null
+    // Isso evita o erro "invalid input syntax for type date: ''"
+    let val = obj[k];
+    if (val === '' && (newKey.includes('date') || newKey.includes('_at'))) {
+      val = null;
+    }
+    
+    n[newKey] = val;
   });
   return n;
 };
@@ -45,7 +70,6 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     }
   };
 
-  // Se for master e não tiver ID de empresa, busca tudo (ou você pode limitar a uma empresa selecionada)
   const baseFilter = (q: any) => (!isMaster && companyId) ? q.eq('company_id', companyId) : q;
 
   const [areas, emps, inv, exits, flow, att, goals, companyInfo] = await Promise.all([
@@ -75,7 +99,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       startReference: a.start_reference, endReference: a.end_reference, observations: a.observations,
       status: a.status || 'executing',
       services: (a.services || []).map((s: any) => ({
-        id: s.id, companyId: s.company_id, areaId: s.area_id, type: s.type,
+        id: s.id, companyId: s.company_id, area_id: s.area_id, type: s.type,
         areaM2: Number(s.area_m2), unitValue: Number(s.unit_value), totalValue: Number(s.total_value), service_date: s.service_date
       }))
     })),

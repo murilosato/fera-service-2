@@ -38,12 +38,14 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   };
 
   const handleAddArea = async () => {
-    if (!newArea.name || !newArea.startReference || !newArea.endReference) return alert("Preencha O.S., Local Início e Local Fim.");
+    if (!newArea.name || !newArea.startDate || !newArea.startReference || !newArea.endReference) {
+      return alert("Preencha Nome O.S, Data de Início, Local de Início e Local de Fim.");
+    }
     setIsLoading(true);
     try {
       await dbSave('areas', { 
         ...newArea, 
-        company_id: state.currentUser?.companyId, 
+        companyId: state.currentUser?.companyId, 
         status: 'executing' 
       });
       await refreshData();
@@ -59,12 +61,12 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     try {
       const unitValue = state.serviceRates[newService.type] || 0;
       await dbSave('services', {
-        company_id: state.currentUser?.companyId,
-        area_id: areaId,
+        companyId: state.currentUser?.companyId,
+        areaId: areaId,
         type: newService.type,
-        area_m2: qty,
-        unit_value: unitValue,
-        total_value: unitValue * qty,
+        areaM2: qty,
+        unitValue: unitValue,
+        totalValue: unitValue * qty,
         service_date: new Date().toISOString().split('T')[0]
       });
       await refreshData();
@@ -77,11 +79,10 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     setIsLoading(true);
     try {
       const areaToUpdate = {
-        ...confirmFinish.area,
+        id: confirmFinish.area.id,
         status: 'finished' as const,
         endDate: confirmFinish.date
       };
-      // Força o snake_case para o Supabase no campo status
       await dbSave('areas', areaToUpdate);
       await refreshData();
       setConfirmFinish(null);
@@ -126,28 +127,30 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       {isAddingArea && (
         <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-2xl animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-black text-xs uppercase">Cadastrar Nova Ordem de Serviço</h3>
+            <h3 className="font-black text-xs uppercase tracking-widest">Abrir Nova Ordem de Serviço</h3>
             <button onClick={() => setIsAddingArea(false)}><X/></button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-400 uppercase">Nome / Número O.S.</label>
-              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase" placeholder="EX: OS-2024-001" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase">Nome O.S</label>
+              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase" placeholder="Ex: OS-001" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value})} />
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-400 uppercase">Data Início</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase">Data Início</label>
               <input type="date" className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black" value={newArea.startDate} onChange={e => setNewArea({...newArea, startDate: e.target.value})} />
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-400 uppercase">Local Início (Logradouro)</label>
-              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase" placeholder="PONTO DE PARTIDA" value={newArea.startReference} onChange={e => setNewArea({...newArea, startReference: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase">Local Início</label>
+              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase" placeholder="Ponto de partida" value={newArea.startReference} onChange={e => setNewArea({...newArea, startReference: e.target.value})} />
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-400 uppercase">Local Fim (Logradouro)</label>
-              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase" placeholder="PONTO DE CHEGADA" value={newArea.endReference} onChange={e => setNewArea({...newArea, endReference: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase">Local Fim</label>
+              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase" placeholder="Ponto de chegada" value={newArea.endReference} onChange={e => setNewArea({...newArea, endReference: e.target.value})} />
             </div>
           </div>
-          <button onClick={handleAddArea} disabled={isLoading} className="mt-6 w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg">ABRIR ORDEM DE SERVIÇO NO CLOUD</button>
+          <button onClick={handleAddArea} disabled={isLoading} className="mt-8 w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg flex items-center justify-center gap-2">
+            {isLoading ? <Loader2 className="animate-spin" /> : 'CONFIRMAR ABERTURA DE O.S.'}
+          </button>
         </div>
       )}
 
@@ -226,17 +229,17 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       
       {confirmFinish && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
-          <div className="bg-white p-10 rounded-[40px] w-full max-w-sm space-y-6 shadow-2xl animate-in zoom-in-95">
-            <div className="text-center space-y-2">
+          <div className="bg-white p-10 rounded-[40px] w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+            <div className="text-center space-y-2 mb-6">
                <CheckCircle2 className="mx-auto text-emerald-600" size={48} />
                <h3 className="font-black uppercase text-xs">Finalizar O.S. {confirmFinish.area.name}</h3>
                <p className="text-[10px] text-slate-400 uppercase font-bold">Informe a data de encerramento real</p>
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data de Fim da Obra *</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Data de Fim</label>
               <input type="date" className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs outline-none focus:border-emerald-600" value={confirmFinish.date} onChange={e => setConfirmFinish({...confirmFinish, date: e.target.value})} />
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-6">
               <button onClick={() => setConfirmFinish(null)} className="flex-1 py-4 font-black uppercase text-[10px] bg-slate-100 rounded-2xl text-slate-500">Voltar</button>
               <button onClick={handleFinishArea} disabled={isLoading} className="flex-1 py-4 font-black uppercase text-[10px] bg-emerald-600 text-white rounded-2xl shadow-lg hover:bg-emerald-700">
                 {isLoading ? 'Salvando...' : 'Confirmar'}
