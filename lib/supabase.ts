@@ -141,11 +141,12 @@ export const dbSave = async (table: string, data: any) => {
   let query;
   
   if (payload.id) {
-    // Se tem ID, usamos update para não precisar reenviar colunas NOT NULL (como o nome da empresa)
-    query = supabase.from(table).update(payload).eq('id', payload.id);
+    // IMPORTANTE: Para evitar erro de 'not-null constraint' no Upsert, usamos explicitamente o UPDATE quando há ID.
+    // Assim, o Supabase ignora as colunas não enviadas (como o nome da empresa).
+    const { id, ...updateData } = payload;
+    query = supabase.from(table).update(updateData).eq('id', id);
   } else {
-    // Se não tem ID, é um insert (upsert sem ID)
-    query = supabase.from(table).upsert(payload);
+    query = supabase.from(table).insert(payload);
   }
   
   const { data: saved, error } = await query.select();

@@ -188,7 +188,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
               {expandedAreaId === area.id && (
                 <div className="p-6 bg-slate-50 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4">
                     <div className="space-y-4">
-                      {/* Painel de Lançamento sempre disponível conforme solicitado */}
                       <div className="bg-white p-6 rounded-3xl shadow-sm space-y-4 border border-slate-100">
                         <div className="flex items-center justify-between">
                           <h4 className="text-[10px] font-black uppercase text-slate-400">Painel de Lançamento</h4>
@@ -222,18 +221,18 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                           </div>
                           <div className="flex justify-between items-center">
                              <span className="text-[9px] font-black opacity-60">VALOR ESTIMADO</span>
-                             <p className="text-lg font-black">{(area.services || []).reduce((acc, s) => acc + s.totalValue, 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                             <p className="text-lg font-black">{(area.services || []).reduce((acc, s) => acc + (s.totalValue || 0), 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col">
+                    <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col min-h-[300px]">
                       <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                          <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Detalhamento dos Serviços</h4>
-                         <span className="px-2 py-1 bg-white border rounded-lg text-[8px] font-black uppercase text-slate-500">{area.services?.length || 0} Registros</span>
+                         <span className="px-2 py-1 bg-white border rounded-lg text-[8px] font-black uppercase text-slate-500">{(area.services || []).length} Registros</span>
                       </div>
-                      <div className="max-h-[400px] overflow-y-auto">
+                      <div className="overflow-y-auto flex-1">
                         <table className="w-full text-left border-collapse">
                           <thead className="sticky top-0 bg-white shadow-sm text-[9px] font-black uppercase text-slate-400 border-b">
                             <tr>

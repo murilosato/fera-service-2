@@ -65,7 +65,7 @@ export interface Service {
   areaM2: number;
   unitValue: number;
   totalValue: number;
-  service_date: string;
+  serviceDate: string;
 }
 
 export interface Employee {

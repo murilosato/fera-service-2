@@ -69,10 +69,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       
       state.areas.forEach(area => {
         const isFinished = area.status === 'finished';
-        area.services.forEach(s => {
-          if (s.service_date.startsWith(m.key)) {
+        (area.services || []).forEach(s => {
+          // Correção do erro startsWith: check de existência e nome correto do campo serviceDate
+          if (s.serviceDate?.startsWith(m.key)) {
             prod += s.areaM2;
-            // Faturamento (rev) apenas se a O.S. estiver finalizada
             if (isFinished) {
               rev += s.totalValue;
             }
@@ -80,8 +80,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         });
       });
 
-      const inc = state.cashIn.filter(c => c.date.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
-      const out = state.cashOut.filter(c => c.date.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
+      const inc = state.cashIn.filter(c => c.date?.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
+      const out = state.cashOut.filter(c => c.date?.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
       
       const goal = state.monthlyGoals[m.key] || { production: 0, revenue: 0 };
 
@@ -93,7 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         revenue: rev,
         revenueGoal: goal.revenue,
         balance: inc - out,
-        stock: state.inventoryExits.filter(e => e.date.startsWith(m.key)).reduce((acc, e) => acc + e.quantity, 0),
+        stock: state.inventoryExits.filter(e => e.date?.startsWith(m.key)).reduce((acc, e) => acc + e.quantity, 0),
       };
     });
   }, [state.areas, state.cashIn, state.cashOut, state.inventoryExits, monthlySeries, state.monthlyGoals]);
@@ -107,10 +107,9 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     
     state.areas.forEach(area => {
       const isFinished = area.status === 'finished';
-      area.services.forEach(s => {
-        if (s.service_date.startsWith(lastMonthKey)) {
+      (area.services || []).forEach(s => {
+        if (s.serviceDate?.startsWith(lastMonthKey)) {
           prodMonth += s.areaM2;
-          // Faturamento real = apenas O.S. Finalizadas
           if (isFinished) {
             revMonth += s.totalValue;
           }
@@ -118,8 +117,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       });
     });
 
-    const inc = state.cashIn.filter(c => c.date.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
-    const out = state.cashOut.filter(c => c.date.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
+    const inc = state.cashIn.filter(c => c.date?.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
+    const out = state.cashOut.filter(c => c.date?.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
     
     return {
       production: prodMonth,
