@@ -34,7 +34,8 @@ const App = () => {
       const profile = await fetchUserProfile(userId);
       if (!profile || !profile.company_id) {
         setInitError("Aguardando configuração do perfil da empresa...");
-        setTimeout(() => syncData(userId), 2000); // Retry non-blocking
+        // Tentativa de recuperação automática em 5 segundos
+        setTimeout(() => syncData(userId), 5000); 
         return;
       }
 
@@ -55,7 +56,7 @@ const App = () => {
       setInitError(null);
       setIsInitializing(false);
     } catch (e: any) {
-      setInitError("Sincronização falhou. Tente novamente.");
+      setInitError("Sincronização falhou. Verifique sua conexão.");
       setIsInitializing(false);
     }
   };
@@ -71,6 +72,7 @@ const App = () => {
       else if (event === 'SIGNED_OUT') {
         setState({ ...INITIAL_STATE, currentUser: null });
         setIsInitializing(false);
+        setInitError(null);
       }
     });
     return () => subscription.unsubscribe();
@@ -82,6 +84,7 @@ const App = () => {
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-xl shadow-emerald-500/20" />
         <h2 className="mt-8 font-black text-white uppercase tracking-[0.3em] text-[10px]">Fera Service Cloud</h2>
         <p className="mt-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">Estabelecendo Canal Seguro...</p>
+        
         {initError && (
           <div className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl max-w-sm animate-in zoom-in-95">
              <div className="flex items-center gap-3 text-rose-500 mb-4">
@@ -89,9 +92,14 @@ const App = () => {
                 <p className="text-[10px] font-black uppercase tracking-widest">Status da Conexão</p>
              </div>
              <p className="text-[11px] text-slate-400 font-medium mb-6">{initError}</p>
-             <button onClick={() => window.location.reload()} className="w-full bg-slate-800 text-white py-3 rounded-xl font-black text-[10px] uppercase hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
-                <RefreshCw size={14} /> Recarregar Manualmente
-             </button>
+             <div className="flex flex-col gap-2">
+                <button onClick={() => window.location.reload()} className="w-full bg-slate-800 text-white py-3 rounded-xl font-black text-[10px] uppercase hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
+                    <RefreshCw size={14} /> Tentar Novamente
+                </button>
+                <button onClick={async () => await signOut()} className="w-full bg-transparent text-slate-500 py-3 rounded-xl font-black text-[10px] uppercase hover:text-white transition-all flex items-center justify-center gap-2">
+                    <LogOut size={14} /> Sair da Conta
+                </button>
+             </div>
           </div>
         )}
       </div>
@@ -111,7 +119,7 @@ const App = () => {
             case 'finance': return <Finance {...props} />;
             case 'inventory': return <Inventory {...props} />;
             case 'employees': return <Employees {...props} />;
-            case 'analytics': return <Analytics state={state} />;
+            case 'analytics': return <Analytics {...props} />;
             case 'management': return <Management {...props} />;
             case 'settings': return <Settings {...props} />;
             default: return <Dashboard {...props} />;

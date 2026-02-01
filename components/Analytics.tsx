@@ -1,20 +1,24 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { AppState } from '../types';
-// Added missing icons Users and DollarSign to resolve 'Cannot find name' errors
+import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone, Database, ArrowRight, TableProperties,
-  Users, DollarSign
+  Users, DollarSign, Edit2, Save, Loader2
 } from 'lucide-react';
+import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface AnalyticsProps {
   state: AppState;
+  setState: React.Dispatch<React.SetStateAction<AppState>>;
 }
 
-const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showPrintView, setShowPrintView] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -29,6 +33,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
   const formatDate = (dateStr: string) => dateStr.split('-').reverse().join('/');
   const isWithinRange = (dateStr: string) => dateStr >= startDate && dateStr <= endDate;
 
+  const refreshData = async () => {
+    if (state.currentUser?.companyId) {
+      const data = await fetchCompleteCompanyData(state.currentUser.companyId);
+      if (data) setState(prev => ({ ...prev, ...data }));
+    }
+  };
+
   const filteredEmployees = state.employees.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const selectedEmployee = state.employees.find(e => e.id === selectedEmployeeId);
   
@@ -39,7 +50,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
   }, [state.attendanceRecords, selectedEmployeeId, startDate, endDate]);
 
   const totalToPay = attendanceHistory
-    .filter(r => r.status === 'present')
     .reduce((acc, r) => acc + r.value, 0);
 
   const handlePrint = () => {
@@ -48,6 +58,22 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
       window.print();
       setShowPrintView(false);
     }, 500);
+  };
+
+  const handleSaveValue = async (record: AttendanceRecord) => {
+    const newVal = parseFloat(editingValue.replace(',', '.'));
+    if (isNaN(newVal)) return;
+    
+    setIsLoading(true);
+    try {
+      await dbSave('attendance_records', { ...record, value: newVal });
+      await refreshData();
+      setEditingRecordId(null);
+    } catch (e) {
+      alert("Erro ao salvar valor.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Lógica de Exportação CSV
@@ -223,23 +249,53 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                 <div className="flex-1 overflow-y-auto">
                    <table className="w-full text-left">
                       <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b border-slate-100">
-                         <tr><th className="px-8 py-4">Data Registro</th><th className="px-8 py-4 text-center">Frequência</th><th className="px-8 py-4 text-right">Valor Diária</th></tr>
+                         <tr><th className="px-8 py-4">Data Registro</th><th className="px-8 py-4 text-center">Frequência</th><th className="px-8 py-4 text-right">Valor Diária (Editar)</th></tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50 text-[11px] font-black uppercase text-slate-700">
                          {attendanceHistory.length === 0 ? (
                            <tr><td colSpan={3} className="px-8 py-10 text-center italic text-slate-300">Nenhum registro no período selecionado</td></tr>
                          ) : (
-                           attendanceHistory.map(h => (
-                             <tr key={h.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-8 py-3 text-slate-500">{formatDate(h.date)}</td>
-                                <td className="px-8 py-3 text-center">
-                                   <span className={`px-4 py-1 rounded-lg text-[9px] font-black ${h.status === 'present' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                      {h.status === 'present' ? 'P (PRESENTE)' : 'F (FALTA)'}
-                                   </span>
-                                </td>
-                                <td className="px-8 py-3 text-right text-slate-900 font-bold">{h.status === 'present' ? formatMoney(h.value) : '--'}</td>
-                             </tr>
-                           ))
+                           attendanceHistory.map(h => {
+                             const isEditing = editingRecordId === h.id;
+                             return (
+                               <tr key={h.id} className="hover:bg-slate-50 transition-colors">
+                                  <td className="px-8 py-3 text-slate-500">{formatDate(h.date)}</td>
+                                  <td className="px-8 py-3 text-center">
+                                     <span className={`px-4 py-1 rounded-lg text-[9px] font-black ${
+                                         h.status === 'present' ? 'bg-emerald-50 text-emerald-600' : 
+                                         h.status === 'partial' ? 'bg-amber-50 text-amber-600' : 
+                                         'bg-rose-50 text-rose-600'
+                                     }`}>
+                                        {h.status === 'present' ? 'P (INTEGRAL)' : h.status === 'partial' ? 'H (PARCIAL)' : 'F (FALTA)'}
+                                     </span>
+                                  </td>
+                                  <td className="px-8 py-3 text-right">
+                                     {isEditing ? (
+                                         <div className="flex items-center justify-end gap-2">
+                                             <input 
+                                                 type="number" 
+                                                 className="w-24 bg-slate-50 border border-slate-200 p-2 rounded-lg text-[10px] font-black outline-none" 
+                                                 value={editingValue} 
+                                                 onChange={e => setEditingValue(e.target.value)}
+                                             />
+                                             <button onClick={() => handleSaveValue(h)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded-lg"><Save size={14}/></button>
+                                             <button onClick={() => setEditingRecordId(null)} className="p-1.5 text-slate-400 bg-slate-50 rounded-lg"><X size={14}/></button>
+                                         </div>
+                                     ) : (
+                                         <div className="flex items-center justify-end gap-3 group">
+                                             <span className="font-bold text-slate-900">{formatMoney(h.value)}</span>
+                                             <button 
+                                                 onClick={() => { setEditingRecordId(h.id); setEditingValue(String(h.value)); }} 
+                                                 className="p-1.5 text-slate-300 group-hover:text-blue-500 transition-colors"
+                                             >
+                                                 <Edit2 size={12}/>
+                                             </button>
+                                         </div>
+                                     )}
+                                  </td>
+                               </tr>
+                             );
+                           })
                          )}
                       </tbody>
                    </table>
@@ -296,8 +352,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                        {attendanceHistory.map(h => (
                           <tr key={h.id}>
                              <td className="p-3 font-bold">{formatDate(h.date)}</td>
-                             <td className="p-3 text-center font-black">{h.status === 'present' ? 'TRABALHADO' : 'AUSENTE/FALTA'}</td>
-                             <td className="p-3 text-right font-black">{h.status === 'present' ? formatMoney(h.value) : '0,00'}</td>
+                             <td className="p-3 text-center font-black">
+                                {h.status === 'present' ? 'TRABALHADO' : h.status === 'partial' ? 'PARCIAL' : 'AUSENTE/FALTA'}
+                             </td>
+                             <td className="p-3 text-right font-black">{formatMoney(h.value)}</td>
                           </tr>
                        ))}
                        <tr className="bg-slate-50">
@@ -309,13 +367,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
               </div>
 
               <div className="mt-24 grid grid-cols-2 gap-24 text-center">
-                 <div className="space-y-2">
+                 <div className="space-y-4">
                     <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee?.name}</div>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase">Assinatura do Beneficiário</p>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
                  </div>
-                 <div className="space-y-2">
-                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Responsável Unidade</div>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase">Fera Service Corporativo</p>
+                 <div className="space-y-4">
+                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Fera Service Corporativo</div>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
                  </div>
               </div>
            </div>

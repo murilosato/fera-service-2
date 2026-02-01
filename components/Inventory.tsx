@@ -21,7 +21,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
   const [movementQty, setMovementQty] = useState('1');
   const [movementPrice, setMovementPrice] = useState('0');
   const [movementDest, setMovementDest] = useState('');
-  const [newItem, setNewItem] = useState({ name: '', category: '', currentQty: '0', minQty: '0', unitValue: '0' });
+  const [newItem, setNewItem] = useState({ name: '', category: '', currentQty: '0', minQty: '0', idealQty: '0', unitValue: '0' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'ok'>('all');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string } | null>(null);
@@ -62,11 +62,12 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
         category: newItem.category,
         currentQty: parseFloat(newItem.currentQty),
         minQty: parseFloat(newItem.minQty),
+        idealQty: parseFloat(newItem.idealQty),
         unitValue: parseFloat(newItem.unitValue)
       });
       await refreshData();
       setShowAddForm(false);
-      setNewItem({ name: '', category: '', currentQty: '0', minQty: '0', unitValue: '0' });
+      setNewItem({ name: '', category: '', currentQty: '0', minQty: '0', idealQty: '0', unitValue: '0' });
       notify("Item cadastrado com sucesso!");
     } catch (e) { notify("Erro ao salvar material", "error"); } finally { setIsLoading(false); }
   };
@@ -240,6 +241,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                   <tr>
                     <th className="px-8 py-5">Produto</th>
                     <th className="px-8 py-5 text-center">Saldo Atual</th>
+                    <th className="px-8 py-5 text-center">Qtd. Ideal</th>
                     <th className="px-8 py-5 text-right">Valor Unitário</th>
                     <th className="px-8 py-5 text-right">Valor em Estoque</th>
                     <th className="px-8 py-5 text-center">Status</th>
@@ -247,7 +249,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[11px] font-black uppercase text-slate-700">
                   {filteredItems.length === 0 ? (
-                    <tr><td colSpan={5} className="px-8 py-20 text-center italic text-slate-300 uppercase text-[10px] font-black">Nenhum item encontrado nesta categoria ou status</td></tr>
+                    <tr><td colSpan={6} className="px-8 py-20 text-center italic text-slate-300 uppercase text-[10px] font-black">Nenhum item encontrado nesta categoria ou status</td></tr>
                   ) : (
                     filteredItems.map(item => {
                       const isCritical = item.currentQty <= item.minQty;
@@ -260,6 +262,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                              <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">{item.category}</p>
                           </td>
                           <td className={`px-8 py-4 text-center font-black ${isCritical ? 'text-rose-600' : 'text-slate-900'}`}>{item.currentQty}</td>
+                          <td className="px-8 py-4 text-center font-black text-slate-400">{item.idealQty || 0}</td>
                           <td className="px-8 py-4 text-right">
                             <div className="flex items-center justify-end gap-2 group">
                               {isEditing ? (
@@ -302,7 +305,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                 {filteredItems.length > 0 && (
                   <tfoot className="bg-slate-900 text-white">
                     <tr>
-                      <td colSpan={3} className="px-8 py-4 text-[9px] font-black uppercase tracking-widest flex items-center justify-between">
+                      <td colSpan={4} className="px-8 py-4 text-[9px] font-black uppercase tracking-widest flex items-center justify-between">
                         <span>Resumo Financeiro do Filtro ({filteredItems.length} Itens)</span>
                         <span className="text-slate-500 ml-4">Total Geral do Almoxarifado: {formatMoney(totalInventoryValue)}</span>
                       </td>
@@ -364,7 +367,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
 
       {showAddForm && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-          <form onSubmit={handleAddItem} className="bg-white rounded-[40px] w-full max-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
+          <form onSubmit={handleAddItem} className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
             <div className="flex justify-between items-center border-b pb-6">
               <h3 className="text-sm font-black uppercase text-slate-900 tracking-tight">Novo Material</h3>
               <button type="button" onClick={() => setShowAddForm(false)} className="text-slate-300 hover:text-slate-900"><X/></button>
@@ -389,6 +392,16 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Valor Unit. (R$)</label>
                   <input type="number" step="0.01" className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs outline-none focus:bg-white" value={newItem.unitValue} onChange={e => setNewItem({...newItem, unitValue: e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Mínimo Crítico</label>
+                  <input type="number" className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs outline-none focus:bg-white" value={newItem.minQty} onChange={e => setNewItem({...newItem, minQty: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Quantidade Ideal</label>
+                  <input type="number" className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs outline-none focus:bg-white" value={newItem.idealQty} onChange={e => setNewItem({...newItem, idealQty: e.target.value})} />
                 </div>
               </div>
             </div>

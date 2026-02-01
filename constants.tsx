@@ -9,8 +9,10 @@ export const INITIAL_STATE: AppState = {
   ],
   attendanceRecords: [],
   inventory: [
-    { id: 'i1', companyId: 'fera-main', name: 'Fio de Nylon', category: 'insumos', currentQty: 10, minQty: 5, unitValue: 45.0 },
-    { id: 'i2', companyId: 'fera-main', name: 'Óleo 2T', category: 'insumos', currentQty: 3, minQty: 10, unitValue: 35.0 }
+    // Fix: Added missing required property 'idealQty' to match InventoryItem interface
+    { id: 'i1', companyId: 'fera-main', name: 'Fio de Nylon', category: 'insumos', currentQty: 10, minQty: 5, idealQty: 20, unitValue: 45.0 },
+    // Fix: Added missing required property 'idealQty' to match InventoryItem interface
+    { id: 'i2', companyId: 'fera-main', name: 'Óleo 2T', category: 'insumos', currentQty: 3, minQty: 10, idealQty: 15, unitValue: 35.0 }
   ],
   inventoryExits: [],
   cashIn: [],

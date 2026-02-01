@@ -28,6 +28,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'areaM2') newKey = 'area_m2';
     else if (k === 'currentQty') newKey = 'current_qty';
     else if (k === 'minQty') newKey = 'min_qty';
+    else if (k === 'idealQty') newKey = 'ideal_qty';
     else if (k === 'paymentStatus') newKey = 'payment_status';
     else if (k === 'financeCategories') newKey = 'finance_categories';
     else if (k === 'inventoryCategories') newKey = 'inventory_categories';
@@ -134,7 +135,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     })),
     inventory: inv.map((i: any) => ({
       id: i.id, companyId: i.company_id, name: i.name, category: i.category,
-      currentQty: Number(i.current_qty), minQty: Number(i.min_qty), unitValue: Number(i.unit_value || 0)
+      currentQty: Number(i.current_qty), minQty: Number(i.min_qty), idealQty: Number(i.ideal_qty || 0), unitValue: Number(i.unit_value || 0)
     })),
     inventoryExits: exits.map((ex: any) => ({
       id: ex.id, companyId: ex.company_id, itemId: ex.item_id, quantity: Number(ex.quantity), date: ex.date, destination: ex.destination, observation: ex.observation

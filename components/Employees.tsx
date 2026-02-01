@@ -35,13 +35,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     const existing = state.attendanceRecords.find(r => r.employeeId === empId && r.date === date);
 
     try {
-      if (existing) {
-        if (existing.status === 'present') {
-          await dbSave('attendance_records', { ...existing, status: 'absent', value: 0 });
-        } else {
-          await dbDelete('attendance_records', existing.id);
-        }
-      } else {
+      if (!existing) {
+        // Ciclo 1: Presente (100% valor)
         await dbSave('attendance_records', {
           companyId: state.currentUser?.companyId,
           employee_id: empId,
@@ -50,6 +45,15 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
           value: emp.defaultValue,
           payment_status: 'pendente'
         });
+      } else if (existing.status === 'present') {
+        // Ciclo 2: Parcial (50% valor)
+        await dbSave('attendance_records', { ...existing, status: 'partial', value: emp.defaultValue / 2 });
+      } else if (existing.status === 'partial') {
+        // Ciclo 3: Falta (0 valor)
+        await dbSave('attendance_records', { ...existing, status: 'absent', value: 0 });
+      } else {
+        // Ciclo 4: Limpar
+        await dbDelete('attendance_records', existing.id);
       }
       await refreshData();
     } catch (e) { notify("Erro ao sincronizar presença", "error"); }
@@ -134,8 +138,9 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
             <button onClick={() => setCurrentCalendarDate(new Date(currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1)))} className="p-2 hover:bg-white rounded-lg border border-transparent hover:border-slate-200"><ChevronRight size={18} /></button>
           </div>
           <div className="hidden sm:flex items-center gap-4">
-             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-emerald-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Presente</span></div>
-             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-rose-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Falta</span></div>
+             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-emerald-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Presente (1.0)</span></div>
+             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-amber-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Parcial (0.5)</span></div>
+             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-rose-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Falta (0)</span></div>
           </div>
         </div>
         
@@ -166,13 +171,30 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                     const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     const att = state.attendanceRecords.find(r => r.employeeId === emp.id && r.date === dateStr);
                     const isToday = dateStr === new Date().toISOString().split('T')[0];
+                    
+                    let bgColor = 'text-slate-200 hover:bg-slate-100';
+                    let statusLabel = '-';
+                    
+                    if (att?.status === 'present') {
+                        bgColor = 'bg-emerald-500 text-white';
+                        statusLabel = 'P';
+                    } else if (att?.status === 'partial') {
+                        bgColor = 'bg-amber-500 text-white';
+                        statusLabel = 'H';
+                    } else if (att?.status === 'absent') {
+                        bgColor = 'bg-rose-500 text-white';
+                        statusLabel = 'F';
+                    } else if (isToday) {
+                        bgColor = 'bg-slate-100 border-x-2 border-slate-900';
+                    }
+
                     return (
                       <td 
                         key={day} 
                         onClick={() => handleToggleAttendance(emp.id, dateStr)}
-                        className={`p-0 border-r h-12 text-center text-[9px] font-black transition-all cursor-pointer ${att?.status === 'present' ? 'bg-emerald-500 text-white' : att?.status === 'absent' ? 'bg-rose-500 text-white' : isToday ? 'bg-slate-100 border-x-2 border-slate-900' : 'text-slate-200 hover:bg-slate-100'}`}
+                        className={`p-0 border-r h-12 text-center text-[9px] font-black transition-all cursor-pointer ${bgColor}`}
                       >
-                        {att?.status === 'present' ? 'P' : att?.status === 'absent' ? 'F' : '-'}
+                        {statusLabel}
                       </td>
                     );
                   })}

@@ -87,7 +87,7 @@ export interface AttendanceRecord {
   companyId: string;
   employeeId: string;
   date: string;
-  status: 'present' | 'absent';
+  status: 'present' | 'absent' | 'partial';
   value: number;
   paymentStatus: string;
 }
@@ -119,6 +119,7 @@ export interface InventoryItem {
   category: string;
   currentQty: number;
   minQty: number;
+  idealQty: number;
   unitValue?: number;
 }
 
