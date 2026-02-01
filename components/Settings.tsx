@@ -46,11 +46,9 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     setIsLoading(true);
 
     try {
-      let updatedList: string[] = [];
       let dbField = '';
       let stateKey: keyof AppState;
 
-      // Determinamos as chaves
       if (listKey === 'finance') {
         dbField = 'financeCategories';
         stateKey = 'financeCategories';
@@ -62,14 +60,14 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
         stateKey = 'employeeRoles';
       }
 
-      // 1. Calculamos a nova lista usando o estado atual (prev) para evitar race conditions
+      // Usamos o callback do setState para pegar a lista mais atual e evitar race conditions
       setState(prev => {
         const currentList = (prev[stateKey] as string[]) || [];
-        
+        let updatedList: string[] = [];
+
         if (action === 'add') {
           if (currentList.some(item => item.toUpperCase() === trimmedValue)) {
-            notify("Esta categoria já existe", "error");
-            updatedList = [...currentList];
+            notify("Item já cadastrado", "error");
             return prev;
           }
           updatedList = [...currentList, trimmedValue];
@@ -77,34 +75,26 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           updatedList = currentList.filter(item => item.toUpperCase() !== trimmedValue);
         }
 
-        // Retornamos o estado atualizado localmente para UI instantânea
+        // Salva no banco de dados
+        dbSave('companies', {
+          id: companyId,
+          [dbField]: updatedList
+        }).catch(err => {
+          console.error("Erro ao salvar no banco:", err);
+          notify("Erro ao sincronizar com servidor", "error");
+        });
+
         return { ...prev, [stateKey]: updatedList };
-      });
-
-      // 2. Persistimos no banco de dados
-      // Como o setState acima é assíncrono para calcular o updatedList final, 
-      // precisamos garantir que o updatedList usado aqui seja o correto.
-      // Vamos recalcular aqui para o DB de forma segura:
-      const finalCurrentList = (state[stateKey] as string[]) || [];
-      const finalUpdatedList = action === 'add' 
-        ? (finalCurrentList.some(i => i.toUpperCase() === trimmedValue) ? finalCurrentList : [...finalCurrentList, trimmedValue])
-        : finalCurrentList.filter(i => i.toUpperCase() !== trimmedValue);
-
-      await dbSave('companies', {
-        id: companyId,
-        [dbField]: finalUpdatedList
       });
 
       if (action === 'add') {
         setNewEntries(prev => ({ ...prev, [listKey]: '' }));
       }
 
-      notify(action === 'add' ? "Categoria adicionada" : "Categoria removida");
+      notify(action === 'add' ? "Parâmetro adicionado" : "Parâmetro removido");
     } catch (e: any) {
       console.error(e);
-      notify("Erro ao atualizar parâmetros", "error");
-      // Se falhar no banco, recarrega os dados para reverter o estado local
-      refreshData();
+      notify("Erro ao atualizar configurações", "error");
     } finally {
       setIsLoading(false);
     }
@@ -122,12 +112,10 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
         month_key: goalForm.month,
         production_goal: goalForm.type === 'production' ? val : existing.production,
         revenue_goal: goalForm.type === 'revenue' ? val : existing.revenue,
-        inventory_goal: existing.inventory,
-        balance_goal: existing.finance
       });
       await refreshData();
       setGoalForm({...goalForm, value: ''});
-      notify("Meta atualizada!");
+      notify("Meta mensal atualizada!");
     } catch (e) { notify("Erro ao salvar meta", "error"); } finally { setIsLoading(false); }
   };
 
@@ -146,23 +134,21 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   return (
     <div className="space-y-6 pb-24">
       <header>
-        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Gestão Estratégica</h2>
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Configurações Base e Planejamento</p>
+        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Configurações Gerais</h2>
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Definição de Parâmetros e Metas</p>
       </header>
 
-      {/* Planejamento de Metas */}
-      <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-8 border border-white/5 overflow-hidden">
-          <div className="flex items-center justify-between">
-            <h3 className="font-black text-sm uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Metas Mensais</h3>
-          </div>
+      {/* Metas */}
+      <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-8 border border-white/5">
+          <h3 className="font-black text-sm uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Planejamento Mensal</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end bg-white/5 p-6 rounded-[32px] border border-white/10">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end bg-white/5 p-6 rounded-[32px]">
             <div className="space-y-2">
-               <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Mês Alvo</label>
+               <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Mês</label>
                <input type="month" className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-xs font-black outline-none focus:border-emerald-500 text-white" value={goalForm.month} onChange={e => setGoalForm({...goalForm, month: e.target.value})} />
             </div>
             <div className="space-y-2">
-               <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">KPI</label>
+               <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Indicador</label>
                <select className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-emerald-500 text-white" value={goalForm.type} onChange={e => setGoalForm({...goalForm, type: e.target.value as any})}>
                   <option value="production">PRODUÇÃO</option>
                   <option value="revenue">FATURAMENTO</option>
@@ -189,32 +175,32 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
              <div className="bg-white/5 border border-white/10 p-6 rounded-[32px] flex items-center gap-6">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-blue-400"><Activity size={24}/></div>
                 <div>
-                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Produção Projetada</p>
+                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Produção Alvo</p>
                   <p className="text-xl font-black text-blue-400">{currentGoalDisplay?.production.toLocaleString('pt-BR') || 0} m²/KM</p>
                 </div>
              </div>
              <div className="bg-white/5 border border-white/10 p-6 rounded-[32px] flex items-center gap-6">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/5 text-emerald-400"><DollarSign size={24}/></div>
                 <div>
-                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Faturamento Projetado</p>
+                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Receita Alvo</p>
                   <p className="text-xl font-black text-emerald-400">R$ {currentGoalDisplay?.revenue.toLocaleString('pt-BR') || 0}</p>
                 </div>
              </div>
           </div>
       </div>
 
-      {/* Tabela de Preços */}
+      {/* Preços */}
       <div className="bg-white border border-slate-200 rounded-[40px] p-8 shadow-sm space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
              <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><CreditCard size={24}/></div>
              <div>
-                <h3 className="text-sm font-black uppercase text-slate-900">Tabela de Preços</h3>
-                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Valores por unidade faturada</p>
+                <h3 className="text-sm font-black uppercase text-slate-900">Tabela de Preços de Serviços</h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Valores unitários para cálculo de O.S.</p>
              </div>
           </div>
           <button onClick={handleSaveRates} disabled={isLoading} className="w-full md:w-auto bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-600 transition-all">
-             SALVAR PREÇOS
+             ATUALIZAR TABELA
           </button>
         </div>
 
@@ -231,14 +217,14 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      {/* Categorias */}
+      {/* Listas Customizáveis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Financeiro */}
+        {/* FINANCEIRO */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-emerald-600 flex gap-2 items-center tracking-widest"><Tag size={16}/> Categorias de Fluxo</h4>
           <div className="flex gap-2">
-            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO..." value={newEntries.finance} onChange={e => setNewEntries({...newEntries, finance: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('finance', 'add', newEntries.finance)} />
-            <button onClick={() => handleUpdateList('finance', 'add', newEntries.finance)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-emerald-600 transition-all shadow-lg">
+            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="NOVO..." value={newEntries.finance} onChange={e => setNewEntries({...newEntries, finance: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('finance', 'add', newEntries.finance)} />
+            <button onClick={() => handleUpdateList('finance', 'add', newEntries.finance)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-emerald-600 transition-all shadow-lg active:scale-95">
                {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Plus size={18}/>}
             </button>
           </div>
@@ -252,12 +238,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </div>
         </div>
 
-        {/* Estoque */}
+        {/* ALMOXARIFADO */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-blue-600 flex gap-2 items-center tracking-widest"><Package size={16}/> Categorias Estoque</h4>
           <div className="flex gap-2">
-            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVA..." value={newEntries.inventory} onChange={e => setNewEntries({...newEntries, inventory: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('inventory', 'add', newEntries.inventory)} />
-            <button onClick={() => handleUpdateList('inventory', 'add', newEntries.inventory)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition-all shadow-lg">
+            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="NOVA..." value={newEntries.inventory} onChange={e => setNewEntries({...newEntries, inventory: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('inventory', 'add', newEntries.inventory)} />
+            <button onClick={() => handleUpdateList('inventory', 'add', newEntries.inventory)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition-all shadow-lg active:scale-95">
                {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Plus size={18}/>}
             </button>
           </div>
@@ -271,12 +257,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </div>
         </div>
 
-        {/* Cargos */}
+        {/* CARGOS */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-indigo-600 flex gap-2 items-center tracking-widest"><Users size={16}/> Cargos Unidade</h4>
           <div className="flex gap-2">
-            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO..." value={newEntries.roles} onChange={e => setNewEntries({...newEntries, roles: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('roles', 'add', newEntries.roles)} />
-            <button onClick={() => handleUpdateList('roles', 'add', newEntries.roles)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-indigo-600 transition-all shadow-lg">
+            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="NOVO..." value={newEntries.roles} onChange={e => setNewEntries({...newEntries, roles: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('roles', 'add', newEntries.roles)} />
+            <button onClick={() => handleUpdateList('roles', 'add', newEntries.roles)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95">
                {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Plus size={18}/>}
             </button>
           </div>
