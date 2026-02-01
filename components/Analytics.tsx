@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AppState } from '../types';
 import { 
-  Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash
+  Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone
 } from 'lucide-react';
 
 interface AnalyticsProps {
@@ -40,21 +40,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
     .filter(r => r.status === 'present')
     .reduce((acc, r) => acc + r.value, 0);
 
-  useEffect(() => {
-    if (showPrintView) {
-      setTimeout(() => {
-        window.print();
-        setShowPrintView(false);
-      }, 500);
-    }
-  }, [showPrintView]);
+  const handlePrint = () => {
+    setShowPrintView(true);
+    // Pequeno delay para o render do modal de impressão
+    setTimeout(() => {
+      window.print();
+      setShowPrintView(false);
+    }, 500);
+  };
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Auditoria & Analytics</h2>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Ficha de Acerto de Colaboradores</p>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Geração de Fichas para Acerto e PDF</p>
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 p-2 rounded-xl shadow-sm">
           <Calendar size={14} className="text-slate-400" />
@@ -64,7 +64,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print:hidden">
         <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm lg:col-span-1 h-[calc(100vh-250px)] flex flex-col">
           <div className="p-4 border-b border-slate-100">
              <div className="relative">
@@ -72,7 +72,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                 <input className="w-full bg-slate-50 border border-slate-100 pl-9 pr-4 py-2 rounded-xl text-[10px] font-bold outline-none" placeholder="BUSCAR NOME..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
              </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
              {filteredEmployees.map(emp => (
                <button 
                  key={emp.id}
@@ -103,17 +103,18 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                             </div>
                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Hash size={12}/> CPF: <span className="text-white">{selectedEmployee.cpf || 'NÃO CADASTRADO'}</span></div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Phone size={12}/> CONTATO: <span className="text-white">{selectedEmployee.phone || '--'}</span></div>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Hash size={12}/> CPF: <span className="text-white">{selectedEmployee.cpf || '--'}</span></div>
+                            {/* Fix: Added Smartphone icon import to resolve undefined variable error */}
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Smartphone size={12}/> CONTATO: <span className="text-white">{selectedEmployee.phone || '--'}</span></div>
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><CreditCard size={12}/> PIX: <span className="text-white truncate max-w-[150px]">{selectedEmployee.pixKey || '--'}</span></div>
                             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><MapPin size={12}/> ENDEREÇO: <span className="text-white truncate max-w-[150px]">{selectedEmployee.address || '--'}</span></div>
                          </div>
                       </div>
                       <div className="md:w-64 bg-white/5 p-6 rounded-[32px] border border-white/10 flex flex-col justify-center text-center">
-                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total a Pagar</p>
+                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total a Pagar no Período</p>
                          <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
-                         <button onClick={() => setShowPrintView(true)} className="mt-4 w-full bg-white text-slate-900 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all">
-                            <Printer size={16} /> IMPRIMIR FICHA
+                         <button onClick={handlePrint} className="mt-4 w-full bg-white text-slate-900 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all shadow-xl active:scale-95">
+                            <Printer size={16} /> GERAR PDF / IMPRIMIR
                          </button>
                       </div>
                    </div>
@@ -121,78 +122,104 @@ const Analytics: React.FC<AnalyticsProps> = ({ state }) => {
                 <div className="flex-1 overflow-y-auto">
                    <table className="w-full text-left">
                       <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b border-slate-100">
-                         <tr><th className="px-8 py-4">Data</th><th className="px-8 py-4 text-center">Frequência</th><th className="px-8 py-4 text-right">Valor</th></tr>
+                         <tr><th className="px-8 py-4">Data Registro</th><th className="px-8 py-4 text-center">Frequência</th><th className="px-8 py-4 text-right">Valor Diária</th></tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50 text-[11px]">
-                         {attendanceHistory.map(h => (
-                           <tr key={h.id} className="hover:bg-slate-50/50">
-                              <td className="px-8 py-3 font-bold text-slate-500">{formatDate(h.date)}</td>
-                              <td className="px-8 py-3 text-center uppercase">
-                                 <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${h.status === 'present' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                    {h.status === 'present' ? 'P' : 'F'}
-                                 </span>
-                              </td>
-                              <td className="px-8 py-3 text-right font-black text-slate-700">{h.status === 'present' ? formatMoney(h.value) : '--'}</td>
-                           </tr>
-                         ))}
+                      <tbody className="divide-y divide-slate-50 text-[11px] font-black uppercase text-slate-700">
+                         {attendanceHistory.length === 0 ? (
+                           <tr><td colSpan={3} className="px-8 py-10 text-center italic text-slate-300">Nenhum registro no período selecionado</td></tr>
+                         ) : (
+                           attendanceHistory.map(h => (
+                             <tr key={h.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-8 py-3 text-slate-500">{formatDate(h.date)}</td>
+                                <td className="px-8 py-3 text-center">
+                                   <span className={`px-4 py-1 rounded-lg text-[9px] font-black ${h.status === 'present' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                      {h.status === 'present' ? 'P (PRESENTE)' : 'F (FALTA)'}
+                                   </span>
+                                </td>
+                                <td className="px-8 py-3 text-right text-slate-900 font-bold">{h.status === 'present' ? formatMoney(h.value) : '--'}</td>
+                             </tr>
+                           ))
+                         )}
                       </tbody>
                    </table>
                 </div>
              </div>
            ) : (
-             <div className="h-full flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] p-20 text-center opacity-60">
+             <div className="h-full flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] p-20 text-center opacity-40">
                 <FileText size={48} className="text-slate-300 mb-6" />
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Selecione um Colaborador</h3>
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Auditoria Individual</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Selecione um colaborador na lista lateral para gerar a ficha de acerto.</p>
              </div>
            )}
         </div>
       </div>
 
       {showPrintView && (
-        <div className="fixed inset-0 z-[1000] bg-white overflow-y-auto p-12 font-serif text-slate-900 print:p-0">
-           <div className="max-w-4xl mx-auto border-2 border-slate-900 p-12 relative">
-              <div className="border-b-4 border-slate-900 pb-6 mb-10 flex justify-between items-end">
-                 <div>
-                    <h1 className="text-3xl font-black uppercase tracking-tighter">Fera Service</h1>
-                    <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Sistemas de Gestão Urbana</p>
+        <div className="fixed inset-0 z-[1000] bg-white overflow-y-auto p-12 text-slate-900 font-sans print:p-0 print:m-0">
+           <style>{`@media print { .print-hide { display: none; } body { background: white; } }`}</style>
+           <div className="max-w-4xl mx-auto border-2 border-slate-900 p-12 relative print:border-none print:p-8">
+              <div className="border-b-4 border-slate-900 pb-8 mb-12 flex justify-between items-end">
+                 <div className="space-y-1">
+                    <h1 className="text-4xl font-black uppercase tracking-tighter italic">Fera Service</h1>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Inteligência em Gestão Urbana</p>
                  </div>
-                 <div className="text-right uppercase">
-                    <h2 className="text-lg font-black">Ficha de Acerto Individual</h2>
-                    <p className="text-[10px] font-bold">{formatDate(startDate)} a {formatDate(endDate)}</p>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-12 mb-10 text-[11px] uppercase border-b border-slate-200 pb-10">
-                 <div className="space-y-2">
-                    <p><span className="font-black">Colaborador:</span> {selectedEmployee?.name}</p>
-                    <p><span className="font-black">Cargo:</span> {selectedEmployee?.role}</p>
-                    <p><span className="font-black">CPF:</span> {selectedEmployee?.cpf || '--'}</p>
-                    <p><span className="font-black">Endereço:</span> {selectedEmployee?.address || '--'}</p>
-                 </div>
-                 <div className="space-y-2 text-right">
-                    <p><span className="font-black">Chave Pix:</span> {selectedEmployee?.pixKey || '--'}</p>
-                    <p><span className="font-black">Valor Total:</span> <span className="text-xl font-black">{formatMoney(totalToPay)}</span></p>
+                 <div className="text-right uppercase space-y-1">
+                    <h2 className="text-xl font-black text-slate-900">Relatório de Acerto Individual</h2>
+                    <p className="text-[10px] font-bold text-slate-500">Período: {formatDate(startDate)} a {formatDate(endDate)}</p>
                  </div>
               </div>
 
-              <table className="w-full text-[10px] border-collapse mb-16 uppercase border border-slate-200">
-                 <thead>
-                    <tr className="bg-slate-100"><th className="border p-2 text-left">Data</th><th className="border p-2 text-center">Frequência</th><th className="border p-2 text-right">Valor</th></tr>
-                 </thead>
-                 <tbody>
-                    {attendanceHistory.map(h => (
-                       <tr key={h.id}>
-                          <td className="border p-2">{formatDate(h.date)}</td>
-                          <td className="border p-2 text-center">{h.status === 'present' ? 'PRESENTE' : 'FALTA'}</td>
-                          <td className="border p-2 text-right">{h.status === 'present' ? formatMoney(h.value) : '--'}</td>
+              <div className="grid grid-cols-2 gap-16 mb-12 text-[11px] uppercase border border-slate-100 p-8 rounded-3xl">
+                 <div className="space-y-3">
+                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">COLABORADOR:</span> <span className="font-black">{selectedEmployee?.name}</span></p>
+                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">CARGO/FUNÇÃO:</span> <span className="font-black">{selectedEmployee?.role}</span></p>
+                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">DOCUMENTO CPF:</span> <span className="font-black">{selectedEmployee?.cpf || '--'}</span></p>
+                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">ENDEREÇO:</span> <span className="font-black truncate max-w-[180px]">{selectedEmployee?.address || '--'}</span></p>
+                 </div>
+                 <div className="space-y-3 text-right">
+                    <div className="bg-slate-900 text-white p-6 rounded-2xl">
+                       <p className="text-[9px] font-black opacity-60 mb-1">VALOR LÍQUIDO A RECEBER</p>
+                       <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
+                    </div>
+                    <p className="text-[10px] font-black border-b border-slate-100 pb-1 mt-4">CHAVE PIX: {selectedEmployee?.pixKey || 'NÃO INFORMADA'}</p>
+                 </div>
+              </div>
+
+              <div className="mb-16">
+                 <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 text-slate-400">Extrato de Presença e Diárias</h4>
+                 <table className="w-full text-[10px] border-collapse uppercase">
+                    <thead>
+                       <tr className="bg-slate-100"><th className="border-b-2 border-slate-900 p-3 text-left">Data do Turno</th><th className="border-b-2 border-slate-900 p-3 text-center">Status</th><th className="border-b-2 border-slate-900 p-3 text-right">Valor (R$)</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                       {attendanceHistory.map(h => (
+                          <tr key={h.id}>
+                             <td className="p-3 font-bold">{formatDate(h.date)}</td>
+                             <td className="p-3 text-center font-black">{h.status === 'present' ? 'TRABALHADO' : 'AUSENTE/FALTA'}</td>
+                             <td className="p-3 text-right font-black">{h.status === 'present' ? formatMoney(h.value) : '0,00'}</td>
+                          </tr>
+                       ))}
+                       <tr className="bg-slate-50">
+                          <td colSpan={2} className="p-4 text-right font-black text-xs">SOMA TOTAL DOS SERVIÇOS:</td>
+                          <td className="p-4 text-right font-black text-xs">{formatMoney(totalToPay)}</td>
                        </tr>
-                    ))}
-                 </tbody>
-              </table>
+                    </tbody>
+                 </table>
+              </div>
 
-              <div className="grid grid-cols-2 gap-20 mt-20 text-center text-[10px] uppercase font-black">
-                 <div className="border-t-2 border-slate-900 pt-3">Assinatura do Colaborador</div>
-                 <div className="border-t-2 border-slate-900 pt-3">Superintendente Responsável</div>
+              <div className="mt-24 grid grid-cols-2 gap-24 text-center">
+                 <div className="space-y-2">
+                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee?.name}</div>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase">Assinatura do Beneficiário</p>
+                 </div>
+                 <div className="space-y-2">
+                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Responsável Unidade</div>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase">Fera Service Corporativo</p>
+                 </div>
+              </div>
+              
+              <div className="mt-20 text-center border-t border-slate-100 pt-10 opacity-30">
+                 <p className="text-[8px] font-black uppercase tracking-[0.5em]">Gerado automaticamente via Terminal Cloud v4.0.0</p>
               </div>
            </div>
         </div>

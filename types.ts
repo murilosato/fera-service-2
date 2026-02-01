@@ -27,6 +27,9 @@ export interface Company {
   id: string;
   name: string;
   plan: string;
+  financeCategories?: string[];
+  inventoryCategories?: string[];
+  employeeRoles?: string[];
 }
 
 export interface User {
