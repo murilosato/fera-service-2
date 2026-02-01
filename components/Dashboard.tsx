@@ -182,6 +182,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Extensão</label>
                     <select className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs font-bold outline-none" value={rangeMonths} onChange={(e) => setRangeMonths(Number(e.target.value))}>
+                      <option value={1}>1 Mês</option>
                       <option value={3}>3 Meses</option>
                       <option value={6}>6 Meses</option>
                       <option value={12}>12 Meses</option>
