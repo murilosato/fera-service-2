@@ -68,11 +68,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       let rev = 0;
       
       state.areas.forEach(area => {
+        const isFinished = area.status === 'finished';
         area.services.forEach(s => {
-          // Fix: Corrigido de serviceDate para service_date conforme interface Service
           if (s.service_date.startsWith(m.key)) {
             prod += s.areaM2;
-            rev += s.totalValue;
+            // Faturamento (rev) apenas se a O.S. estiver finalizada
+            if (isFinished) {
+              rev += s.totalValue;
+            }
           }
         });
       });
@@ -103,11 +106,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     let revMonth = 0;
     
     state.areas.forEach(area => {
+      const isFinished = area.status === 'finished';
       area.services.forEach(s => {
-        // Fix: Corrigido de serviceDate para service_date conforme interface Service
         if (s.service_date.startsWith(lastMonthKey)) {
           prodMonth += s.areaM2;
-          revMonth += s.totalValue;
+          // Faturamento real = apenas O.S. Finalizadas
+          if (isFinished) {
+            revMonth += s.totalValue;
+          }
         }
       });
     });
@@ -213,7 +219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm min-h-[450px] w-full">
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">
-              Histórico Mensal: {activeMetric === 'production' ? 'Produção vs Metas' : activeMetric === 'revenue' ? 'Faturamento vs Metas' : activeMetric.toUpperCase()}
+              Histórico Mensal: {activeMetric === 'production' ? 'Produção vs Metas' : activeMetric === 'revenue' ? 'Faturamento (O.S. Finalizadas)' : activeMetric.toUpperCase()}
             </h3>
           </div>
 
@@ -266,7 +272,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           <div className="space-y-8 flex-1">
             <div className="space-y-3">
               <div className="flex justify-between items-end">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Produção</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Produção (Total)</p>
                 <p className="text-xs font-black text-white">{periodTotals.prodPercentage.toFixed(1)}%</p>
               </div>
               <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
@@ -279,7 +285,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
 
             <div className="space-y-3">
               <div className="flex justify-between items-end">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Faturamento</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Faturamento (Faturado)</p>
                 <p className="text-xs font-black text-white">{periodTotals.revPercentage.toFixed(1)}%</p>
               </div>
               <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">

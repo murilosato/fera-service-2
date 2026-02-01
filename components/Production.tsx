@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3 } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -39,7 +39,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
   const handleAddArea = async () => {
     if (!newArea.name || !newArea.startDate || !newArea.startReference || !newArea.endReference) {
-      return alert("Preencha Nome O.S, Data de Início, Local de Início e Local de Fim.");
+      return alert("Preencha todos os campos obrigatórios (Nome, Data, Referências).");
     }
     setIsLoading(true);
     try {
@@ -56,7 +56,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
   const handleAddService = async (areaId: string) => {
     const qty = parseFloat(newService.quantity);
-    if (isNaN(qty) || qty <= 0) return alert("Qtd inválida");
+    if (isNaN(qty) || qty <= 0) return alert("Quantidade inválida");
     setIsLoading(true);
     try {
       const unitValue = state.serviceRates[newService.type] || 0;
@@ -67,18 +67,17 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         areaM2: qty,
         unitValue: unitValue,
         totalValue: unitValue * qty,
-        service_date: new Date().toISOString().split('T')[0]
+        serviceDate: new Date().toISOString().split('T')[0]
       });
       await refreshData();
       setNewService({ ...newService, quantity: '' });
-    } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
+    } catch (e: any) { alert("Falha ao registrar serviço."); } finally { setIsLoading(false); }
   };
 
   const handleFinishArea = async () => {
     if (!confirmFinish?.date) return alert("Data de fim é obrigatória.");
     setIsLoading(true);
     try {
-      // Garantimos que estamos enviando o ID para o Upsert funcionar como Update
       await dbSave('areas', {
         id: confirmFinish.area.id,
         status: 'finished',
@@ -102,11 +101,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       else await dbDelete('areas', confirmDelete.areaId);
       await refreshData();
       setConfirmDelete(null);
-    } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
+    } catch (e: any) { alert("Falha ao excluir registro."); } finally { setIsLoading(false); }
   };
 
-  const filteredAreas = state.areas.filter(area => (area.status || 'executing') === viewStatus);
-  const formatDate = (d: string) => d ? d.split('-').reverse().join('/') : '--/--/----';
+  const filteredAreas = state.areas.filter(area => area.status === viewStatus);
+  const formatDate = (d?: string) => d ? d.split('-').reverse().join('/') : '--/--/----';
 
   return (
     <div className="space-y-6 pb-24">
@@ -117,8 +116,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex bg-slate-200 p-1 rounded-xl">
-            <button onClick={() => setViewStatus('executing')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'executing' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Execução</button>
-            <button onClick={() => setViewStatus('finished')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'finished' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Arquivadas</button>
+            <button onClick={() => setViewStatus('executing')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'executing' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Em Execução</button>
+            <button onClick={() => setViewStatus('finished')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'finished' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Finalizadas</button>
           </div>
           <button onClick={() => setIsAddingArea(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-xl"><Plus size={18} /> Nova O.S.</button>
         </div>
@@ -127,89 +126,178 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       {isAddingArea && (
         <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-2xl animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-black text-xs uppercase tracking-widest">Abertura de Nova O.S.</h3>
-            <button onClick={() => setIsAddingArea(false)}><X/></button>
+            <h3 className="font-black text-xs uppercase tracking-widest text-slate-900">Abertura de Nova O.S.</h3>
+            <button onClick={() => setIsAddingArea(false)} className="text-slate-400 hover:text-slate-900"><X/></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Nome O.S</label>
-              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase outline-none focus:border-slate-900" placeholder="Ex: OS-2024-001" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Identificação / Equipe</label>
+              <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black uppercase outline-none focus:border-slate-900" placeholder="Ex: EQUIPE-JOAO-01" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value})} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Data Início</label>
-              <input type="date" className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black" value={newArea.startDate} onChange={e => setNewArea({...newArea, startDate: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Data de Início</label>
+              <input type="date" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black" value={newArea.startDate} onChange={e => setNewArea({...newArea, startDate: e.target.value})} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Local Início</label>
-              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase outline-none focus:border-slate-900" placeholder="Ponto de partida" value={newArea.startReference} onChange={e => setNewArea({...newArea, startReference: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Ponto Inicial</label>
+              <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black uppercase outline-none focus:border-slate-900" placeholder="Rua / Ponto A" value={newArea.startReference} onChange={e => setNewArea({...newArea, startReference: e.target.value})} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Local Fim</label>
-              <input className="w-full bg-slate-50 border p-4 rounded-2xl text-xs font-black uppercase outline-none focus:border-slate-900" placeholder="Ponto de chegada" value={newArea.endReference} onChange={e => setNewArea({...newArea, endReference: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Ponto Final</label>
+              <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black uppercase outline-none focus:border-slate-900" placeholder="Rua / Ponto B" value={newArea.endReference} onChange={e => setNewArea({...newArea, endReference: e.target.value})} />
             </div>
           </div>
           <button onClick={handleAddArea} disabled={isLoading} className="mt-8 w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg flex items-center justify-center gap-2">
-            {isLoading ? <Loader2 className="animate-spin" /> : 'CONFIRMAR E SINCRONIZAR O.S.'}
+            {isLoading ? <Loader2 className="animate-spin" /> : 'CONFIRMAR ABERTURA'}
           </button>
         </div>
       )}
 
-      {/* Listagem de O.S. (Removido por brevidade, mantém a lógica anterior) */}
       <div className="space-y-4">
-        {filteredAreas.map(area => (
-          <div key={area.id} className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
-            <div className="p-6 flex justify-between items-center">
-               <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white ${area.status === 'finished' ? 'bg-emerald-600' : 'bg-slate-900'}`}>{area.status === 'finished' ? <CheckCircle2 size={20}/> : 'OS'}</div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 uppercase">{area.name}</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase flex items-center gap-2">
-                       {area.startReference} <ArrowRight size={10} className="text-slate-300" /> {area.endReference}
-                    </p>
-                  </div>
-               </div>
-               <div className="flex gap-2">
-                  <button onClick={() => setExpandedAreaId(expandedAreaId === area.id ? null : area.id)} className="p-4 bg-slate-50 rounded-2xl">{expandedAreaId === area.id ? <ChevronUp/> : <ChevronDown/>}</button>
-               </div>
-            </div>
-            {expandedAreaId === area.id && (
-              <div className="p-6 bg-slate-50 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {area.status === 'executing' ? (
-                    <div className="bg-white p-6 rounded-3xl shadow-sm space-y-4 border border-slate-100">
-                      <h4 className="text-[10px] font-black uppercase text-slate-400">Painel de Lançamento</h4>
-                      <select className="w-full bg-slate-50 p-4 rounded-xl text-[10px] font-black uppercase" value={newService.type} onChange={e => setNewService({...newService, type: e.target.value as any})}>{SERVICE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}</select>
-                      <input type="number" className="w-full bg-slate-50 p-4 rounded-xl text-xs font-black" placeholder="Metragem" value={newService.quantity} onChange={e => setNewService({...newService, quantity: e.target.value})} />
-                      <button onClick={() => handleAddService(area.id)} disabled={isLoading} className="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-[10px] uppercase">Lançar Produção</button>
-                      <button onClick={() => setConfirmFinish({ isOpen: true, area, date: new Date().toISOString().split('T')[0] })} className="w-full border border-emerald-500 text-emerald-600 py-3 rounded-xl font-black text-[9px] uppercase">Finalizar O.S.</button>
-                    </div>
-                  ) : (
-                    <div className="bg-emerald-600 p-6 rounded-3xl text-white shadow-xl">
-                      <h4 className="font-black uppercase text-xs mb-2">Concluída em {formatDate(area.endDate || '')}</h4>
-                      <p className="text-[8px] font-black opacity-60">TOTAL PRODUZIDO</p>
-                      <p className="text-xl font-black">{area.services?.reduce((acc, s) => acc + s.areaM2, 0).toLocaleString('pt-BR')} m²</p>
-                    </div>
-                  )}
-                  {/* Tabela de Serviços aqui... */}
-              </div>
-            )}
+        {filteredAreas.length === 0 ? (
+          <div className="bg-white p-20 rounded-[32px] border-2 border-dashed border-slate-200 text-center text-slate-300 font-black uppercase text-xs italic">
+            Nenhuma O.S. encontrada neste status
           </div>
-        ))}
+        ) : (
+          filteredAreas.map(area => (
+            <div key={area.id} className={`bg-white rounded-[32px] border ${expandedAreaId === area.id ? 'border-slate-900 shadow-xl' : 'border-slate-100 shadow-sm'} overflow-hidden transition-all duration-300`}>
+              <div className="p-6 flex justify-between items-center bg-white cursor-pointer" onClick={() => setExpandedAreaId(expandedAreaId === area.id ? null : area.id)}>
+                 <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white ${area.status === 'finished' ? 'bg-emerald-600' : 'bg-slate-900'}`}>
+                      {area.status === 'finished' ? <CheckCircle2 size={20}/> : 'OS'}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 uppercase">{area.name}</h3>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase flex items-center gap-2">
+                         {area.startReference} <ArrowRight size={10} className="text-slate-300" /> {area.endReference}
+                      </p>
+                    </div>
+                 </div>
+                 <div className="flex gap-2">
+                    {area.status === 'finished' && (
+                      <div className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase flex items-center gap-2">
+                        <Archive size={12}/> Faturado
+                      </div>
+                    )}
+                    <div className={`p-4 rounded-2xl transition-colors ${expandedAreaId === area.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400'}`}>
+                      {expandedAreaId === area.id ? <ChevronUp/> : <ChevronDown/>}
+                    </div>
+                 </div>
+              </div>
+
+              {expandedAreaId === area.id && (
+                <div className="p-6 bg-slate-50 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4">
+                    <div className="space-y-4">
+                      {/* Painel de Lançamento sempre disponível conforme solicitado */}
+                      <div className="bg-white p-6 rounded-3xl shadow-sm space-y-4 border border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[10px] font-black uppercase text-slate-400">Painel de Lançamento</h4>
+                          <Edit3 size={14} className="text-blue-500" />
+                        </div>
+                        <select className="w-full bg-slate-50 p-4 rounded-xl text-[10px] font-black uppercase outline-none focus:border-slate-900" value={newService.type} onChange={e => setNewService({...newService, type: e.target.value as any})}>
+                          {SERVICE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                        <input type="number" className="w-full bg-slate-50 p-4 rounded-xl text-xs font-black outline-none focus:border-slate-900" placeholder="Quantidade / Metragem" value={newService.quantity} onChange={e => setNewService({...newService, quantity: e.target.value})} />
+                        <button onClick={(e) => { e.stopPropagation(); handleAddService(area.id); }} disabled={isLoading} className="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-colors">
+                          Lançar Produção
+                        </button>
+                        
+                        {area.status === 'executing' ? (
+                          <button onClick={(e) => { e.stopPropagation(); setConfirmFinish({ isOpen: true, area, date: new Date().toISOString().split('T')[0] }); }} className="w-full border-2 border-emerald-500 text-emerald-600 py-3 rounded-xl font-black text-[9px] uppercase hover:bg-emerald-50 transition-all">
+                            Finalizar para Faturamento
+                          </button>
+                        ) : (
+                          <div className="p-3 bg-emerald-600 rounded-xl text-white text-center">
+                            <p className="text-[10px] font-black uppercase">O.S. FINALIZADA EM {formatDate(area.endDate)}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-slate-900 p-6 rounded-3xl text-white shadow-xl">
+                        <h4 className="font-black uppercase text-[10px] text-slate-500 mb-2">Resumo da O.S.</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                             <span className="text-[9px] font-black opacity-60">TOTAL PRODUZIDO</span>
+                             <p className="text-lg font-black text-emerald-400">{(area.services || []).reduce((acc, s) => acc + s.areaM2, 0).toLocaleString('pt-BR')} m²</p>
+                          </div>
+                          <div className="flex justify-between items-center">
+                             <span className="text-[9px] font-black opacity-60">VALOR ESTIMADO</span>
+                             <p className="text-lg font-black">{(area.services || []).reduce((acc, s) => acc + s.totalValue, 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col">
+                      <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Detalhamento dos Serviços</h4>
+                         <span className="px-2 py-1 bg-white border rounded-lg text-[8px] font-black uppercase text-slate-500">{area.services?.length || 0} Registros</span>
+                      </div>
+                      <div className="max-h-[400px] overflow-y-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="sticky top-0 bg-white shadow-sm text-[9px] font-black uppercase text-slate-400 border-b">
+                            <tr>
+                              <th className="px-6 py-4">Data Registro</th>
+                              <th className="px-6 py-4">Tipo de Serviço</th>
+                              <th className="px-6 py-4 text-right">Produção</th>
+                              <th className="px-6 py-4 text-center">Ação</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y text-[11px] font-black uppercase text-slate-700">
+                            {(!area.services || area.services.length === 0) ? (
+                              <tr><td colSpan={4} className="px-6 py-10 text-center italic text-slate-300">Nenhum serviço registrado nesta O.S.</td></tr>
+                            ) : (
+                              area.services.map(s => (
+                                <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
+                                  <td className="px-6 py-3 text-slate-500 font-bold">{formatDate(s.serviceDate)}</td>
+                                  <td className="px-6 py-3">{s.type}</td>
+                                  <td className="px-6 py-3 text-right text-emerald-600">{s.areaM2.toLocaleString('pt-BR')}</td>
+                                  <td className="px-6 py-3 text-center">
+                                    <button onClick={(e) => { e.stopPropagation(); setConfirmDelete({ isOpen: true, areaId: area.id, serviceId: s.id }); }} className="p-2 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all">
+                                      <Trash2 size={14}/>
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
+      <ConfirmationModal 
+        isOpen={!!confirmDelete?.isOpen} 
+        onClose={() => setConfirmDelete(null)} 
+        onConfirm={performDelete} 
+        title="Excluir Registro" 
+        message="Deseja remover permanentemente este registro de produção?" 
+      />
+      
       {confirmFinish && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
-          <div className="bg-white p-10 rounded-[40px] w-full max-w-sm shadow-2xl">
+          <div className="bg-white p-10 rounded-[40px] w-full max-w-sm shadow-2xl animate-in zoom-in-95 border border-slate-100">
             <div className="text-center mb-6">
-               <CheckCircle2 className="mx-auto text-emerald-600 mb-2" size={48} />
-               <h3 className="font-black uppercase text-xs">Finalizar O.S. {confirmFinish.area.name}</h3>
+               <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={32} />
+               </div>
+               <h3 className="font-black uppercase text-sm text-slate-900 tracking-tight">Finalizar para Faturamento</h3>
+               <p className="text-[10px] text-slate-400 uppercase font-bold mt-1">Informe a data de conclusão da equipe.</p>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Data de Fim Oficial</label>
-              <input type="date" className="w-full bg-slate-50 border p-4 rounded-2xl font-black text-xs" value={confirmFinish.date} onChange={e => setConfirmFinish({...confirmFinish, date: e.target.value})} />
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-1 block">Data de Conclusão</label>
+              <input type="date" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:border-emerald-600 transition-all" value={confirmFinish.date} onChange={e => setConfirmFinish({...confirmFinish, date: e.target.value})} />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setConfirmFinish(null)} className="flex-1 py-4 bg-slate-100 rounded-2xl text-[10px] font-black uppercase">Sair</button>
-              <button onClick={handleFinishArea} disabled={isLoading} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase">Confirmar</button>
+            <div className="flex gap-3 mt-8">
+              <button onClick={() => setConfirmFinish(null)} className="flex-1 py-4 bg-slate-100 rounded-2xl text-[10px] font-black uppercase text-slate-500">Voltar</button>
+              <button onClick={handleFinishArea} disabled={isLoading} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg">
+                {isLoading ? <Loader2 className="animate-spin mx-auto"/> : 'Confirmar'}
+              </button>
             </div>
           </div>
         </div>

@@ -8,14 +8,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true }
 });
 
-const isValidUUID = (uuid: any) => typeof uuid === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{12}$/i.test(uuid) || (typeof uuid === 'string' && uuid.length > 10);
-
 const camelToSnake = (obj: any) => {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
   const n: any = {};
   Object.keys(obj).forEach(k => {
     let newKey = k;
-    // Mapeamentos específicos para compatibilidade com o banco
     if (k === 'companyId') newKey = 'company_id';
     else if (k === 'itemId') newKey = 'item_id';
     else if (k === 'areaId') newKey = 'area_id';
@@ -34,12 +31,12 @@ const camelToSnake = (obj: any) => {
     else if (k === 'financeCategories') newKey = 'finance_categories';
     else if (k === 'inventoryCategories') newKey = 'inventory_categories';
     else if (k === 'employeeRoles') newKey = 'employee_roles';
+    else if (k === 'serviceDate') newKey = 'service_date';
     else {
       newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     }
     
     let val = obj[k];
-    // Correção para datas: string vazia vira NULL para o PostgreSQL
     if (val === '' && (newKey.includes('date') || newKey.includes('_at') || newKey === 'end_date')) {
       val = null;
     }
@@ -95,12 +92,24 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
 
   return {
     areas: areas.map((a: any) => ({
-      id: a.id, companyId: a.company_id, name: a.name, startDate: a.start_date, endDate: a.end_date,
-      startReference: a.start_reference, endReference: a.end_reference, observations: a.observations,
+      id: a.id, 
+      companyId: a.company_id, 
+      name: a.name, 
+      startDate: a.start_date, 
+      endDate: a.end_date,
+      startReference: a.start_reference, 
+      endReference: a.end_reference, 
+      observations: a.observations,
       status: a.status || 'executing',
       services: (a.services || []).map((s: any) => ({
-        id: s.id, companyId: s.company_id, area_id: s.area_id, type: s.type,
-        areaM2: Number(s.area_m2), unitValue: Number(s.unit_value), totalValue: Number(s.total_value), service_date: s.service_date
+        id: s.id, 
+        companyId: s.company_id, 
+        areaId: s.area_id, 
+        type: s.type,
+        areaM2: Number(s.area_m2), 
+        unitValue: Number(s.unit_value), 
+        totalValue: Number(s.total_value), 
+        serviceDate: s.service_date
       }))
     })),
     employees: emps.map((e: any) => ({
@@ -129,7 +138,17 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
 
 export const dbSave = async (table: string, data: any) => {
   const payload = camelToSnake(data);
-  const { data: saved, error } = await supabase.from(table).upsert(payload).select();
+  let query;
+  
+  if (payload.id) {
+    // Se tem ID, usamos update para não precisar reenviar colunas NOT NULL (como o nome da empresa)
+    query = supabase.from(table).update(payload).eq('id', payload.id);
+  } else {
+    // Se não tem ID, é um insert (upsert sem ID)
+    query = supabase.from(table).upsert(payload);
+  }
+  
+  const { data: saved, error } = await query.select();
   if (error) {
     console.error(`Erro ao salvar na tabela ${table}:`, error);
     throw error;
