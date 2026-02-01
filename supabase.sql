@@ -23,7 +23,7 @@ create table companies (
   plan text default 'basic',
   service_rates jsonb default '{
     "Varrição (KM)": 150.00,
-    "C. Manual (m²))": 2.50,
+    "C. Manual (m²)": 2.50,
     "Roçada Meq (m²)": 1.80,
     "Roç. c/ Trator (m²)": 0.90,
     "Boca de Lobo": 45.00,

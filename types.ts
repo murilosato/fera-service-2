@@ -1,7 +1,7 @@
 
 export enum ServiceType {
   VARRICAO_KM = 'Varrição (KM)',
-  CAPINA_MANUAL_M2 = 'C. Manual (m²))',
+  CAPINA_MANUAL_M2 = 'C. Manual (m²)',
   ROCADA_MECANIZADA_M2 = 'Roçada Meq (m²)',
   ROCADA_TRATOR_M2 = 'Roç. c/ Trator (m²)',
   BOCA_DE_LOBO = 'Boca de Lobo',
