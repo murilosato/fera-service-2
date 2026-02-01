@@ -1,5 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { ServiceType } from '../types';
 
 const SUPABASE_URL = 'https://zbntnglatvuijefqfjhx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_KiZXFlucpA_RSEuYyot5GA_eQdaTKC2';
@@ -31,6 +32,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'financeCategories') newKey = 'finance_categories';
     else if (k === 'inventoryCategories') newKey = 'inventory_categories';
     else if (k === 'employeeRoles') newKey = 'employee_roles';
+    else if (k === 'serviceRates') newKey = 'service_rates';
     else if (k === 'serviceDate') newKey = 'service_date';
     else if (k === 'productionGoal') newKey = 'production_goal';
     else if (k === 'revenueGoal') newKey = 'revenue_goal';
@@ -94,6 +96,15 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     };
   });
 
+  const defaultRates = {
+    [ServiceType.VARRICAO_KM]: 150.00,
+    [ServiceType.CAPINA_MANUAL_M2]: 2.50,
+    [ServiceType.ROCADA_MECANIZADA_M2]: 1.80,
+    [ServiceType.ROCADA_TRATOR_M2]: 0.90,
+    [ServiceType.BOCA_DE_LOBO]: 45.00,
+    [ServiceType.PINTURA_MEIO_FIO]: 1.20,
+  };
+
   return {
     areas: areas.map((a: any) => ({
       id: a.id, 
@@ -134,6 +145,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status
     })),
     monthlyGoals: goalsMap,
+    serviceRates: companyInfo.data?.service_rates || defaultRates,
     financeCategories: companyInfo.data?.finance_categories || ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
     inventoryCategories: companyInfo.data?.inventory_categories || ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
     employeeRoles: companyInfo.data?.employee_roles || ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado']

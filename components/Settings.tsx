@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppState, ServiceType } from '../types';
-import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users, Calendar, Save, Activity } from 'lucide-react';
+import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users, Calendar, Save, Activity, CreditCard, CheckCircle } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 import { SERVICE_OPTIONS } from '../constants';
 
@@ -21,6 +21,13 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     serviceType: ServiceType.ROCADA_MECANIZADA_M2,
     value: ''
   });
+
+  // Estado local para a tabela de preços
+  const [localRates, setLocalRates] = useState<Record<string, number>>(state.serviceRates);
+
+  useEffect(() => {
+    setLocalRates(state.serviceRates);
+  }, [state.serviceRates]);
 
   const refreshData = async () => {
     if (state.currentUser?.companyId || state.currentUser?.role === 'DIRETORIA_MASTER') {
@@ -77,13 +84,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       const existing = state.monthlyGoals[goalForm.month] || { production: 0, revenue: 0, inventory: 0, finance: 0 };
       
       await dbSave('monthly_goals', {
-        companyId: state.currentUser?.companyId,
-        monthKey: goalForm.month,
-        productionGoal: goalForm.type === 'production' ? val : existing.production,
-        revenueGoal: goalForm.type === 'revenue' ? val : existing.revenue,
-        // Mantendo compatibilidade com as colunas existentes mas sem interface de edição direta para essas duas
-        inventoryGoal: existing.inventory,
-        balanceGoal: existing.finance
+        company_id: state.currentUser?.companyId,
+        month_key: goalForm.month,
+        production_goal: goalForm.type === 'production' ? val : existing.production,
+        revenue_goal: goalForm.type === 'revenue' ? val : existing.revenue,
+        inventory_goal: existing.inventory,
+        balance_goal: existing.finance
       });
       
       await refreshData();
@@ -95,9 +101,25 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     } finally { setIsLoading(false); }
   };
 
+  const handleSaveRates = async () => {
+    if (!state.currentUser?.companyId) return;
+    setIsLoading(true);
+    try {
+      await dbSave('companies', {
+        id: state.currentUser.companyId,
+        service_rates: localRates
+      });
+      await refreshData();
+      notify("Tabela de preços atualizada com sucesso!", "success");
+    } catch (e) {
+      notify("Erro ao salvar tabela de preços", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const currentGoalDisplay = state.monthlyGoals[goalForm.month];
 
-  // Identifica a unidade baseada no tipo de serviço selecionado
   const getUnit = () => {
     if (goalForm.type === 'revenue') return 'R$';
     return goalForm.serviceType.includes('KM') ? 'KM' : 'm²';
@@ -166,6 +188,49 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
                </div>
              ))}
           </div>
+        </div>
+      </div>
+
+      {/* Tabela de Preços de Produção */}
+      <div className="bg-white border border-slate-200 rounded-[40px] p-10 shadow-sm space-y-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+             <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><CreditCard size={24}/></div>
+             <div>
+                <h3 className="text-sm font-black uppercase text-slate-900 tracking-tight">Tabela de Preços por Unidade</h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Configuração de valores para faturamento de O.S.</p>
+             </div>
+          </div>
+          <button 
+            onClick={handleSaveRates} 
+            disabled={isLoading} 
+            className="w-full md:w-auto bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-blue-600"
+          >
+             {isLoading ? <Loader2 className="animate-spin" size={16}/> : <CheckCircle size={16}/>}
+             SALVAR TABELA DE VALORES
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {SERVICE_OPTIONS.map(service => (
+            <div key={service} className="p-6 bg-slate-50 border border-slate-100 rounded-[32px] space-y-4 transition-all hover:shadow-md group">
+               <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-slate-600 tracking-tight">{service}</span>
+                  <span className="text-[8px] font-black text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-100 group-hover:border-blue-200">{service.includes('KM') ? 'VALOR POR KM' : 'VALOR POR m²'}</span>
+               </div>
+               <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs">R$</span>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    className="w-full bg-white border border-slate-200 pl-11 p-4 rounded-2xl text-xs font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all"
+                    value={localRates[service] || 0}
+                    onChange={e => setLocalRates({...localRates, [service]: parseFloat(e.target.value) || 0})}
+                    placeholder="0.00"
+                  />
+               </div>
+            </div>
+          ))}
         </div>
       </div>
 

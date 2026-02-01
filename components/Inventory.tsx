@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppState, InventoryItem } from '../types';
 import { Package, Plus, Search, X, Loader2, History, Trash2, Filter, AlertTriangle, CheckCircle2, List, Undo2, ArrowRightLeft, DollarSign, Edit2, Save } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -23,9 +23,9 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
   const [movementDest, setMovementDest] = useState('');
   const [newItem, setNewItem] = useState({ name: '', category: '', currentQty: '0', minQty: '0', unitValue: '0' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'ok'>('all');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string } | null>(null);
   
-  // Estado para edição rápida de preço
   const [editingPrice, setEditingPrice] = useState<{ id: string, value: string } | null>(null);
 
   const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -130,12 +130,28 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
     }
   };
 
-  const filteredItems = state.inventory.filter(item => {
-    const nameMatch = item.name.toLowerCase().includes(itemSearchText.toLowerCase());
-    if (statusFilter === 'all') return nameMatch;
-    if (statusFilter === 'critical') return nameMatch && item.currentQty <= item.minQty;
-    return nameMatch && item.currentQty > item.minQty;
-  });
+  // Lógica de Filtragem Avançada
+  const filteredItems = useMemo(() => {
+    return state.inventory.filter(item => {
+      const nameMatch = item.name.toLowerCase().includes(itemSearchText.toLowerCase());
+      const categoryMatch = categoryFilter === 'ALL' || item.category === categoryFilter;
+      
+      let statusMatch = true;
+      if (statusFilter === 'critical') statusMatch = item.currentQty <= item.minQty;
+      else if (statusFilter === 'ok') statusMatch = item.currentQty > item.minQty;
+      
+      return nameMatch && categoryMatch && statusMatch;
+    });
+  }, [state.inventory, itemSearchText, categoryFilter, statusFilter]);
+
+  // Cálculos de Subtotais
+  const filteredSubTotal = useMemo(() => {
+    return filteredItems.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0);
+  }, [filteredItems]);
+
+  const totalInventoryValue = useMemo(() => {
+    return state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0);
+  }, [state.inventory]);
 
   return (
     <div className="space-y-6 pb-20">
@@ -200,12 +216,22 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
           </div>
 
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-               <div className="flex items-center gap-2 text-slate-500 font-black text-[10px] uppercase tracking-widest"><Filter size={16}/> Gestão de Saldos e Custos</div>
-               <div className="flex bg-slate-200 p-1 rounded-xl">
-                  <button onClick={() => setStatusFilter('all')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${statusFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Tudo</button>
-                  <button onClick={() => setStatusFilter('critical')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${statusFilter === 'critical' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500'}`}>Crítico</button>
-                  <button onClick={() => setStatusFilter('ok')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${statusFilter === 'ok' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>OK</button>
+            <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/30 gap-4">
+               <div className="flex items-center gap-2 text-slate-500 font-black text-[10px] uppercase tracking-widest"><Filter size={16}/> Filtragem de Saldos e Categorias</div>
+               <div className="flex flex-wrap items-center gap-3">
+                  <select 
+                    className="bg-white border border-slate-200 p-2 rounded-xl text-[9px] font-black uppercase outline-none focus:border-slate-900"
+                    value={categoryFilter}
+                    onChange={e => setCategoryFilter(e.target.value)}
+                  >
+                    <option value="ALL">CATEGORIAS: TODAS</option>
+                    {state.inventoryCategories.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
+                  </select>
+                  <div className="flex bg-slate-200 p-1 rounded-xl">
+                    <button onClick={() => setStatusFilter('all')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${statusFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Tudo</button>
+                    <button onClick={() => setStatusFilter('critical')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${statusFilter === 'critical' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500'}`}>Crítico</button>
+                    <button onClick={() => setStatusFilter('ok')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${statusFilter === 'ok' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>OK</button>
+                  </div>
                </div>
             </div>
             <div className="overflow-x-auto">
@@ -220,64 +246,73 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[11px] font-black uppercase text-slate-700">
-                  {filteredItems.map(item => {
-                    const isCritical = item.currentQty <= item.minQty;
-                    const totalValue = (item.currentQty || 0) * (item.unitValue || 0);
-                    const isEditing = editingPrice?.id === item.id;
-                    return (
-                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-8 py-4 font-black">
-                           {item.name}
-                           <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">{item.category}</p>
-                        </td>
-                        <td className={`px-8 py-4 text-center font-black ${isCritical ? 'text-rose-600' : 'text-slate-900'}`}>{item.currentQty}</td>
-                        <td className="px-8 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2 group">
-                            {isEditing ? (
-                              <>
-                                <input 
-                                  autoFocus
-                                  className="w-24 bg-white border border-slate-300 rounded px-2 py-1 text-right text-[10px] font-black outline-none focus:border-blue-500"
-                                  value={editingPrice.value}
-                                  onChange={e => setEditingPrice({...editingPrice, value: e.target.value})}
-                                />
-                                <button onClick={() => handleUpdatePrice(item.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Save size={14}/></button>
-                                <button onClick={() => setEditingPrice(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded"><X size={14}/></button>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-slate-500 font-bold">{formatMoney(item.unitValue || 0)}</span>
-                                <button 
-                                  onClick={() => setEditingPrice({ id: item.id, value: String(item.unitValue || 0) })}
-                                  className="p-1 text-slate-200 group-hover:text-blue-500 transition-colors"
-                                >
-                                  <Edit2 size={12}/>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-8 py-4 text-right text-emerald-600 font-black">{formatMoney(totalValue)}</td>
-                        <td className="px-8 py-4 text-center">
-                           {isCritical ? (
-                             <span className="text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl flex items-center justify-center gap-1 mx-auto w-fit text-[9px]"><AlertTriangle size={12}/> CRÍTICO</span>
-                           ) : (
-                             <span className="text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl flex items-center justify-center gap-1 mx-auto w-fit text-[9px]"><CheckCircle2 size={12}/> OK</span>
-                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filteredItems.length === 0 ? (
+                    <tr><td colSpan={5} className="px-8 py-20 text-center italic text-slate-300 uppercase text-[10px] font-black">Nenhum item encontrado nesta categoria ou status</td></tr>
+                  ) : (
+                    filteredItems.map(item => {
+                      const isCritical = item.currentQty <= item.minQty;
+                      const totalValue = (item.currentQty || 0) * (item.unitValue || 0);
+                      const isEditing = editingPrice?.id === item.id;
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-8 py-4 font-black">
+                             {item.name}
+                             <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">{item.category}</p>
+                          </td>
+                          <td className={`px-8 py-4 text-center font-black ${isCritical ? 'text-rose-600' : 'text-slate-900'}`}>{item.currentQty}</td>
+                          <td className="px-8 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2 group">
+                              {isEditing ? (
+                                <>
+                                  <input 
+                                    autoFocus
+                                    className="w-24 bg-white border border-slate-300 rounded px-2 py-1 text-right text-[10px] font-black outline-none focus:border-blue-500"
+                                    value={editingPrice.value}
+                                    onChange={e => setEditingPrice({...editingPrice, value: e.target.value})}
+                                  />
+                                  <button onClick={() => handleUpdatePrice(item.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Save size={14}/></button>
+                                  <button onClick={() => setEditingPrice(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded"><X size={14}/></button>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-slate-500 font-bold">{formatMoney(item.unitValue || 0)}</span>
+                                  <button 
+                                    onClick={() => setEditingPrice({ id: item.id, value: String(item.unitValue || 0) })}
+                                    className="p-1 text-slate-200 group-hover:text-blue-500 transition-colors"
+                                  >
+                                    <Edit2 size={12}/>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-8 py-4 text-right text-emerald-600 font-black">{formatMoney(totalValue)}</td>
+                          <td className="px-8 py-4 text-center">
+                             {isCritical ? (
+                               <span className="text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl flex items-center justify-center gap-1 mx-auto w-fit text-[9px]"><AlertTriangle size={12}/> CRÍTICO</span>
+                             ) : (
+                               <span className="text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl flex items-center justify-center gap-1 mx-auto w-fit text-[9px]"><CheckCircle2 size={12}/> OK</span>
+                             )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
-                <tfoot className="bg-slate-900 text-white">
-                   <tr>
-                      <td colSpan={3} className="px-8 py-4 text-[9px] font-black uppercase tracking-widest">Patrimônio Líquido em Almoxarifado</td>
+                {filteredItems.length > 0 && (
+                  <tfoot className="bg-slate-900 text-white">
+                    <tr>
+                      <td colSpan={3} className="px-8 py-4 text-[9px] font-black uppercase tracking-widest flex items-center justify-between">
+                        <span>Resumo Financeiro do Filtro ({filteredItems.length} Itens)</span>
+                        <span className="text-slate-500 ml-4">Total Geral do Almoxarifado: {formatMoney(totalInventoryValue)}</span>
+                      </td>
                       <td className="px-8 py-4 text-right text-emerald-400 text-sm font-black">
-                         {formatMoney(filteredItems.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0))}
+                         {formatMoney(filteredSubTotal)}
                       </td>
                       <td></td>
-                   </tr>
-                </tfoot>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
@@ -329,7 +364,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
 
       {showAddForm && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-          <form onSubmit={handleAddItem} className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
+          <form onSubmit={handleAddItem} className="bg-white rounded-[40px] w-full max-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
             <div className="flex justify-between items-center border-b pb-6">
               <h3 className="text-sm font-black uppercase text-slate-900 tracking-tight">Novo Material</h3>
               <button type="button" onClick={() => setShowAddForm(false)} className="text-slate-300 hover:text-slate-900"><X/></button>

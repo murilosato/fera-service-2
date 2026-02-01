@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -18,6 +18,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   const [viewStatus, setViewStatus] = useState<'executing' | 'finished'>('executing');
   const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; areaId: string; serviceId?: string } | null>(null);
   const [confirmFinish, setConfirmFinish] = useState<{ isOpen: boolean; area: Area; date: string } | null>(null);
+
+  // Estados para Filtros
+  const [searchName, setSearchName] = useState('');
+  const [filterDateStart, setFilterDateStart] = useState('');
+  const [filterDateEnd, setFilterDateEnd] = useState('');
 
   const [newArea, setNewArea] = useState<Partial<Area>>({
     name: '',
@@ -104,7 +109,24 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     } catch (e: any) { alert("Falha ao excluir registro."); } finally { setIsLoading(false); }
   };
 
-  const filteredAreas = state.areas.filter(area => area.status === viewStatus);
+  // Lógica de Filtragem Avançada
+  const filteredAreas = useMemo(() => {
+    return state.areas.filter(area => {
+      const matchStatus = area.status === viewStatus;
+      const matchName = area.name.toLowerCase().includes(searchName.toLowerCase());
+      
+      let matchDate = true;
+      if (filterDateStart) {
+        matchDate = matchDate && (area.startDate >= filterDateStart);
+      }
+      if (filterDateEnd) {
+        matchDate = matchDate && (area.startDate <= filterDateEnd);
+      }
+
+      return matchStatus && matchName && matchDate;
+    });
+  }, [state.areas, viewStatus, searchName, filterDateStart, filterDateEnd]);
+
   const formatDate = (d?: string) => d ? d.split('-').reverse().join('/') : '--/--/----';
 
   return (
@@ -119,9 +141,42 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
             <button onClick={() => setViewStatus('executing')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'executing' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Em Execução</button>
             <button onClick={() => setViewStatus('finished')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'finished' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Finalizadas</button>
           </div>
-          <button onClick={() => setIsAddingArea(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-xl"><Plus size={18} /> Nova O.S.</button>
+          <button onClick={() => setIsAddingArea(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-xl hover:bg-emerald-600 transition-all"><Plus size={18} /> Nova O.S.</button>
         </div>
       </header>
+
+      {/* Barra de Filtros */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+          <input 
+            className="w-full bg-slate-50 border border-slate-100 pl-12 pr-4 py-3 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900 transition-all" 
+            placeholder="BUSCAR O.S. POR NOME OU EQUIPE..." 
+            value={searchName}
+            onChange={e => setSearchName(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+             <Calendar size={14} className="text-slate-400" />
+             <label className="text-[8px] font-black text-slate-400 uppercase">DE:</label>
+             <input type="date" className="bg-transparent text-[10px] font-black outline-none" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} />
+          </div>
+          <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+             <label className="text-[8px] font-black text-slate-400 uppercase">ATÉ:</label>
+             <input type="date" className="bg-transparent text-[10px] font-black outline-none" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} />
+          </div>
+          {(searchName || filterDateStart || filterDateEnd) && (
+            <button 
+              onClick={() => { setSearchName(''); setFilterDateStart(''); setFilterDateEnd(''); }}
+              className="p-3 text-rose-500 hover:bg-rose-50 rounded-2xl transition-all"
+              title="Limpar Filtros"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      </div>
 
       {isAddingArea && (
         <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-2xl animate-in slide-in-from-top-4">
@@ -156,7 +211,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       <div className="space-y-4">
         {filteredAreas.length === 0 ? (
           <div className="bg-white p-20 rounded-[32px] border-2 border-dashed border-slate-200 text-center text-slate-300 font-black uppercase text-xs italic">
-            Nenhuma O.S. encontrada neste status
+            { (searchName || filterDateStart || filterDateEnd) ? 'Nenhum resultado para os filtros aplicados' : 'Nenhuma O.S. encontrada neste status' }
           </div>
         ) : (
           filteredAreas.map(area => (
@@ -169,7 +224,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                     <div>
                       <h3 className="text-sm font-black text-slate-900 uppercase">{area.name}</h3>
                       <p className="text-[10px] text-slate-500 font-bold uppercase flex items-center gap-2">
-                         {area.startReference} <ArrowRight size={10} className="text-slate-300" /> {area.endReference}
+                         <Calendar size={10} className="text-slate-400" /> {formatDate(area.startDate)} | {area.startReference} <ArrowRight size={10} className="text-slate-300" /> {area.endReference}
                       </p>
                     </div>
                  </div>
@@ -217,7 +272,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <div className="space-y-3">
                           <div className="flex justify-between items-center border-b border-white/10 pb-2">
                              <span className="text-[9px] font-black opacity-60">TOTAL PRODUZIDO</span>
-                             <p className="text-lg font-black text-emerald-400">{(area.services || []).reduce((acc, s) => acc + s.areaM2, 0).toLocaleString('pt-BR')} m²</p>
+                             <p className="text-lg font-black text-emerald-400">{(area.services || []).reduce((acc, s) => acc + s.areaM2, 0).toLocaleString('pt-BR')} {area.services?.[0]?.type.includes('KM') ? 'KM' : 'm²'}</p>
                           </div>
                           <div className="flex justify-between items-center">
                              <span className="text-[9px] font-black opacity-60">VALOR ESTIMADO</span>
