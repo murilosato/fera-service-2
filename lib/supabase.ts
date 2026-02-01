@@ -14,12 +14,9 @@ const camelToSnake = (obj: any) => {
   if (!obj || typeof obj !== 'object') return obj;
   const n: any = {};
   Object.keys(obj).forEach(k => {
-    // Caso especial para companyId -> company_id
-    if (k === 'companyId') {
-      n['company_id'] = obj[k];
-    } else if (k === 'itemId') {
-      n['item_id'] = obj[k];
-    } else {
+    if (k === 'companyId') n['company_id'] = obj[k];
+    else if (k === 'itemId') n['item_id'] = obj[k];
+    else {
       const newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
       n[newKey] = obj[k];
     }
@@ -37,30 +34,29 @@ export const fetchUserProfile = async (userId: string) => {
   }
 };
 
-export const fetchCompleteCompanyData = async (companyId: string) => {
-  if (!isValidUUID(companyId)) return null;
-
+export const fetchCompleteCompanyData = async (companyId: string | null, isMaster: boolean = false) => {
   const safeQuery = async (table: string, query: any) => {
     try {
       const { data, error } = await query;
-      if (error) {
-        console.warn(`Erro na tabela ${table}:`, error.message);
-        return [];
-      }
+      if (error) return [];
       return data || [];
     } catch (e) {
       return [];
     }
   };
 
-  const [areas, emps, inv, exits, flow, att, goals] = await Promise.all([
-    safeQuery('areas', supabase.from('areas').select('*, services(*)').eq('company_id', companyId).order('created_at', { ascending: false })),
-    safeQuery('employees', supabase.from('employees').select('*').eq('company_id', companyId).order('name')),
-    safeQuery('inventory', supabase.from('inventory').select('*').eq('company_id', companyId).order('name')),
-    safeQuery('inventory_exits', supabase.from('inventory_exits').select('*').eq('company_id', companyId).order('date', { ascending: false })),
-    safeQuery('cash_flow', supabase.from('cash_flow').select('*').eq('company_id', companyId).order('date', { ascending: false })),
-    safeQuery('attendance_records', supabase.from('attendance_records').select('*').eq('company_id', companyId)),
-    safeQuery('monthly_goals', supabase.from('monthly_goals').select('*').eq('company_id', companyId))
+  // Se for master e não tiver ID de empresa, busca tudo (ou você pode limitar a uma empresa selecionada)
+  const baseFilter = (q: any) => (!isMaster && companyId) ? q.eq('company_id', companyId) : q;
+
+  const [areas, emps, inv, exits, flow, att, goals, companyInfo] = await Promise.all([
+    safeQuery('areas', baseFilter(supabase.from('areas').select('*, services(*)').order('created_at', { ascending: false }))),
+    safeQuery('employees', baseFilter(supabase.from('employees').select('*').order('name'))),
+    safeQuery('inventory', baseFilter(supabase.from('inventory').select('*').order('name'))),
+    safeQuery('inventory_exits', baseFilter(supabase.from('inventory_exits').select('*').order('date', { ascending: false }))),
+    safeQuery('cash_flow', baseFilter(supabase.from('cash_flow').select('*').order('date', { ascending: false }))),
+    safeQuery('attendance_records', baseFilter(supabase.from('attendance_records').select('*'))),
+    safeQuery('monthly_goals', baseFilter(supabase.from('monthly_goals').select('*'))),
+    companyId ? supabase.from('companies').select('*').eq('id', companyId).maybeSingle() : Promise.resolve({ data: null })
   ]);
 
   const goalsMap: Record<string, any> = {};
@@ -77,9 +73,9 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
     areas: areas.map((a: any) => ({
       id: a.id, companyId: a.company_id, name: a.name, startDate: a.start_date, endDate: a.end_date,
       startReference: a.start_reference, endReference: a.end_reference, observations: a.observations,
+      status: a.status || 'executing',
       services: (a.services || []).map((s: any) => ({
         id: s.id, companyId: s.company_id, areaId: s.area_id, type: s.type,
-        // Fix: Alterado serviceDate para service_date conforme interface Service
         areaM2: Number(s.area_m2), unitValue: Number(s.unit_value), totalValue: Number(s.total_value), service_date: s.service_date
       }))
     })),
@@ -100,18 +96,17 @@ export const fetchCompleteCompanyData = async (companyId: string) => {
     attendanceRecords: att.map((r: any) => ({
       id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status
     })),
-    monthlyGoals: goalsMap
+    monthlyGoals: goalsMap,
+    financeCategories: companyInfo.data?.finance_categories || ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
+    inventoryCategories: companyInfo.data?.inventory_categories || ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
+    employeeRoles: companyInfo.data?.employee_roles || ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado']
   };
 };
 
 export const dbSave = async (table: string, data: any) => {
   const payload = camelToSnake(data);
-  console.log(`Payload Enviado para ${table}:`, payload);
   const { data: saved, error } = await supabase.from(table).upsert(payload).select();
-  if (error) {
-    console.error(`Erro ao salvar na tabela ${table}:`, error.message, error);
-    throw error;
-  }
+  if (error) throw error;
   return saved;
 };
 

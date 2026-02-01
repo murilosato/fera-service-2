@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AppState } from '../types';
-import { Target, Map, DollarSign, Package, Wallet, Loader2 } from 'lucide-react';
+import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface SettingsProps {
@@ -12,6 +12,7 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [newEntries, setNewEntries] = useState({ finance: '', inventory: '', roles: '' });
   
   const [goalForm, setGoalForm] = useState({
     month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
@@ -20,121 +21,123 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   });
 
   const refreshData = async () => {
-    if (state.currentUser?.companyId) {
-      const data = await fetchCompleteCompanyData(state.currentUser.companyId);
+    if (state.currentUser?.companyId || state.currentUser?.role === 'DIRETORIA_MASTER') {
+      const data = await fetchCompleteCompanyData(state.currentUser?.companyId || null, state.currentUser?.role === 'DIRETORIA_MASTER');
       if (data) setState(prev => ({ ...prev, ...data }));
     }
   };
 
-  const handleSaveMonthlyGoal = async () => {
-    const val = parseFloat(goalForm.value);
-    if (!goalForm.month || isNaN(val)) return notify("Valor inválido", "error");
-
+  const handleUpdateList = async (listKey: 'finance' | 'inventory' | 'roles', action: 'add' | 'remove', value: string) => {
+    if (action === 'add' && !value.trim()) return;
     setIsLoading(true);
     try {
-      // Buscar se já existe meta para este mês para não zerar os outros campos
-      const existing = state.monthlyGoals[goalForm.month] || { production: 0, revenue: 0, inventory: 0, finance: 0 };
+      let updatedList: string[] = [];
+      let dbColumn = '';
       
-      const payload: any = {
-        companyId: state.currentUser?.companyId,
-        monthKey: goalForm.month,
-        // Atualiza apenas o campo selecionado, mantém os outros
-        productionGoal: goalForm.type === 'production' ? val : (existing.production || 0),
-        revenueGoal: goalForm.type === 'revenue' ? val : (existing.revenue || 0),
-        inventoryGoal: goalForm.type === 'inventory' ? val : (existing.inventory || 0),
-        balanceGoal: goalForm.type === 'finance' ? val : (existing.finance || 0)
-      };
+      if (listKey === 'finance') {
+        dbColumn = 'financeCategories';
+        updatedList = action === 'add' ? [...state.financeCategories, value.trim()] : state.financeCategories.filter(i => i !== value);
+      } else if (listKey === 'inventory') {
+        dbColumn = 'inventoryCategories';
+        updatedList = action === 'add' ? [...state.inventoryCategories, value.trim()] : state.inventoryCategories.filter(i => i !== value);
+      } else {
+        dbColumn = 'employeeRoles';
+        updatedList = action === 'add' ? [...state.employeeRoles, value.trim()] : state.employeeRoles.filter(i => i !== value);
+      }
 
-      console.log("Salvando Meta:", payload);
-      await dbSave('monthly_goals', payload);
+      await dbSave('companies', {
+        id: state.currentUser?.companyId,
+        [dbColumn]: updatedList
+      });
+
       await refreshData();
-      
-      setGoalForm({ ...goalForm, value: '' });
-      notify(`Meta de ${goalForm.type.toUpperCase()} definida!`);
-    } catch (e: any) {
-      console.error(e);
-      notify("Erro ao sincronizar meta", "error");
-    } finally {
-      setIsLoading(false);
-    }
+      setNewEntries({ ...newEntries, [listKey]: '' });
+      notify("Lista Cloud Atualizada");
+    } catch (e: any) { 
+      notify("Erro ao salvar cadastro", "error"); 
+    } finally { setIsLoading(false); }
   };
 
-  const sortedMonthKeys = Object.keys(state.monthlyGoals).sort().reverse();
+  const handleSaveGoal = async () => {
+    const val = parseFloat(goalForm.value);
+    if (!goalForm.month || isNaN(val)) return notify("Valor inválido", "error");
+    setIsLoading(true);
+    try {
+      const existing = state.monthlyGoals[goalForm.month] || { production: 0, revenue: 0, inventory: 0, finance: 0 };
+      await dbSave('monthly_goals', {
+        companyId: state.currentUser?.companyId,
+        monthKey: goalForm.month,
+        productionGoal: goalForm.type === 'production' ? val : existing.production,
+        revenueGoal: goalForm.type === 'revenue' ? val : existing.revenue,
+        inventoryGoal: goalForm.type === 'inventory' ? val : existing.inventory,
+        balanceGoal: goalForm.type === 'finance' ? val : existing.finance
+      });
+      await refreshData();
+      notify("Meta definida");
+    } catch (e: any) { notify("Erro ao salvar meta", "error"); } finally { setIsLoading(false); }
+  };
 
   return (
     <div className="space-y-6 pb-24">
-      <header><h2 className="text-xl font-black text-slate-900 uppercase">Configurações Operacionais</h2><p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Metas e Planejamento Cloud</p></header>
+      <header><h2 className="text-xl font-black text-slate-900 uppercase">Configurações Operacionais</h2><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestão de Tabelas e Cadastros Base</p></header>
 
-      <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
-           <div className="flex items-center gap-3 text-emerald-600"><Target size={20} /><h3 className="text-[10px] font-black uppercase tracking-widest">Painel de Planejamento Estratégico</h3></div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white border p-6 rounded-[32px] space-y-4 shadow-sm">
+          <h4 className="text-[10px] font-black uppercase text-emerald-600 flex gap-2"><Tag size={14}/> Finanças</h4>
+          <div className="flex gap-2">
+            <input className="flex-1 bg-slate-50 border p-3 rounded-xl text-[10px] font-black uppercase" placeholder="Nova Categoria..." value={newEntries.finance} onChange={e => setNewEntries({...newEntries, finance: e.target.value})} />
+            <button onClick={() => handleUpdateList('finance', 'add', newEntries.finance)} className="bg-slate-900 text-white p-3 rounded-xl hover:bg-emerald-600 transition-all"><Plus size={16}/></button>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pt-2">
+            {state.financeCategories.map(c => (
+              <div key={c} className="bg-slate-100 px-3 py-1.5 rounded-lg text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">{c} <button onClick={() => handleUpdateList('finance', 'remove', c)} className="text-rose-400 hover:text-rose-600"><Trash2 size={12}/></button></div>
+            ))}
+          </div>
         </div>
-        
-        <div className="p-8">
-           <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-8">
-              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 ml-1">Mês de Referência</label>
-                <input type="month" className="w-full bg-white border p-4 rounded-2xl text-xs font-black outline-none focus:border-slate-900" value={goalForm.month} onChange={e => setGoalForm({...goalForm, month: e.target.value})} />
-              </div>
-              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 ml-1">Tipo da Meta</label>
-                <select className="w-full bg-white border p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-slate-900" value={goalForm.type} onChange={e => setGoalForm({...goalForm, type: e.target.value as any})}>
-                   <option value="production">PRODUÇÃO (M²)</option>
-                   <option value="revenue">FATURAMENTO (R$)</option>
-                   <option value="inventory">LIMITE ESTOQUE (UN)</option>
-                   <option value="finance">SALDO CAIXA (R$)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 ml-1">Valor Alvo</label>
-                <input type="number" className="w-full bg-white border p-4 rounded-2xl text-xs font-black outline-none focus:border-slate-900" placeholder="0.00" value={goalForm.value} onChange={e => setGoalForm({...goalForm, value: e.target.value})} />
-              </div>
-              <button disabled={isLoading} onClick={handleSaveMonthlyGoal} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 active:scale-95">
-                 {isLoading ? <Loader2 size={16} className="animate-spin"/> : 'DEFINIR META NO CLOUD'}
-              </button>
-           </div>
 
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {sortedMonthKeys.length === 0 ? (
-                <div className="col-span-2 text-center p-10 opacity-20"><Target size={30} className="mx-auto mb-2" /><p className="text-[9px] font-black uppercase">Nenhuma meta configurada</p></div>
-              ) : (
-                sortedMonthKeys.map(key => (
-                  <div key={key} className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm hover:border-emerald-500 transition-all group">
-                     <div className="flex items-center gap-4 mb-4 pb-4 border-b">
-                        <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xs shadow-lg group-hover:scale-110 transition-transform">
-                          {key.split('-')[1]}/{key.split('-')[0].slice(2)}
-                        </div>
-                        <div>
-                          <h4 className="text-[10px] font-black uppercase text-slate-900">Mês de Competência</h4>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{key}</p>
-                        </div>
-                     </div>
-                     <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-blue-600 font-black text-[8px] uppercase tracking-tighter"><Map size={10}/> Produção</div>
-                          <p className="text-sm font-black text-slate-800">{state.monthlyGoals[key].production?.toLocaleString() || 0} m²</p>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-emerald-600 font-black text-[8px] uppercase tracking-tighter"><DollarSign size={10}/> Receita</div>
-                          <p className="text-sm font-black text-slate-800">R$ {state.monthlyGoals[key].revenue?.toLocaleString() || 0}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-rose-600 font-black text-[8px] uppercase tracking-tighter"><Package size={10}/> Estoque</div>
-                          <p className="text-sm font-black text-slate-800">{state.monthlyGoals[key].inventory?.toLocaleString() || 0} un</p>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-slate-900 font-black text-[8px] uppercase tracking-tighter"><Wallet size={10}/> Saldo</div>
-                          <p className="text-sm font-black text-slate-800">R$ {state.monthlyGoals[key].finance?.toLocaleString() || 0}</p>
-                        </div>
-                     </div>
-                  </div>
-                ))
-              )}
-           </div>
+        <div className="bg-white border p-6 rounded-[32px] space-y-4 shadow-sm">
+          <h4 className="text-[10px] font-black uppercase text-blue-600 flex gap-2"><Package size={14}/> Almoxarifado</h4>
+          <div className="flex gap-2">
+            <input className="flex-1 bg-slate-50 border p-3 rounded-xl text-[10px] font-black uppercase" placeholder="Nova Categoria..." value={newEntries.inventory} onChange={e => setNewEntries({...newEntries, inventory: e.target.value})} />
+            <button onClick={() => handleUpdateList('inventory', 'add', newEntries.inventory)} className="bg-slate-900 text-white p-3 rounded-xl hover:bg-blue-600 transition-all"><Plus size={16}/></button>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pt-2">
+            {state.inventoryCategories.map(c => (
+              <div key={c} className="bg-slate-100 px-3 py-1.5 rounded-lg text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">{c} <button onClick={() => handleUpdateList('inventory', 'remove', c)} className="text-rose-400 hover:text-rose-600"><Trash2 size={12}/></button></div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white border p-6 rounded-[32px] space-y-4 shadow-sm">
+          <h4 className="text-[10px] font-black uppercase text-indigo-600 flex gap-2"><Users size={14}/> Cargos / Equipe</h4>
+          <div className="flex gap-2">
+            <input className="flex-1 bg-slate-50 border p-3 rounded-xl text-[10px] font-black uppercase" placeholder="Novo Cargo..." value={newEntries.roles} onChange={e => setNewEntries({...newEntries, roles: e.target.value})} />
+            <button onClick={() => handleUpdateList('roles', 'add', newEntries.roles)} className="bg-slate-900 text-white p-3 rounded-xl hover:bg-indigo-600 transition-all"><Plus size={16}/></button>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-auto pt-2">
+            {state.employeeRoles.map(r => (
+              <div key={r} className="bg-slate-100 px-3 py-1.5 rounded-lg text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">{r} <button onClick={() => handleUpdateList('roles', 'remove', r)} className="text-rose-400 hover:text-rose-600"><Trash2 size={12}/></button></div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white border rounded-[32px] p-8 shadow-sm space-y-6">
+        <h3 className="font-black text-xs uppercase flex items-center gap-2"><Target size={18}/> Painel de Planejamento de Metas</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-slate-50 p-6 rounded-3xl border">
+          <input type="month" className="w-full bg-white border p-4 rounded-2xl text-xs font-black outline-none" value={goalForm.month} onChange={e => setGoalForm({...goalForm, month: e.target.value})} />
+          <select className="w-full bg-white border p-4 rounded-2xl text-[10px] font-black outline-none" value={goalForm.type} onChange={e => setGoalForm({...goalForm, type: e.target.value as any})}>
+            <option value="production">PRODUÇÃO (M²)</option>
+            <option value="revenue">FATURAMENTO (R$)</option>
+            <option value="finance">SALDO CAIXA (R$)</option>
+          </select>
+          <input type="number" className="w-full bg-white border p-4 rounded-2xl text-xs font-black outline-none" placeholder="Valor Alvo" value={goalForm.value} onChange={e => setGoalForm({...goalForm, value: e.target.value})} />
+          <button onClick={handleSaveGoal} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">
+             {isLoading ? <Loader2 className="animate-spin mx-auto"/> : 'DEFINIR META'}
+          </button>
         </div>
       </div>
     </div>
   );
 };
-
 export default Settings;

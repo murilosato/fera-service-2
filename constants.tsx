@@ -40,6 +40,9 @@ export const INITIAL_STATE: AppState = {
     [ServiceType.PINTURA_MEIO_FIO]: 5000,
   },
   financeCategories: ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
+  // Fix: Adicionado propriedades faltantes exigidas pela interface AppState
+  inventoryCategories: ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
+  employeeRoles: ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado'],
   currentUser: null,
   users: [
     {

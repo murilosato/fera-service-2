@@ -35,7 +35,7 @@ export interface User {
   name: string;
   role: UserRole;
   avatarUrl?: string;
-  companyId: string;
+  companyId: string | null;
   status: 'ativo' | 'suspenso';
   permissions: UserPermissions;
   company?: Company;
@@ -50,6 +50,7 @@ export interface Area {
   startReference: string;
   endReference: string;
   observations: string;
+  status: 'executing' | 'finished';
   services: Service[];
 }
 
@@ -147,6 +148,8 @@ export interface AppState {
   serviceRates: Record<ServiceType, number>;
   serviceGoals: Record<ServiceType, number>;
   financeCategories: string[];
+  inventoryCategories: string[];
+  employeeRoles: string[];
   currentUser: User | null;
   users: User[];
   isSyncing?: boolean;
