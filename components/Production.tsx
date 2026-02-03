@@ -102,11 +102,19 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     if (!confirmDelete) return;
     setIsLoading(true);
     try {
-      if (confirmDelete.serviceId) await dbDelete('services', confirmDelete.serviceId);
-      else await dbDelete('areas', confirmDelete.areaId);
+      if (confirmDelete.serviceId) {
+        await dbDelete('services', confirmDelete.serviceId);
+      } else {
+        // Excluir a área (O.S.) completa
+        await dbDelete('areas', confirmDelete.areaId);
+      }
       await refreshData();
       setConfirmDelete(null);
-    } catch (e: any) { alert("Falha ao excluir registro."); } finally { setIsLoading(false); }
+    } catch (e: any) { 
+      alert("Falha ao excluir registro."); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   // Lógica de Filtragem Avançada
@@ -230,10 +238,23 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                  </div>
                  <div className="flex gap-2">
                     {area.status === 'finished' && (
-                      <div className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase flex items-center gap-2">
+                      <div className="hidden sm:flex px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase items-center gap-2">
                         <Archive size={12}/> Faturado
                       </div>
                     )}
+                    
+                    {/* Botão de Excluir O.S. Completa */}
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setConfirmDelete({ isOpen: true, areaId: area.id }); 
+                      }} 
+                      className="p-4 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all"
+                      title="Excluir O.S. Completa"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+
                     <div className={`p-4 rounded-2xl transition-colors ${expandedAreaId === area.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400'}`}>
                       {expandedAreaId === area.id ? <ChevronUp/> : <ChevronDown/>}
                     </div>
@@ -257,7 +278,14 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         </button>
                         
                         {area.status === 'executing' ? (
-                          <button onClick={(e) => { e.stopPropagation(); setConfirmFinish({ isOpen: true, area, date: new Date().toISOString().split('T')[0] }); }} className="w-full border-2 border-emerald-500 text-emerald-600 py-3 rounded-xl font-black text-[9px] uppercase hover:bg-emerald-50 transition-all">
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              // Permite finalizar no mesmo dia preenchendo com a data de hoje por padrão
+                              setConfirmFinish({ isOpen: true, area, date: new Date().toISOString().split('T')[0] }); 
+                            }} 
+                            className="w-full border-2 border-emerald-500 text-emerald-600 py-3 rounded-xl font-black text-[9px] uppercase hover:bg-emerald-50 transition-all"
+                          >
                             Finalizar para Faturamento
                           </button>
                         ) : (
@@ -329,8 +357,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         isOpen={!!confirmDelete?.isOpen} 
         onClose={() => setConfirmDelete(null)} 
         onConfirm={performDelete} 
-        title="Excluir Registro" 
-        message="Deseja remover permanentemente este registro de produção?" 
+        title={confirmDelete?.serviceId ? "Excluir Registro" : "Excluir O.S. Completa"} 
+        message={confirmDelete?.serviceId ? "Deseja remover este registro de produção?" : "ATENÇÃO: Isso excluirá a O.S. inteira e TODOS os seus lançamentos de produção. Esta ação não pode ser desfeita."} 
       />
       
       {confirmFinish && (
