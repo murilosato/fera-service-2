@@ -14,7 +14,7 @@ import Login from './components/Login';
 import Analytics from './components/Analytics';
 import Management from './components/Management';
 import ConfirmationModal from './components/ConfirmationModal';
-import { RefreshCw, LogOut, AlertCircle, X, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, LogOut, AlertCircle, X, CheckCircle2, UserPlus } from 'lucide-react';
 
 const App = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -31,21 +31,21 @@ const App = () => {
 
   const syncData = useCallback(async (userId: string, retryCount = 0) => {
     try {
+      console.log(`Sincronizando: ${userId} (Tentativa ${retryCount})`);
       const profile = await fetchUserProfile(userId);
       
       if (!profile) {
-        if (retryCount < 3) {
-          console.log(`Tentativa ${retryCount + 1}: Perfil não encontrado, tentando novamente...`);
-          setTimeout(() => syncData(userId, retryCount + 1), 2000);
+        if (retryCount < 2) { 
+          setTimeout(() => syncData(userId, retryCount + 1), 1500);
           return;
         }
-        setInitError("Seu perfil ainda não foi configurado. Entre em contato com o suporte.");
+        setInitError("PERFIL OPERACIONAL NÃO ENCONTRADO. Se você deletou sua conta, clique em 'SAIR E RECOMEÇAR' para criar uma nova credencial Master.");
         setIsInitializing(false);
         return;
       }
 
       if (!profile.company_id) {
-        setInitError("Usuário sem unidade associada. Verifique com seu gestor.");
+        setInitError("USUÁRIO SEM UNIDADE. Sua conta existe mas não está vinculada a nenhuma empresa operativa.");
         setIsInitializing(false);
         return;
       }
@@ -69,29 +69,33 @@ const App = () => {
       setInitError(null);
       setIsInitializing(false);
     } catch (e: any) {
-      console.error("Erro na sincronização:", e);
-      setInitError("Falha ao conectar com o servidor central.");
+      console.error("Erro crítico na sincronização:", e);
+      setInitError("FALHA DE COMUNICAÇÃO. Verifique sua conexão ou tente novamente em instantes.");
       setIsInitializing(false);
     }
   }, []);
 
   useEffect(() => {
-    // Carregamento inicial da sessão
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await syncData(session.user.id);
-      } else {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await syncData(session.user.id);
+        } else {
+          setIsInitializing(false);
+        }
+      } catch (e) {
+        setInitError("ERRO DE AUTENTICAÇÃO.");
         setIsInitializing(false);
       }
     };
 
     initAuth();
 
-    // Listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setIsInitializing(true);
+        setInitError(null);
         syncData(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setState({ ...INITIAL_STATE, currentUser: null });
@@ -106,27 +110,39 @@ const App = () => {
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-center p-6">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-xl shadow-emerald-500/20" />
-        <h2 className="mt-8 font-black text-white uppercase tracking-[0.3em] text-[10px]">Fera Service Cloud</h2>
-        <p className="mt-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">Sincronizando Dados Operacionais...</p>
-        
-        {initError && (
-          <div className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl max-w-sm animate-in zoom-in-95">
-             <div className="flex items-center gap-3 text-rose-500 mb-4">
-                <AlertCircle size={18} />
-                <p className="text-[10px] font-black uppercase tracking-widest">Status da Conexão</p>
-             </div>
-             <p className="text-[11px] text-slate-400 font-medium mb-6">{initError}</p>
-             <div className="flex flex-col gap-2">
-                <button onClick={() => window.location.reload()} className="w-full bg-slate-800 text-white py-3 rounded-xl font-black text-[10px] uppercase hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
-                    <RefreshCw size={14} /> Recarregar Sistema
-                </button>
-                <button onClick={async () => await signOut()} className="w-full bg-transparent text-slate-500 py-3 rounded-xl font-black text-[10px] uppercase hover:text-white transition-all flex items-center justify-center gap-2">
-                    <LogOut size={14} /> Sair da Conta
-                </button>
-             </div>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-slate-800 border-t-emerald-500 rounded-full animate-spin shadow-[0_0_20px_rgba(16,185,129,0.2)]" />
+          <div className="absolute inset-0 flex items-center justify-center">
+             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
           </div>
-        )}
+        </div>
+        <div className="mt-8 space-y-2">
+          <h2 className="font-black text-white uppercase tracking-[0.4em] text-[11px] opacity-90">Fera Service Cloud</h2>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">Sincronizando Banco de Dados...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (initError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] p-6">
+        <div className="bg-slate-900 border border-white/10 p-10 rounded-[40px] max-w-sm w-full animate-in zoom-in-95 backdrop-blur-xl text-center shadow-2xl">
+           <div className="w-16 h-16 bg-rose-500/10 rounded-[24px] flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={32} className="text-rose-500" />
+           </div>
+           <h2 className="font-black text-white uppercase tracking-widest text-[11px] mb-4">Acesso Bloqueado</h2>
+           <p className="text-[11px] text-slate-400 font-bold leading-relaxed mb-10 uppercase tracking-tight">{initError}</p>
+           
+           <div className="space-y-3">
+              <button onClick={() => window.location.reload()} className="w-full bg-white text-slate-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2">
+                  <RefreshCw size={16} /> Tentar Reconectar
+              </button>
+              <button onClick={async () => await signOut()} className="w-full bg-rose-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20">
+                  <LogOut size={16} /> Sair e Recomeçar
+              </button>
+           </div>
+        </div>
       </div>
     );
   }

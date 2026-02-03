@@ -6,7 +6,11 @@ const SUPABASE_URL = 'https://zbntnglatvuijefqfjhx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_KiZXFlucpA_RSEuYyot5GA_eQdaTKC2';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true }
+  auth: { 
+    persistSession: true, 
+    autoRefreshToken: true,
+    detectSessionInUrl: true 
+  }
 });
 
 const camelToSnake = (obj: any) => {
@@ -55,8 +59,16 @@ const camelToSnake = (obj: any) => {
 
 export const fetchUserProfile = async (userId: string) => {
   try {
-    const { data, error } = await supabase.from('profiles').select('*, companies(*)').eq('id', userId).maybeSingle();
-    if (error) return null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*, companies(*)')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (error) {
+      console.error("Erro fetchUserProfile:", error);
+      return null;
+    }
     return data;
   } catch (e) {
     return null;
@@ -64,6 +76,8 @@ export const fetchUserProfile = async (userId: string) => {
 };
 
 export const fetchCompleteCompanyData = async (companyId: string | null, isMaster: boolean = false) => {
+  if (!companyId && !isMaster) return null;
+
   const safeQuery = async (table: string, query: any) => {
     try {
       const { data, error } = await query;
@@ -161,7 +175,6 @@ export const dbSave = async (table: string, data: any) => {
     const { id, ...updateData } = payload;
     query = supabase.from(table).update(updateData).eq('id', id);
   } else {
-    // Para tabelas como monthly_goals que tem restrição UNIQUE por company_id + month_key
     if (table === 'monthly_goals') {
        query = supabase.from(table).upsert(payload, { onConflict: 'company_id, month_key' });
     } else {
@@ -171,7 +184,6 @@ export const dbSave = async (table: string, data: any) => {
   
   const { data: saved, error } = await query.select();
   if (error) {
-    console.error(`Erro ao salvar na tabela ${table}:`, error);
     throw error;
   }
   return saved;
@@ -183,5 +195,14 @@ export const dbDelete = async (table: string, id: string) => {
 };
 
 export const signOut = async () => {
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.error("SignOut error:", e);
+  } finally {
+    // Limpeza bruta de segurança para evitar sessões órfãs
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/';
+  }
 };
