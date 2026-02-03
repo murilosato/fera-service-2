@@ -31,6 +31,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+    
     setIsLoading(true);
     setError('');
 
@@ -41,12 +43,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       });
 
       if (authError) {
+        setIsLoading(false);
         throw new Error(authError.message === 'Invalid login credentials' 
           ? 'E-mail ou senha incorretos.' 
           : authError.message);
       }
+      
+      // Nota: Não setamos isLoading(false) aqui pois o App.tsx 
+      // detectará a mudança de sessão e remontará o componente.
+      // Adicionamos um timeout de segurança para destravar o botão se nada acontecer.
+      setTimeout(() => setIsLoading(false), 8000);
 
-      // O App.tsx cuidará do carregamento do perfil via onAuthStateChange
     } catch (err: any) {
       setError(err.message || 'Falha na autenticação.');
       setIsLoading(false);
@@ -75,7 +82,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="bg-white border border-slate-200 rounded shadow-2xl overflow-hidden">
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
             {error && (
-              <div className="bg-rose-50 text-rose-600 p-3 rounded text-[10px] font-black uppercase tracking-wider text-center border border-rose-100">
+              <div className="bg-rose-50 text-rose-600 p-3 rounded text-[10px] font-black uppercase tracking-wider text-center border border-rose-100 animate-pulse">
                 {error}
               </div>
             )}
@@ -87,6 +94,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <input 
                   type="email" 
                   required
+                  autoComplete="email"
                   className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 rounded text-[13px] font-bold outline-none focus:border-emerald-600 transition-all placeholder:text-slate-300"
                   placeholder="usuario@feraservice.com"
                   value={email}
@@ -102,6 +110,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <input 
                   type={showPassword ? 'text' : 'password'} 
                   required
+                  autoComplete="current-password"
                   className="w-full bg-slate-50 border border-slate-200 pl-11 pr-12 py-3.5 rounded text-[13px] font-bold outline-none focus:border-emerald-600 transition-all"
                   placeholder="••••••••"
                   value={password}
@@ -114,10 +123,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
 
             <button 
+              type="submit"
               disabled={isLoading}
               className="w-full bg-slate-900 hover:bg-emerald-600 disabled:opacity-50 text-white py-4 rounded font-black uppercase text-[10px] tracking-[0.2em] shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95"
             >
-              {isLoading ? <Loader2 className="animate-spin" size={18} /> : (
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={18} />
+                  <span>AUTENTICANDO...</span>
+                </div>
+              ) : (
                 <>
                   AUTENTICAR ACESSO
                   <ArrowRight size={16} />
@@ -133,7 +148,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
       </div>
 
-      {/* Modal de Instruções simplificado */}
       {showInstallModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
           <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl overflow-hidden p-8 space-y-6">

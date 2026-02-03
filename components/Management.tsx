@@ -65,39 +65,38 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email || !form.name) return notify("Dados obrigatórios faltando", "error");
-    if (!editingId && !form.password) return notify("Senha obrigatória para novos usuários", "error");
     
     setIsLoading(true);
     try {
-      let targetUserId = editingId;
-
       if (!editingId) {
-        // 1. Cria usuário no Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({ 
+        if (!form.password) return notify("Senha obrigatória para novos usuários", "error");
+        
+        // CRIAÇÃO: Passamos o companyId e o role nos metadados (data)
+        // O gatilho handle_new_user() no Postgres lerá esses dados para vincular à empresa correta
+        const { error: authError } = await supabase.auth.signUp({ 
           email: form.email.trim().toLowerCase(), 
           password: form.password,
           options: {
-            data: { full_name: form.name.toUpperCase() }
+            data: { 
+              full_name: form.name.toUpperCase(),
+              company_id: form.companyId, // Crucial para não criar empresa nova
+              role: form.role
+            }
           }
         });
         if (authError) throw authError;
-        targetUserId = authData.user?.id || null;
-      }
-
-      // 2. Cria ou Atualiza Perfil (Garante company_id correto e email)
-      if (targetUserId) {
+      } else {
+        // ATUALIZAÇÃO: Apenas dados do perfil
         await dbSave('profiles', {
-          id: targetUserId,
+          id: editingId,
           full_name: form.name.toUpperCase(),
-          email: form.email.toLowerCase().trim(),
           role: form.role,
-          companyId: form.role === UserRole.MASTER ? null : form.companyId,
+          company_id: form.companyId,
           permissions: form.permissions,
-          status: 'ativo'
         });
       }
       
-      notify(editingId ? "Perfil atualizado" : "Nova credencial criada com sucesso");
+      notify(editingId ? "Perfil atualizado" : "Acesso liberado. O e-mail foi auto-confirmado.");
       setShowForm(false);
       fetchData();
     } catch (e: any) { notify(e.message, "error"); } finally { setIsLoading(false); }
@@ -113,7 +112,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
           <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Gestão de Acessos</h2>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Hierarquia e Segurança de Dados</p>
         </div>
-        <button onClick={() => { setEditingId(null); setForm({...form, companyId: selectedCompanyId, password: ''}); setShowForm(true); }} className="bg-slate-900 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl hover:bg-blue-600 transition-all active:scale-95">
+        <button onClick={() => { setEditingId(null); setForm({...form, companyId: state.currentUser?.companyId || '', password: ''}); setShowForm(true); }} className="bg-slate-900 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl hover:bg-blue-600 transition-all active:scale-95">
            <UserPlus size={16} /> NOVO ACESSO
         </button>
       </header>
@@ -136,7 +135,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
         <div className={`bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm flex flex-col ${isMaster ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
           <div className="p-6 border-b flex items-center justify-between bg-slate-50/20">
              <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                <ShieldCheck size={18} className="text-emerald-500"/> Matriz de Permissões
+                <ShieldCheck size={18} className="text-emerald-500"/> Matriz de Usuários
              </div>
           </div>
           <div className="flex-1 overflow-auto">
@@ -154,7 +153,7 @@ const Management: React.FC<ManagementProps> = ({ state, notify }) => {
                       <td className="px-8 py-5 lowercase font-normal">{p.email || '---'}</td>
                       <td className="px-8 py-5">
                          <span className={`px-4 py-1.5 rounded-xl text-[8px] tracking-widest text-white ${p.role === UserRole.MASTER ? 'bg-slate-900' : p.role === UserRole.ADMIN ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-                           {p.role.replace('_', ' ')}
+                           {p.role?.replace('_', ' ') || 'OPERACIONAL'}
                          </span>
                       </td>
                       <td className="px-8 py-5 text-center">

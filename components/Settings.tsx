@@ -50,42 +50,37 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       let stateKey: keyof AppState;
 
       if (listKey === 'finance') {
-        dbField = 'financeCategories';
+        dbField = 'finance_categories';
         stateKey = 'financeCategories';
       } else if (listKey === 'inventory') {
-        dbField = 'inventoryCategories';
+        dbField = 'inventory_categories';
         stateKey = 'inventoryCategories';
       } else {
-        dbField = 'employeeRoles';
+        dbField = 'employee_roles';
         stateKey = 'employeeRoles';
       }
 
-      // Usamos o callback do setState para pegar a lista mais atual e evitar race conditions
-      setState(prev => {
-        const currentList = (prev[stateKey] as string[]) || [];
-        let updatedList: string[] = [];
+      const currentList = (state[stateKey] as string[]) || [];
+      let updatedList: string[] = [];
 
-        if (action === 'add') {
-          if (currentList.some(item => item.toUpperCase() === trimmedValue)) {
-            notify("Item já cadastrado", "error");
-            return prev;
-          }
-          updatedList = [...currentList, trimmedValue];
-        } else {
-          updatedList = currentList.filter(item => item.toUpperCase() !== trimmedValue);
+      if (action === 'add') {
+        if (currentList.some(item => item.toUpperCase() === trimmedValue)) {
+          setIsLoading(false);
+          return notify("Item já cadastrado", "error");
         }
+        updatedList = [...currentList, trimmedValue];
+      } else {
+        updatedList = currentList.filter(item => item.toUpperCase() !== trimmedValue);
+      }
 
-        // Salva no banco de dados
-        dbSave('companies', {
-          id: companyId,
-          [dbField]: updatedList
-        }).catch(err => {
-          console.error("Erro ao salvar no banco:", err);
-          notify("Erro ao sincronizar com servidor", "error");
-        });
-
-        return { ...prev, [stateKey]: updatedList };
+      // Salva no banco de dados usando o nome da coluna em snake_case
+      await dbSave('companies', {
+        id: companyId,
+        [dbField]: updatedList
       });
+
+      // Atualiza o estado local
+      setState(prev => ({ ...prev, [stateKey]: updatedList }));
 
       if (action === 'add') {
         setNewEntries(prev => ({ ...prev, [listKey]: '' }));
@@ -189,42 +184,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </div>
       </div>
 
-      {/* Preços */}
-      <div className="bg-white border border-slate-200 rounded-[40px] p-8 shadow-sm space-y-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-             <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><CreditCard size={24}/></div>
-             <div>
-                <h3 className="text-sm font-black uppercase text-slate-900">Tabela de Preços de Serviços</h3>
-                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Valores unitários para cálculo de O.S.</p>
-             </div>
-          </div>
-          <button onClick={handleSaveRates} disabled={isLoading} className="w-full md:w-auto bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-600 transition-all">
-             ATUALIZAR TABELA
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {SERVICE_OPTIONS.map(service => (
-            <div key={service} className="p-5 bg-slate-50 border border-slate-100 rounded-[24px] space-y-3">
-               <span className="text-[9px] font-black uppercase text-slate-500 block">{service}</span>
-               <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs">R$</span>
-                  <input type="number" step="0.01" className="w-full bg-white border border-slate-200 pl-11 p-3 rounded-xl text-xs font-black outline-none focus:border-blue-500" value={localRates[service] || 0} onChange={e => setLocalRates({...localRates, [service]: parseFloat(e.target.value) || 0})} />
-               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Listas Customizáveis */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* FINANCEIRO */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-emerald-600 flex gap-2 items-center tracking-widest"><Tag size={16}/> Categorias de Fluxo</h4>
           <div className="flex gap-2">
             <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="NOVO..." value={newEntries.finance} onChange={e => setNewEntries({...newEntries, finance: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('finance', 'add', newEntries.finance)} />
-            <button onClick={() => handleUpdateList('finance', 'add', newEntries.finance)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-emerald-600 transition-all shadow-lg active:scale-95">
+            <button onClick={() => handleUpdateList('finance', 'add', newEntries.finance)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-emerald-600 transition-all shadow-lg">
                {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Plus size={18}/>}
             </button>
           </div>
@@ -238,12 +203,11 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </div>
         </div>
 
-        {/* ALMOXARIFADO */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-blue-600 flex gap-2 items-center tracking-widest"><Package size={16}/> Categorias Estoque</h4>
           <div className="flex gap-2">
             <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="NOVA..." value={newEntries.inventory} onChange={e => setNewEntries({...newEntries, inventory: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('inventory', 'add', newEntries.inventory)} />
-            <button onClick={() => handleUpdateList('inventory', 'add', newEntries.inventory)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition-all shadow-lg active:scale-95">
+            <button onClick={() => handleUpdateList('inventory', 'add', newEntries.inventory)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition-all shadow-lg">
                {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Plus size={18}/>}
             </button>
           </div>
@@ -257,12 +221,11 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </div>
         </div>
 
-        {/* CARGOS */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-indigo-600 flex gap-2 items-center tracking-widest"><Users size={16}/> Cargos Unidade</h4>
           <div className="flex gap-2">
             <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white" placeholder="NOVO..." value={newEntries.roles} onChange={e => setNewEntries({...newEntries, roles: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('roles', 'add', newEntries.roles)} />
-            <button onClick={() => handleUpdateList('roles', 'add', newEntries.roles)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95">
+            <button onClick={() => handleUpdateList('roles', 'add', newEntries.roles)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl hover:bg-indigo-600 transition-all shadow-lg">
                {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Plus size={18}/>}
             </button>
           </div>

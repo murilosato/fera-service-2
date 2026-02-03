@@ -1,6 +1,6 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { AppState, UserRole, User } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import { AppState, UserRole } from './types';
 import { INITIAL_STATE } from './constants';
 import { supabase, fetchUserProfile, fetchCompleteCompanyData, signOut } from './lib/supabase';
 import Layout from './components/Layout';
@@ -29,17 +29,29 @@ const App = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const syncData = async (userId: string) => {
+  const syncData = useCallback(async (userId: string, retryCount = 0) => {
     try {
       const profile = await fetchUserProfile(userId);
-      if (!profile || !profile.company_id) {
-        setInitError("Aguardando configuração do perfil da empresa...");
-        // Tentativa de recuperação automática em 5 segundos
-        setTimeout(() => syncData(userId), 5000); 
+      
+      if (!profile) {
+        if (retryCount < 3) {
+          console.log(`Tentativa ${retryCount + 1}: Perfil não encontrado, tentando novamente...`);
+          setTimeout(() => syncData(userId, retryCount + 1), 2000);
+          return;
+        }
+        setInitError("Seu perfil ainda não foi configurado. Entre em contato com o suporte.");
+        setIsInitializing(false);
+        return;
+      }
+
+      if (!profile.company_id) {
+        setInitError("Usuário sem unidade associada. Verifique com seu gestor.");
+        setIsInitializing(false);
         return;
       }
 
       const companyData = await fetchCompleteCompanyData(profile.company_id);
+      
       setState(prev => ({
         ...prev,
         currentUser: {
@@ -53,37 +65,50 @@ const App = () => {
         },
         ...(companyData || {})
       }));
+      
       setInitError(null);
       setIsInitializing(false);
     } catch (e: any) {
-      setInitError("Sincronização falhou. Verifique sua conexão.");
+      console.error("Erro na sincronização:", e);
+      setInitError("Falha ao conectar com o servidor central.");
       setIsInitializing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) syncData(session.user.id);
-      else setIsInitializing(false);
-    });
+    // Carregamento inicial da sessão
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await syncData(session.user.id);
+      } else {
+        setIsInitializing(false);
+      }
+    };
 
+    initAuth();
+
+    // Listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) syncData(session.user.id);
-      else if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setIsInitializing(true);
+        syncData(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
         setState({ ...INITIAL_STATE, currentUser: null });
         setIsInitializing(false);
         setInitError(null);
       }
     });
+
     return () => subscription.unsubscribe();
-  }, []);
+  }, [syncData]);
 
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-center p-6">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin shadow-xl shadow-emerald-500/20" />
         <h2 className="mt-8 font-black text-white uppercase tracking-[0.3em] text-[10px]">Fera Service Cloud</h2>
-        <p className="mt-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">Estabelecendo Canal Seguro...</p>
+        <p className="mt-2 text-[9px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">Sincronizando Dados Operacionais...</p>
         
         {initError && (
           <div className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl max-w-sm animate-in zoom-in-95">
@@ -94,7 +119,7 @@ const App = () => {
              <p className="text-[11px] text-slate-400 font-medium mb-6">{initError}</p>
              <div className="flex flex-col gap-2">
                 <button onClick={() => window.location.reload()} className="w-full bg-slate-800 text-white py-3 rounded-xl font-black text-[10px] uppercase hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
-                    <RefreshCw size={14} /> Tentar Novamente
+                    <RefreshCw size={14} /> Recarregar Sistema
                 </button>
                 <button onClick={async () => await signOut()} className="w-full bg-transparent text-slate-500 py-3 rounded-xl font-black text-[10px] uppercase hover:text-white transition-all flex items-center justify-center gap-2">
                     <LogOut size={14} /> Sair da Conta
