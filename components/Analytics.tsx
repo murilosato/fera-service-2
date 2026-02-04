@@ -323,7 +323,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
       {showFinanceModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-4 border-slate-900 animate-in zoom-in-95">
+          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-4 border-slate-900 animate-in zoom-in-95 border border-slate-100">
              <div className="text-center space-y-3">
                 <Landmark size={32} className="mx-auto text-emerald-600" />
                 <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest text-center">REGISTRAR SAÍDA FINANCEIRA</h3>
@@ -534,18 +534,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                     </td>
                   </tr>
                 </tbody>
-
-                <tfoot className="print-footer">
-                  <tr>
-                    <td>
-                      <div className="pt-12 flex justify-between items-center text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] border-t border-slate-100 mt-8">
-                         <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR')}</span>
-                         <span className="text-slate-400 uppercase">PÁGINA <span className="page-number"></span></span>
-                         <span>AUTENTICAÇÃO: {selectedEmployee?.id.slice(0, 8).toUpperCase()}</span>
-                      </div>
-                    </td>
-                  </tr>
-                </tfoot>
               </table>
            </div>
         </div>
