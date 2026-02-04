@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -41,7 +41,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     }
   };
 
-  const handleAddArea = async () => {
+  const handleAddArea = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!newArea.name || !newArea.startDate || !newArea.startReference || !newArea.endReference) {
       return alert("Preencha todos os campos obrigatórios.");
     }
@@ -55,7 +56,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       await refreshData();
       setIsAddingArea(false);
       setNewArea({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
-    } catch (e: any) { alert("Erro ao criar O.S."); } finally { setIsLoading(false); }
+    } catch (e: any) { 
+      alert("Erro ao criar O.S."); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const handleAddService = async (areaId: string) => {
@@ -128,12 +133,17 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
           <h2 className="text-xl font-black text-[#010a1b] uppercase">Produção de Campo</h2>
           <p className="text-[10px] text-[#2e3545] font-bold uppercase tracking-widest">Controle de O.S. e Metragem Urbana</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex bg-slate-200 p-1 rounded-xl">
-            <button onClick={() => setViewStatus('executing')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'executing' ? 'bg-white text-[#010a1b] shadow-sm' : 'text-[#2e3545]'}`}>Em Execução</button>
-            <button onClick={() => setViewStatus('finished')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'finished' ? 'bg-white text-[#010a1b] shadow-sm' : 'text-[#2e3545]'}`}>Finalizadas</button>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex bg-slate-200 p-1 rounded-xl flex-1 md:flex-none">
+            <button onClick={() => setViewStatus('executing')} className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'executing' ? 'bg-white text-[#010a1b] shadow-sm' : 'text-[#2e3545]'}`}>Em Execução</button>
+            <button onClick={() => setViewStatus('finished')} className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${viewStatus === 'finished' ? 'bg-white text-[#010a1b] shadow-sm' : 'text-[#2e3545]'}`}>Finalizadas</button>
           </div>
-          <button onClick={() => setIsAddingArea(true)} className="bg-[#010a1b] text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-xl hover:bg-emerald-600 transition-all"><Plus size={18} /> Nova O.S.</button>
+          <button 
+            onClick={() => setIsAddingArea(true)} 
+            className="bg-gradient-to-r from-[#010a1b] to-[#1e293b] text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-2xl hover:scale-105 active:scale-95 transition-all ring-4 ring-[#010a1b]/5"
+          >
+            <Plus size={18} /> Nova O.S.
+          </button>
         </div>
       </header>
 
@@ -181,7 +191,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                     </div>
                  </div>
                  <div className="flex gap-2 items-center">
-                    {/* Botão de Excluir O.S. reintroduzido */}
                     <button 
                       onClick={(e) => { 
                         e.stopPropagation(); 
@@ -277,6 +286,97 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
           ))
         )}
       </div>
+
+      {/* Modal de Nova O.S. Ajustado e Implementado */}
+      {isAddingArea && (
+        <div className="fixed inset-0 bg-[#010a1b]/60 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
+           <form onSubmit={handleAddArea} className="bg-white rounded-[40px] w-full max-w-xl p-10 space-y-8 shadow-2xl animate-in zoom-in-95 border border-white/20">
+              <div className="flex justify-between items-center border-b pb-6 border-slate-100">
+                <div>
+                   <h3 className="text-lg font-black uppercase text-[#010a1b] tracking-tight">Nova Ordem de Serviço</h3>
+                   <p className="text-[10px] font-bold text-[#2e3545] uppercase tracking-widest opacity-60">Planejamento de Produção Urbana</p>
+                </div>
+                <button type="button" onClick={() => setIsAddingArea(false)} className="p-3 hover:bg-slate-100 rounded-full transition-all text-slate-300 hover:text-[#010a1b]"><X size={24}/></button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 space-y-1">
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Nome da O.S. / Equipe Responsável</label>
+                   <div className="relative">
+                      <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                      <input 
+                        required 
+                        className="w-full bg-slate-50 border-2 border-slate-100 pl-12 pr-4 py-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
+                        placeholder="EX: EQUIPE 01 - ZONA SUL" 
+                        value={newArea.name} 
+                        onChange={e => setNewArea({...newArea, name: e.target.value.toUpperCase()})} 
+                      />
+                   </div>
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Data de Início</label>
+                   <input 
+                    type="date" 
+                    required 
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
+                    value={newArea.startDate} 
+                    onChange={e => setNewArea({...newArea, startDate: e.target.value})} 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Ponto de Referência Inicial</label>
+                   <input 
+                    required 
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
+                    placeholder="EX: AV. PRINCIPAL KM 0" 
+                    value={newArea.startReference} 
+                    onChange={e => setNewArea({...newArea, startReference: e.target.value.toUpperCase()})} 
+                  />
+                </div>
+
+                <div className="space-y-1 md:col-span-2">
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Ponto de Referência Final (Alvo)</label>
+                   <input 
+                    required 
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
+                    placeholder="EX: AV. PRINCIPAL KM 15" 
+                    value={newArea.endReference} 
+                    onChange={e => setNewArea({...newArea, endReference: e.target.value.toUpperCase()})} 
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-1">
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Observações Adicionais</label>
+                   <textarea 
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all h-24 resize-none" 
+                    placeholder="DETALHES DO TRECHO OU EQUIPE..." 
+                    value={newArea.observations} 
+                    onChange={e => setNewArea({...newArea, observations: e.target.value})} 
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                 <button 
+                  type="button" 
+                  onClick={() => setIsAddingArea(false)} 
+                  className="flex-1 bg-slate-100 text-[#2e3545] py-5 rounded-[24px] font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  Cancelar
+                </button>
+                 <button 
+                  type="submit" 
+                  disabled={isLoading} 
+                  className="flex-1 bg-[#010a1b] text-white py-5 rounded-[24px] font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3 active:scale-95"
+                >
+                  {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>CRIAR O.S. <ArrowRight size={18}/></>}
+                </button>
+              </div>
+           </form>
+        </div>
+      )}
 
       <ConfirmationModal 
         isOpen={!!confirmDelete?.isOpen} 
