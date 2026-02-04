@@ -69,6 +69,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     setIsLoading(true);
     try {
       const unitValue = state.serviceRates[newService.type] || 0;
+      // Removido o campo serviceDate do lançamento individual conforme solicitação
       await dbSave('services', {
         companyId: state.currentUser?.companyId,
         areaId: areaId,
@@ -76,7 +77,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         areaM2: qty,
         unitValue: unitValue,
         totalValue: unitValue * qty,
-        serviceDate: new Date().toISOString().split('T')[0]
+        serviceDate: new Date().toISOString().split('T')[0] // Mantido internamente apenas para histórico DB, mas oculto na UI
       });
       await refreshData();
       setNewService({ ...newService, quantity: '' });
@@ -160,11 +161,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100">
              <Calendar size={14} className="text-[#2e3545]" />
-             <label className="text-[8px] font-black text-[#2e3545] uppercase">DE:</label>
+             <label className="text-[8px] font-black text-[#2e3545] uppercase">INÍCIO:</label>
              <input type="date" className="bg-transparent text-[10px] font-black outline-none" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} />
           </div>
           <div className="flex items-center gap-2 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100">
-             <label className="text-[8px] font-black text-[#2e3545] uppercase">ATÉ:</label>
+             <label className="text-[8px] font-black text-[#2e3545] uppercase">FIM:</label>
              <input type="date" className="bg-transparent text-[10px] font-black outline-none" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} />
           </div>
         </div>
@@ -186,7 +187,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                     <div>
                       <h3 className="text-sm font-black text-[#010a1b] uppercase">{area.name}</h3>
                       <p className="text-[10px] text-[#2e3545] font-bold uppercase flex items-center gap-2">
-                         <Calendar size={10} className="text-slate-400" /> {formatDate(area.startDate)} | {area.startReference} <ArrowRight size={10} className="text-slate-300" /> {area.endReference}
+                         <Calendar size={10} className="text-slate-400" /> 
+                         {formatDate(area.startDate)} 
+                         {area.status === 'finished' && <> <ArrowRight size={10}/> {formatDate(area.endDate)}</>}
+                         <span className="mx-2 text-slate-300">|</span>
+                         {area.startReference} <ArrowRight size={10} className="text-slate-300" /> {area.endReference}
                       </p>
                     </div>
                  </div>
@@ -211,15 +216,15 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                 <div className="p-8 bg-slate-50 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in slide-in-from-top-4">
                     <div className="space-y-6">
                       <div className="bg-white p-8 rounded-[32px] shadow-sm space-y-6 border border-slate-100">
-                        <h4 className="text-[10px] font-black uppercase text-[#2e3545] tracking-[0.2em]">Painel de Lançamento</h4>
+                        <h4 className="text-[10px] font-black uppercase text-[#2e3545] tracking-[0.2em]">Lançamento de Produção</h4>
                         <select className="w-full bg-slate-50 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-[#010a1b]" value={newService.type} onChange={e => setNewService({...newService, type: e.target.value as any})}>
                           {SERVICE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                         </select>
                         <input type="number" className="w-full bg-slate-50 p-4 rounded-2xl text-xs font-black outline-none focus:border-[#010a1b]" placeholder="Metragem / Qtd" value={newService.quantity} onChange={e => setNewService({...newService, quantity: e.target.value})} />
                         <button onClick={(e) => { e.stopPropagation(); handleAddService(area.id); }} disabled={isLoading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-colors">
-                          Lançar Produção
+                          Confirmar Lançamento
                         </button>
-                        {area.status === 'executing' && (
+                        {area.status === 'executing' ? (
                           <button 
                             onClick={(e) => { 
                               e.stopPropagation(); 
@@ -227,13 +232,17 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                             }} 
                             className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
                           >
-                            <CheckCircle2 size={16} /> Finalizar Ordem
+                            <CheckCircle2 size={16} /> Finalizar e Contabilizar
                           </button>
+                        ) : (
+                          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
+                            <p className="text-[9px] font-black text-emerald-600 uppercase">O.S. FINALIZADA EM {formatDate(area.endDate)}</p>
+                          </div>
                         )}
                       </div>
 
                       <div className="bg-[#010a1b] p-8 rounded-[32px] text-white shadow-xl">
-                        <h4 className="font-black uppercase text-[10px] text-slate-500 mb-4 tracking-widest">Resumo da O.S.</h4>
+                        <h4 className="font-black uppercase text-[10px] text-slate-500 mb-4 tracking-widest">Saldo Acumulado</h4>
                         <div className="space-y-4">
                           <div className="flex justify-between items-center border-b border-white/5 pb-4">
                              <span className="text-[9px] font-black opacity-60">PRODUZIDO</span>
@@ -249,25 +258,25 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
                     <div className="lg:col-span-2 bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm flex flex-col min-h-[400px]">
                       <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                         <h4 className="text-[10px] font-black uppercase text-[#2e3545] tracking-widest">Detalhamento da Equipe</h4>
+                         <h4 className="text-[10px] font-black uppercase text-[#2e3545] tracking-widest">Detalhamento da Produção</h4>
                          <span className="px-4 py-1.5 bg-white border rounded-xl text-[9px] font-black uppercase text-[#2e3545]">{(area.services || []).length} Lançamentos</span>
                       </div>
                       <div className="overflow-y-auto flex-1">
                         <table className="w-full text-left">
                           <thead className="bg-white text-[9px] font-black uppercase text-[#2e3545] border-b">
                             <tr>
-                              <th className="px-8 py-5">Data</th>
-                              <th className="px-8 py-5">Serviço</th>
-                              <th className="px-8 py-5 text-right">Qtd</th>
-                              <th className="px-8 py-5 text-center">Ação</th>
+                              <th className="px-8 py-5">Tipo de Serviço</th>
+                              <th className="px-8 py-5 text-right">Quantidade</th>
+                              <th className="px-8 py-5 text-right">Valor Unit.</th>
+                              <th className="px-8 py-5 text-center">Remover</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y text-[11px] font-black uppercase text-[#010a1b]">
                             {(area.services || []).map(s => (
                                 <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                                  <td className="px-8 py-4 text-[#2e3545]">{formatDate(s.serviceDate)}</td>
                                   <td className="px-8 py-4">{s.type}</td>
                                   <td className="px-8 py-4 text-right text-emerald-600 font-black">{s.areaM2.toLocaleString('pt-BR')}</td>
+                                  <td className="px-8 py-4 text-right text-slate-400">{s.unitValue.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
                                   <td className="px-8 py-4 text-center">
                                     <button onClick={(e) => { e.stopPropagation(); setConfirmDelete({ isOpen: true, areaId: area.id, serviceId: s.id }); }} className="p-2 text-rose-300 hover:text-rose-600 transition-all">
                                       <Trash2 size={16}/>
@@ -287,21 +296,21 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         )}
       </div>
 
-      {/* Modal de Nova O.S. Ajustado e Implementado */}
+      {/* Modal de Nova O.S. */}
       {isAddingArea && (
         <div className="fixed inset-0 bg-[#010a1b]/60 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
            <form onSubmit={handleAddArea} className="bg-white rounded-[40px] w-full max-w-xl p-10 space-y-8 shadow-2xl animate-in zoom-in-95 border border-white/20">
               <div className="flex justify-between items-center border-b pb-6 border-slate-100">
                 <div>
                    <h3 className="text-lg font-black uppercase text-[#010a1b] tracking-tight">Nova Ordem de Serviço</h3>
-                   <p className="text-[10px] font-bold text-[#2e3545] uppercase tracking-widest opacity-60">Planejamento de Produção Urbana</p>
+                   <p className="text-[10px] font-bold text-[#2e3545] uppercase tracking-widest opacity-60">Início de Trecho Urbano</p>
                 </div>
                 <button type="button" onClick={() => setIsAddingArea(false)} className="p-3 hover:bg-slate-100 rounded-full transition-all text-slate-300 hover:text-[#010a1b]"><X size={24}/></button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2 space-y-1">
-                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Nome da O.S. / Equipe Responsável</label>
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Identificação / Equipe</label>
                    <div className="relative">
                       <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                       <input 
@@ -315,7 +324,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                 </div>
 
                 <div className="space-y-1">
-                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Data de Início</label>
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Data de Início da O.S.</label>
                    <input 
                     type="date" 
                     required 
@@ -326,34 +335,24 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                 </div>
 
                 <div className="space-y-1">
-                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Ponto de Referência Inicial</label>
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Ponto Referencial Início</label>
                    <input 
                     required 
                     className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
-                    placeholder="EX: AV. PRINCIPAL KM 0" 
+                    placeholder="EX: KM 0" 
                     value={newArea.startReference} 
                     onChange={e => setNewArea({...newArea, startReference: e.target.value.toUpperCase()})} 
                   />
                 </div>
 
                 <div className="space-y-1 md:col-span-2">
-                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Ponto de Referência Final (Alvo)</label>
+                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Ponto Referencial Alvo (Fim)</label>
                    <input 
                     required 
                     className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
-                    placeholder="EX: AV. PRINCIPAL KM 15" 
+                    placeholder="EX: KM 15" 
                     value={newArea.endReference} 
                     onChange={e => setNewArea({...newArea, endReference: e.target.value.toUpperCase()})} 
-                  />
-                </div>
-
-                <div className="md:col-span-2 space-y-1">
-                   <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Observações Adicionais</label>
-                   <textarea 
-                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all h-24 resize-none" 
-                    placeholder="DETALHES DO TRECHO OU EQUIPE..." 
-                    value={newArea.observations} 
-                    onChange={e => setNewArea({...newArea, observations: e.target.value})} 
                   />
                 </div>
               </div>
@@ -371,7 +370,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                   disabled={isLoading} 
                   className="flex-1 bg-[#010a1b] text-white py-5 rounded-[24px] font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3 active:scale-95"
                 >
-                  {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>CRIAR O.S. <ArrowRight size={18}/></>}
+                  {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>ABRIR ORDEM <ArrowRight size={18}/></>}
                 </button>
               </div>
            </form>
@@ -383,7 +382,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         onClose={() => setConfirmDelete(null)} 
         onConfirm={performDelete} 
         title="Remover Registro" 
-        message={confirmDelete?.serviceId ? "Deseja excluir permanentemente este lançamento de produção?" : "Deseja excluir permanentemente esta Ordem de Serviço e todos os seus lançamentos?"} 
+        message={confirmDelete?.serviceId ? "Deseja excluir este lançamento?" : "Deseja excluir esta O.S. completa?"} 
       />
 
       {confirmFinish && (
@@ -391,16 +390,16 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
            <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
               <div className="text-center space-y-2">
                  <CheckCircle2 size={40} className="mx-auto text-emerald-600" />
-                 <h3 className="text-sm font-black uppercase text-[#010a1b]">Finalizar Ordem de Serviço</h3>
-                 <p className="text-[10px] font-bold text-[#2e3545] uppercase tracking-widest opacity-70">Confirme a data de conclusão para arquivamento</p>
+                 <h3 className="text-sm font-black uppercase text-[#010a1b]">Encerrar Ordem de Serviço</h3>
+                 <p className="text-[10px] font-bold text-[#2e3545] uppercase tracking-widest opacity-70">A produção será contabilizada nesta data</p>
               </div>
               <div className="space-y-4">
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-[#2e3545] uppercase ml-1 block">Data de Encerramento</label>
+                    <label className="text-[9px] font-black text-[#2e3545] uppercase ml-1 block">Data de Finalização (Contábil)</label>
                     <input type="date" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black outline-none focus:border-[#010a1b]" value={confirmFinish.date} onChange={e => setConfirmFinish({...confirmFinish, date: e.target.value})} />
                  </div>
                  <button onClick={handleFinishArea} disabled={isLoading} className="w-full bg-[#010a1b] text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600 transition-all">
-                    {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR FINALIZAÇÃO'}
+                    {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR E CONTABILIZAR'}
                  </button>
                  <button onClick={() => setConfirmFinish(null)} className="w-full bg-slate-100 text-[#2e3545] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">CANCELAR</button>
               </div>

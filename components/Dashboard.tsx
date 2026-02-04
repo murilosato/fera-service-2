@@ -41,6 +41,13 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
+  const COLORS = {
+    realized: '#010a1b',
+    goal: '#10b981',
+    goalOpacity: 'rgba(16, 185, 129, 0.2)',
+    danger: '#ef4444'
+  };
+
   const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const monthlySeries = useMemo(() => {
@@ -68,14 +75,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       
       state.areas.forEach(area => {
         const isFinished = area.status === 'finished';
-        (area.services || []).forEach(s => {
-          if (s.serviceDate?.startsWith(m.key)) {
+        const finishedInThisMonth = area.endDate?.startsWith(m.key);
+        
+        if (isFinished && finishedInThisMonth) {
+          (area.services || []).forEach(s => {
             prod += s.areaM2;
-            if (isFinished) {
-              rev += s.totalValue;
-            }
-          }
-        });
+            rev += s.totalValue;
+          });
+        }
       });
 
       const inc = state.cashIn.filter(c => c.date?.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
@@ -105,15 +112,12 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     let revMonth = 0;
     
     state.areas.forEach(area => {
-      const isFinished = area.status === 'finished';
-      (area.services || []).forEach(s => {
-        if (s.serviceDate?.startsWith(lastMonthKey)) {
+      if (area.status === 'finished' && area.endDate?.startsWith(lastMonthKey)) {
+        (area.services || []).forEach(s => {
           prodMonth += s.areaM2;
-          if (isFinished) {
-            revMonth += s.totalValue;
-          }
-        }
-      });
+          revMonth += s.totalValue;
+        });
+      }
     });
 
     const inc = state.cashIn.filter(c => c.date?.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
@@ -136,8 +140,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
   const lowStock = state.inventory.filter(i => i.currentQty <= i.minQty);
 
   const stats = [
-    { id: 'production', label: 'PRODUÇÃO MÊS', value: `${periodTotals.production.toLocaleString('pt-BR')} m²`, progress: periodTotals.prodPercentage, icon: Map, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { id: 'revenue', label: 'FATURAMENTO MÊS', value: formatMoney(periodTotals.revenue), progress: periodTotals.revPercentage, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { id: 'production', label: 'PRODUÇÃO MÊS (FINALIZADA)', value: `${periodTotals.production.toLocaleString('pt-BR')} m²`, progress: periodTotals.prodPercentage, icon: Map, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: 'revenue', label: 'FATURAMENTO MÊS (FECHADO)', value: formatMoney(periodTotals.revenue), progress: periodTotals.revPercentage, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { id: 'inventoryValue', label: 'VALOR EM ESTOQUE', value: formatMoney(periodTotals.inventoryValue), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
     { id: 'stock', label: 'ESTOQUE CRÍTICO', value: `${lowStock.length} itens`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
   ];
@@ -147,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-[#010a1b] tracking-tight uppercase">Monitoramento Estratégico</h2>
-          <p className="text-[10px] text-[#2e3545] font-bold uppercase tracking-widest opacity-70">Desempenho Global e Patrimonial</p>
+          <p className="text-[10px] text-[#2e3545] font-bold uppercase tracking-widest opacity-70">Cálculo baseado em O.S. Finalizadas</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -229,7 +233,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm min-h-[400px] w-full">
             <h3 className="font-black text-[10px] text-[#2e3545] uppercase tracking-[0.2em] mb-8">
-              Gráfico de Desempenho Mensal
+              Gráfico de Desempenho Mensal (Itens Finalizados)
             </h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -239,23 +243,31 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                   <YAxis fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
                   <Tooltip 
                     cursor={{fill: '#f8fafc'}} 
-                    contentStyle={{ border: 'none', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '11px', fontWeight: '900', color: '#010a1b' }}
+                    contentStyle={{ border: 'none', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '11px', fontWeight: '900', color: '#010a1b', textTransform: 'uppercase' }}
                   />
                   <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }} />
-                  <Bar name="Realizado" dataKey={activeMetric} radius={[4, 4, 0, 0]} barSize={20}>
+                  
+                  <Bar 
+                    name="Realizado" 
+                    dataKey={activeMetric} 
+                    fill={COLORS.realized}
+                    radius={[4, 4, 0, 0]} 
+                    barSize={20}
+                  >
                     {chartData.map((entry, index) => {
-                      let color = '#2563eb';
-                      if(activeMetric === 'balance') color = entry.balance >= 0 ? '#10b981' : '#ef4444';
-                      if(activeMetric === 'revenue') color = '#059669';
+                      // Se for saldo, mantém cores de alerta, senão usa o padrão preto (realizado)
+                      let color = COLORS.realized;
+                      if(activeMetric === 'balance') color = entry.balance >= 0 ? COLORS.goal : COLORS.danger;
                       return <Cell key={`cell-${index}`} fill={color} />;
                     })}
                   </Bar>
+
                   {(activeMetric === 'production' || activeMetric === 'revenue') && (
                     <Bar 
                       name="Meta" 
                       dataKey={activeMetric === 'production' ? 'productionGoal' : 'revenueGoal'} 
-                      fill="#10b981" 
-                      fillOpacity={0.2} 
+                      fill={COLORS.goal} 
+                      fillOpacity={0.4} 
                       radius={[4, 4, 0, 0]} 
                       barSize={20} 
                     />
@@ -305,7 +317,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           <div className="space-y-8 flex-1">
             <div className="space-y-3">
               <div className="flex justify-between">
-                <p className="text-[10px] font-black text-slate-500 uppercase">Produção</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase">Produção (Finalizada)</p>
                 <p className="text-[10px] font-black">{periodTotals.prodPercentage.toFixed(1)}%</p>
               </div>
               <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
@@ -315,7 +327,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
 
             <div className="space-y-3">
               <div className="flex justify-between">
-                <p className="text-[10px] font-black text-slate-500 uppercase">Faturamento</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase">Faturamento (Auditado)</p>
                 <p className="text-[10px] font-black">{periodTotals.revPercentage.toFixed(1)}%</p>
               </div>
               <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
