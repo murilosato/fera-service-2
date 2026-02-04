@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   X,
-  Zap,
   BarChart3,
   ShieldCheck
 } from 'lucide-react';
@@ -52,20 +51,19 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
 
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-slate-900 text-slate-400 w-64 fixed left-0 top-0 z-50 border-r border-slate-800">
-      <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-        <div className="w-8 h-8 bg-emerald-600 rounded flex items-center justify-center text-white">
-          <Zap size={18} fill="white" />
-        </div>
-        <h1 className="text-lg font-black text-white uppercase tracking-tighter">Fera Service</h1>
+      <div className="p-8 flex items-center border-b border-slate-800">
+        <h1 className="text-xl font-black text-white uppercase tracking-tighter border-l-4 border-emerald-500 pl-3">
+          FERA SERVICE
+        </h1>
       </div>
       
       <div className="p-4 border-b border-slate-800 bg-slate-900/50">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded border border-slate-700 bg-slate-800 flex items-center justify-center text-emerald-500 font-bold">
+          <div className="w-10 h-10 rounded-none border-2 border-slate-700 bg-slate-800 flex items-center justify-center text-emerald-500 font-black">
             {user?.name?.charAt(0)}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-white truncate uppercase">{user?.name}</p>
+            <p className="text-[11px] font-black text-white truncate uppercase">{user?.name}</p>
             <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{roleLabel(userRole)}</p>
           </div>
         </div>
@@ -79,13 +77,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
               setActiveTab(item.id);
               setIsMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded transition-all text-xs font-bold uppercase tracking-wide ${
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-none transition-all text-[10px] font-black uppercase tracking-widest ${
               activeTab === item.id 
-                ? 'bg-emerald-600 text-white' 
+                ? 'bg-emerald-600 text-white shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]' 
                 : 'hover:bg-slate-800 hover:text-white'
             }`}
           >
-            <item.icon size={18} />
+            <item.icon size={16} />
             {item.label}
           </button>
         ))}
@@ -94,27 +92,26 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
       <div className="p-4 border-t border-slate-800">
         <button 
           onClick={onLogout}
-          className="flex items-center gap-3 px-3 py-2 w-full text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded transition-all text-xs font-black uppercase"
+          className="flex items-center gap-3 px-3 py-2 w-full text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-none transition-all text-[10px] font-black uppercase tracking-widest"
         >
           <LogOut size={16} />
-          Sair da Conta
+          Encerrar Sessão
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 antialiased">
-      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-           <div className="w-7 h-7 bg-emerald-600 rounded flex items-center justify-center text-white">
-             <Zap size={14} fill="white" />
-           </div>
-           <span className="font-black text-slate-900 text-xs uppercase tracking-tighter">{activeTab}</span>
+    <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 antialiased">
+      <div className="lg:hidden flex items-center justify-between px-6 py-4 bg-white border-b-4 border-slate-900 sticky top-0 z-40">
+        <div className="flex items-center gap-3">
+           <span className="font-black text-slate-900 text-sm uppercase tracking-tighter border-l-4 border-emerald-600 pl-2">
+             {activeTab}
+           </span>
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 text-slate-500 hover:bg-slate-100 rounded"
+          className="p-2 text-slate-900 hover:bg-slate-100 rounded-none border-2 border-slate-900 transition-all active:scale-90"
         >
           <Menu size={20} />
         </button>
@@ -126,14 +123,14 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
 
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-[100]">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
           <div className="absolute left-0 top-0 h-full w-64 shadow-2xl animate-in slide-in-from-left duration-200">
             <Sidebar />
           </div>
         </div>
       )}
 
-      <main className="flex-1 lg:ml-64 p-4 lg:p-10">
+      <main className="flex-1 lg:ml-64 p-6 lg:p-12">
         <div className="max-w-7xl mx-auto">
           {children}
         </div>
