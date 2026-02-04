@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Search, Calendar, FileText, X, Phone, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
