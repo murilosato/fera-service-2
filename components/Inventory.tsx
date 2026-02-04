@@ -175,22 +175,22 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
 
       {!showHistory ? (
         <>
-          <div className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm relative z-40 overflow-hidden">
-            <h3 className="text-[9px] font-black text-slate-400 uppercase mb-5 tracking-widest flex items-center gap-2">
-              <ArrowRightLeft size={14}/> Terminal de Lançamento e Precificação
+          <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-xl relative z-40 overflow-hidden">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase mb-8 tracking-[0.2em] flex items-center gap-2 border-l-4 border-blue-500 pl-4">
+              <ArrowRightLeft size={16}/> Terminal de Lançamento e Precificação
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6 items-end">
               <div className="md:col-span-3 lg:col-span-3 relative">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">Produto</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 block">Produto</label>
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                  <input className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 rounded-2xl text-[11px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all uppercase" placeholder="BUSCAR ITEM..." value={itemSearchText} onFocus={() => setIsDropdownOpen(true)} onChange={e => setItemSearchText(e.target.value)} />
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+                  <input className="w-full bg-slate-50 border-2 border-slate-100 pl-14 pr-4 py-5 rounded-[24px] text-[12px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all uppercase shadow-sm" placeholder="BUSCAR ITEM..." value={itemSearchText} onFocus={() => setIsDropdownOpen(true)} onChange={e => setItemSearchText(e.target.value)} />
                   {isDropdownOpen && itemSearchText && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-2xl z-[100] mt-2 p-2 max-h-56 overflow-auto animate-in fade-in slide-in-from-top-2">
+                    <div className="absolute top-full left-0 right-0 bg-white border border-slate-100 rounded-[28px] shadow-2xl z-[100] mt-3 p-3 max-h-72 overflow-auto animate-in fade-in slide-in-from-top-2 border-2">
                       {state.inventory.filter(i => i.name.toLowerCase().includes(itemSearchText.toLowerCase())).map(item => (
-                        <button key={item.id} className="w-full text-left p-3 hover:bg-slate-50 border-b last:border-0 flex justify-between rounded-xl transition-colors" onClick={() => { setSelectedItemId(item.id); setItemSearchText(item.name); setIsDropdownOpen(false); setMovementPrice(String(item.unitValue || 0)); }}>
-                          <span className="text-[10px] font-black uppercase">{item.name}</span>
-                          <span className="text-[9px] font-bold text-slate-400">SALDO: {item.currentQty}</span>
+                        <button key={item.id} className="w-full text-left p-4 hover:bg-slate-50 border-b last:border-0 flex justify-between rounded-[20px] transition-colors" onClick={() => { setSelectedItemId(item.id); setItemSearchText(item.name); setIsDropdownOpen(false); setMovementPrice(String(item.unitValue || 0)); }}>
+                          <span className="text-[11px] font-black uppercase">{item.name}</span>
+                          <span className="text-[10px] font-bold text-slate-400">SALDO: {item.currentQty}</span>
                         </button>
                       ))}
                     </div>
@@ -198,20 +198,20 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                 </div>
               </div>
               <div className="md:col-span-1 lg:col-span-1">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">Qtd</label>
-                <input type="number" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] outline-none focus:bg-white" value={movementQty} onChange={e => setMovementQty(e.target.value)} />
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 block">Qtd</label>
+                <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-[24px] font-black text-[12px] outline-none focus:bg-white focus:border-slate-900 shadow-sm" value={movementQty} onChange={e => setMovementQty(e.target.value)} />
               </div>
               <div className="md:col-span-2 lg:col-span-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">V. Unitário (R$)</label>
-                <input type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] outline-none focus:bg-white" placeholder="0,00" value={movementPrice} onChange={e => setMovementPrice(e.target.value)} />
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 block">V. Unitário (R$)</label>
+                <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-[24px] font-black text-[12px] outline-none focus:bg-white focus:border-slate-900 shadow-sm" placeholder="0,00" value={movementPrice} onChange={e => setMovementPrice(e.target.value)} />
               </div>
               <div className="md:col-span-3 lg:col-span-3">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">Destino / Origem</label>
-                <input className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] outline-none focus:bg-white uppercase" placeholder="EX: COMPRA NF 01" value={movementDest} onChange={e => setMovementDest(e.target.value)} />
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 block">Destino / Origem</label>
+                <input className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-[24px] font-black text-[12px] outline-none focus:bg-white focus:border-slate-900 shadow-sm uppercase" placeholder="EX: COMPRA NF 01" value={movementDest} onChange={e => setMovementDest(e.target.value)} />
               </div>
-              <div className="md:col-span-3 lg:col-span-3 flex gap-2">
-                 <button onClick={() => handleMovement('out')} className="flex-1 bg-white border-2 border-rose-100 text-rose-600 p-3.5 rounded-2xl font-black uppercase text-[9px] hover:bg-rose-50 transition-all shadow-sm">RETIRADA</button>
-                 <button onClick={() => handleMovement('in')} className="flex-1 bg-slate-900 text-white p-3.5 rounded-2xl font-black uppercase text-[9px] hover:bg-emerald-600 transition-all shadow-lg">ENTRADA</button>
+              <div className="md:col-span-3 lg:col-span-3 flex gap-3">
+                 <button onClick={() => handleMovement('out')} className="flex-1 bg-white border-2 border-rose-100 text-rose-600 p-5 rounded-[24px] font-black uppercase text-[10px] hover:bg-rose-50 transition-all shadow-sm">RETIRADA</button>
+                 <button onClick={() => handleMovement('in')} className="flex-1 bg-slate-900 text-white p-5 rounded-[24px] font-black uppercase text-[10px] hover:bg-emerald-600 transition-all shadow-lg">ENTRADA</button>
               </div>
             </div>
           </div>

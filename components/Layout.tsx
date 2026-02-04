@@ -33,7 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
     { id: 'finance', label: 'Financeiro', icon: DollarSign, permission: user?.permissions.finance },
     { id: 'inventory', label: 'Almoxarifado', icon: Package, permission: user?.permissions.inventory },
     { id: 'employees', label: 'Equipe & RH', icon: Users, permission: user?.permissions.employees },
-    { id: 'analytics', label: 'Relatórios & Auditoria', icon: BarChart3, permission: user?.permissions.analytics },
+    { id: 'analytics', label: 'Relatórios', icon: BarChart3, permission: user?.permissions.analytics },
     { id: 'management', label: 'Gestão de Acessos', icon: ShieldCheck, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
     { id: 'settings', label: 'Configurações', icon: Settings, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
   ];
@@ -62,15 +62,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
         </h1>
       </div>
       
-      <div className="p-4 border-b border-slate-800 bg-slate-900/50">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 rounded-none border-2 border-slate-700 bg-slate-800 flex items-center justify-center text-emerald-500 font-black">
-            {user?.name?.charAt(0)}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-black text-white truncate uppercase">{user?.name}</p>
-            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{roleLabel(userRole)}</p>
-          </div>
+      <div className="p-5 border-b border-slate-800 bg-slate-900/50">
+        <div className="px-2">
+          <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{user?.name}</p>
+          <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-0.5">{roleLabel(userRole)}</p>
         </div>
       </div>
 
