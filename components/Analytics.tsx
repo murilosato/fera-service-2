@@ -3,22 +3,32 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone, Database, ArrowRight, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, AlertCircle
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface AnalyticsProps {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
+  notify: (msg: string, type?: 'success' | 'error') => void;
 }
 
-const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showPrintView, setShowPrintView] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Estados para edição dinâmica
+  const [editingValue, setEditingValue] = useState('');
+  const [editingDiscount, setEditingDiscount] = useState('');
+  const [editingObservation, setEditingObservation] = useState('');
+
+  // Estados para o lançamento financeiro
+  const [showFinanceModal, setShowFinanceModal] = useState(false);
+  const [financeTitle, setFinanceTitle] = useState('');
+  const [financeCategory, setFinanceCategory] = useState('');
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -50,27 +60,85 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
   }, [state.attendanceRecords, selectedEmployeeId, startDate, endDate]);
 
   const totalToPay = attendanceHistory
-    .reduce((acc, r) => acc + r.value, 0);
+    .reduce((acc, r) => acc + (r.value - (r.discountValue || 0)), 0);
 
   const handlePrint = () => {
     setShowPrintView(true);
     setTimeout(() => {
       window.print();
       setShowPrintView(false);
+      // Após imprimir, abre o modal de lançamento financeiro apenas se houver saldo positivo e não pago
+      if (totalToPay > 0) {
+        setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
+        setFinanceCategory('Salários');
+        setShowFinanceModal(true);
+      }
     }, 500);
   };
 
   const handleSaveValue = async (record: AttendanceRecord) => {
     const newVal = parseFloat(editingValue.replace(',', '.'));
-    if (isNaN(newVal)) return;
+    const newDiscount = parseFloat(editingDiscount.replace(',', '.'));
+    if (isNaN(newVal)) return notify("Valor base inválido", "error");
     
     setIsLoading(true);
     try {
-      await dbSave('attendance_records', { ...record, value: newVal });
+      await dbSave('attendance_records', { 
+        ...record, 
+        value: newVal,
+        discountValue: isNaN(newDiscount) ? 0 : newDiscount,
+        discountObservation: editingObservation
+      });
       await refreshData();
       setEditingRecordId(null);
+      notify("Alterações salvas!");
     } catch (e) {
-      alert("Erro ao salvar valor.");
+      notify("Erro ao salvar alterações", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const togglePaymentStatus = async (record: AttendanceRecord) => {
+    setIsLoading(true);
+    try {
+      const newStatus = record.paymentStatus === 'pago' ? 'pendente' : 'pago';
+      await dbSave('attendance_records', { ...record, paymentStatus: newStatus });
+      await refreshData();
+      notify(`Status alterado para ${newStatus.toUpperCase()}`);
+    } catch (e) {
+      notify("Erro ao alterar status de pagamento", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateFinanceExit = async () => {
+    if (!financeTitle || !financeCategory) return notify("Preencha o título e a categoria", "error");
+    
+    setIsLoading(true);
+    try {
+      await dbSave('cash_flow', {
+        companyId: state.currentUser?.companyId,
+        type: 'out',
+        value: totalToPay,
+        date: new Date().toISOString().split('T')[0],
+        reference: financeTitle.toUpperCase(),
+        category: financeCategory
+      });
+      
+      // Marcar todos os registros do período como pagos
+      for (const record of attendanceHistory) {
+        if (record.paymentStatus !== 'pago') {
+          await dbSave('attendance_records', { ...record, paymentStatus: 'pago' });
+        }
+      }
+
+      await refreshData();
+      setShowFinanceModal(false);
+      notify("Saída financeira registrada e frequências quitadas!");
+    } catch (e) {
+      notify("Erro ao gerar saída financeira", "error");
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +317,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
                          </div>
                       </div>
                       <div className="md:w-64 bg-white/5 p-6 rounded-[32px] border border-white/10 flex flex-col justify-center text-center">
-                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total a Pagar no Período</p>
+                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido do Período</p>
                          <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
                          <button onClick={handlePrint} className="mt-4 w-full bg-white text-slate-900 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all shadow-xl active:scale-95">
                             <Printer size={16} /> GERAR PDF / IMPRIMIR
@@ -257,17 +325,25 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
                       </div>
                    </div>
                 </div>
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto scrollbar-hide">
                    <table className="w-full text-left">
-                      <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b border-slate-100">
-                         <tr><th className="px-8 py-4">Data Registro</th><th className="px-8 py-4 text-center">Frequência</th><th className="px-8 py-4 text-right">Valor Diária (Editar)</th></tr>
+                      <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b border-slate-100 sticky top-0 z-10">
+                         <tr>
+                           <th className="px-8 py-4">Data</th>
+                           <th className="px-8 py-4 text-center">Freq.</th>
+                           <th className="px-8 py-4 text-right">Valor</th>
+                           <th className="px-8 py-4 text-right">Desconto</th>
+                           <th className="px-8 py-4 text-center">Status</th>
+                           <th className="px-8 py-4 text-right">Ação</th>
+                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50 text-[11px] font-black uppercase text-slate-700">
                          {attendanceHistory.length === 0 ? (
-                           <tr><td colSpan={3} className="px-8 py-10 text-center italic text-slate-300">Nenhum registro no período selecionado</td></tr>
+                           <tr><td colSpan={6} className="px-8 py-10 text-center italic text-slate-300">Nenhum registro no período selecionado</td></tr>
                          ) : (
                            attendanceHistory.map(h => {
                              const isEditing = editingRecordId === h.id;
+                             const isPaid = h.paymentStatus === 'pago';
                              return (
                                <tr key={h.id} className="hover:bg-slate-50 transition-colors">
                                   <td className="px-8 py-3 text-slate-500">{formatDate(h.date)}</td>
@@ -277,31 +353,77 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
                                          h.status === 'partial' ? 'bg-amber-50 text-amber-600' : 
                                          'bg-rose-50 text-rose-600'
                                      }`}>
-                                        {h.status === 'present' ? 'P (INTEGRAL)' : h.status === 'partial' ? 'H (PARCIAL)' : 'F (FALTA)'}
+                                        {h.status === 'present' ? 'P' : h.status === 'partial' ? 'H' : 'F'}
                                      </span>
                                   </td>
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
+                                       <input 
+                                         type="text" 
+                                         className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black outline-none text-right" 
+                                         value={editingValue} 
+                                         onChange={e => setEditingValue(e.target.value)}
+                                       />
+                                     ) : (
+                                       <span className="font-bold">{formatMoney(h.value)}</span>
+                                     )}
+                                  </td>
+                                  <td className="px-8 py-3 text-right">
+                                     {isEditing ? (
+                                       <div className="flex flex-col gap-1 items-end">
+                                         <input 
+                                           type="text" 
+                                           className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black outline-none text-right" 
+                                           placeholder="DESC."
+                                           value={editingDiscount} 
+                                           onChange={e => setEditingDiscount(e.target.value)}
+                                         />
+                                         <input 
+                                           className="w-40 bg-white border border-slate-200 p-2 rounded-lg text-[8px] font-black outline-none" 
+                                           placeholder="MOTIVO DESCONTO"
+                                           value={editingObservation}
+                                           onChange={e => setEditingObservation(e.target.value)}
+                                         />
+                                       </div>
+                                     ) : (
+                                       <div className="flex flex-col items-end">
+                                          <span className={`${(h.discountValue || 0) > 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                                            - {formatMoney(h.discountValue || 0)}
+                                          </span>
+                                          {h.discountObservation && (
+                                            <p className="text-[8px] text-slate-400 lowercase max-w-[120px] truncate">{h.discountObservation}</p>
+                                          )}
+                                       </div>
+                                     )}
+                                  </td>
+                                  <td className="px-8 py-3 text-center">
+                                     <button 
+                                       onClick={() => togglePaymentStatus(h)}
+                                       className={`px-3 py-1.5 rounded-xl text-[8px] font-black tracking-widest transition-all ${
+                                         isPaid ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600 hover:bg-amber-200'
+                                       }`}
+                                     >
+                                        {isPaid ? 'PAGO' : 'PENDENTE'}
+                                     </button>
+                                  </td>
+                                  <td className="px-8 py-3 text-right">
+                                     {isEditing ? (
                                          <div className="flex items-center justify-end gap-2">
-                                             <input 
-                                                 type="number" 
-                                                 className="w-24 bg-slate-50 border border-slate-200 p-2 rounded-lg text-[10px] font-black outline-none" 
-                                                 value={editingValue} 
-                                                 onChange={e => setEditingValue(e.target.value)}
-                                             />
                                              <button onClick={() => handleSaveValue(h)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded-lg"><Save size={14}/></button>
                                              <button onClick={() => setEditingRecordId(null)} className="p-1.5 text-slate-400 bg-slate-50 rounded-lg"><X size={14}/></button>
                                          </div>
                                      ) : (
-                                         <div className="flex items-center justify-end gap-3 group">
-                                             <span className="font-bold text-slate-900">{formatMoney(h.value)}</span>
-                                             <button 
-                                                 onClick={() => { setEditingRecordId(h.id); setEditingValue(String(h.value)); }} 
-                                                 className="p-1.5 text-slate-300 group-hover:text-blue-500 transition-colors"
-                                             >
-                                                 <Edit2 size={12}/>
-                                             </button>
-                                         </div>
+                                         <button 
+                                             onClick={() => { 
+                                               setEditingRecordId(h.id); 
+                                               setEditingValue(String(h.value)); 
+                                               setEditingDiscount(String(h.discountValue || 0));
+                                               setEditingObservation(h.discountObservation || '');
+                                             }} 
+                                             className="p-1.5 text-slate-300 hover:text-blue-500 transition-colors"
+                                         >
+                                             <Edit2 size={12}/>
+                                         </button>
                                      )}
                                   </td>
                                </tr>
@@ -321,6 +443,67 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
            )}
         </div>
       </div>
+
+      {/* Modal de Lançamento Financeiro Automático */}
+      {showFinanceModal && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[500] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border-2 border-slate-900">
+             <div className="text-center space-y-3">
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                   <Landmark size={32} />
+                </div>
+                <h3 className="text-sm font-black uppercase text-slate-900 tracking-tight">Lançar Saída Financeira</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Deseja registrar este pagamento no financeiro agora?</p>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                   <p className="text-[9px] font-black text-slate-400 uppercase">Valor do Acerto (Líquido)</p>
+                   <p className="text-xl font-black text-rose-600">{formatMoney(totalToPay)}</p>
+                </div>
+             </div>
+             
+             <div className="space-y-4">
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Título / Referência</label>
+                   <input 
+                      className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-slate-900" 
+                      placeholder="EX: PAGAMENTO MENSAL" 
+                      value={financeTitle}
+                      onChange={e => setFinanceTitle(e.target.value)}
+                   />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Categoria Financeira</label>
+                   <select 
+                      className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-slate-900"
+                      value={financeCategory}
+                      onChange={e => setFinanceCategory(e.target.value)}
+                   >
+                      <option value="">SELECIONE...</option>
+                      {state.financeCategories.map(cat => (
+                         <option key={cat} value={cat}>{cat.toUpperCase()}</option>
+                      ))}
+                   </select>
+                </div>
+             </div>
+
+             <div className="flex flex-col gap-3 pt-4">
+                <button 
+                   onClick={handleCreateFinanceExit} 
+                   disabled={isLoading}
+                   className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all"
+                >
+                   {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
+                   QUITAR E REGISTRAR SAÍDA
+                </button>
+                <button 
+                   onClick={() => setShowFinanceModal(false)}
+                   className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
+                >
+                   FECHAR SEM LANÇAR
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
 
       {showPrintView && (
         <div className="fixed inset-0 z-[1000] bg-white overflow-y-auto p-12 text-slate-900 font-sans print:p-0 print:m-0">
@@ -357,20 +540,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
                  <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 text-slate-400">Extrato de Presença e Diárias</h4>
                  <table className="w-full text-[10px] border-collapse uppercase">
                     <thead>
-                       <tr className="bg-slate-100"><th className="border-b-2 border-slate-900 p-3 text-left">Data do Turno</th><th className="border-b-2 border-slate-900 p-3 text-center">Status</th><th className="border-b-2 border-slate-900 p-3 text-right">Valor (R$)</th></tr>
+                       <tr className="bg-slate-100">
+                         <th className="border-b-2 border-slate-900 p-3 text-left">Data</th>
+                         <th className="border-b-2 border-slate-900 p-3 text-center">Status</th>
+                         <th className="border-b-2 border-slate-900 p-3 text-right">Valor Base</th>
+                         <th className="border-b-2 border-slate-900 p-3 text-right">Desconto</th>
+                         <th className="border-b-2 border-slate-900 p-3 text-left">Obs. Desconto</th>
+                         <th className="border-b-2 border-slate-900 p-3 text-right">Líquido</th>
+                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                        {attendanceHistory.map(h => (
                           <tr key={h.id}>
                              <td className="p-3 font-bold">{formatDate(h.date)}</td>
                              <td className="p-3 text-center font-black">
-                                {h.status === 'present' ? 'TRABALHADO' : h.status === 'partial' ? 'PARCIAL' : 'AUSENTE/FALTA'}
+                                {h.status === 'present' ? 'TRAB.' : h.status === 'partial' ? 'PARC.' : 'FALTA'}
                              </td>
-                             <td className="p-3 text-right font-black">{formatMoney(h.value)}</td>
+                             <td className="p-3 text-right">{formatMoney(h.value)}</td>
+                             <td className="p-3 text-right text-rose-500">{formatMoney(h.discountValue || 0)}</td>
+                             <td className="p-3 text-left text-[8px] opacity-60 italic">{h.discountObservation || '-'}</td>
+                             <td className="p-3 text-right font-black">{formatMoney(h.value - (h.discountValue || 0))}</td>
                           </tr>
                        ))}
                        <tr className="bg-slate-50">
-                          <td colSpan={2} className="p-4 text-right font-black text-xs">SOMA TOTAL DOS SERVIÇOS:</td>
+                          <td colSpan={5} className="p-4 text-right font-black text-xs uppercase">Soma Total Líquida do Período:</td>
                           <td className="p-4 text-right font-black text-xs">{formatMoney(totalToPay)}</td>
                        </tr>
                     </tbody>

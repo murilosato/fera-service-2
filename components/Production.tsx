@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -227,7 +227,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
               <div className="p-6 flex justify-between items-center bg-white cursor-pointer" onClick={() => setExpandedAreaId(expandedAreaId === area.id ? null : area.id)}>
                  <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white ${area.status === 'finished' ? 'bg-emerald-600' : 'bg-slate-900'}`}>
-                      {area.status === 'finished' ? <CheckCircle2 size={20}/> : 'OS'}
+                      {area.status === 'finished' ? <CheckCircle2 size={20}/> : <Clock size={20} />}
                     </div>
                     <div>
                       <h3 className="text-sm font-black text-slate-900 uppercase">{area.name}</h3>

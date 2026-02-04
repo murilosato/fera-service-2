@@ -38,7 +38,22 @@ for update using (
   (select role from public.profiles where id = auth.uid()) IN ('DIRETORIA_MASTER', 'GERENTE_UNIDADE')
 );
 
--- 6. GATILHO DE NOVO USUÁRIO (Melhorado com validação estrita de ID)
+-- 6. TABELA DE FREQUÊNCIA (Referência de Estrutura)
+-- Caso precise criar do zero ou ajustar:
+-- create table public.attendance_records (
+--   id uuid default gen_random_uuid() primary key,
+--   company_id uuid references public.companies(id),
+--   employee_id uuid references public.employees(id),
+--   date date not null,
+--   status text not null,
+--   value numeric(12,2) not null,
+--   payment_status text default 'pendente',
+--   discount_value numeric(12,2) default 0,
+--   discount_observation text,
+--   created_at timestamptz default now()
+-- );
+
+-- 7. GATILHO DE NOVO USUÁRIO (Melhorado com validação estrita de ID)
 create or replace function public.handle_new_user()
 returns trigger 
 security definer 

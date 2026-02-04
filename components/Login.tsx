@@ -76,7 +76,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       <div className="w-full max-w-[400px] relative z-10">
         <div className="text-center mb-8">
-           <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none border-b-4 border-emerald-600 inline-block pb-1">
+           <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none inline-block pb-1">
              FERA SERVICE
            </h1>
            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mt-3">

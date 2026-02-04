@@ -90,6 +90,8 @@ export interface AttendanceRecord {
   status: 'present' | 'absent' | 'partial';
   value: number;
   paymentStatus: string;
+  discountValue?: number;
+  discountObservation?: string;
 }
 
 export interface CashIn {

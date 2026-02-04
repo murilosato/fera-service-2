@@ -57,7 +57,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-slate-900 text-slate-400 w-64 fixed left-0 top-0 z-50 border-r border-slate-800">
       <div className="p-8 flex items-center border-b border-slate-800">
-        <h1 className="text-xl font-black text-white uppercase tracking-tighter border-l-4 border-emerald-500 pl-3">
+        <h1 className="text-xl font-black text-white uppercase tracking-tighter">
           FERA SERVICE
         </h1>
       </div>
@@ -105,7 +105,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
     <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 antialiased">
       <div className="lg:hidden flex items-center justify-between px-6 py-4 bg-white border-b-4 border-slate-900 sticky top-0 z-40">
         <div className="flex items-center gap-3">
-           <span className="font-black text-slate-900 text-sm uppercase tracking-tighter border-l-4 border-emerald-600 pl-2">
+           <span className="font-black text-slate-900 text-sm uppercase tracking-tighter">
              {translateTab(activeTab)}
            </span>
         </div>

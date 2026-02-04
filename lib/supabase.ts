@@ -43,6 +43,8 @@ const camelToSnake = (obj: any) => {
     else if (k === 'revenueGoal') newKey = 'revenue_goal';
     else if (k === 'inventoryGoal') newKey = 'inventory_goal';
     else if (k === 'balanceGoal') newKey = 'balance_goal';
+    else if (k === 'discountValue') newKey = 'discount_value';
+    else if (k === 'discountObservation') newKey = 'discount_observation';
     else {
       newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     }
@@ -157,7 +159,8 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     cashIn: flow.filter((f: any) => f.type === 'in').map((f: any) => ({ id: f.id, companyId: f.company_id, date: f.date, value: Number(f.value), reference: f.reference, type: f.type, category: f.category })),
     cashOut: flow.filter((f: any) => f.type === 'out').map((f: any) => ({ id: f.id, companyId: f.company_id, date: f.date, value: Number(f.value), type: f.type, category: f.category, reference: f.reference })),
     attendanceRecords: att.map((r: any) => ({
-      id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status
+      id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status,
+      discountValue: Number(r.discount_value || 0), discountObservation: r.discount_observation
     })),
     monthlyGoals: goalsMap,
     serviceRates: companyInfo.data?.service_rates || defaultRates,
