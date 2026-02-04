@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { AppState, AttendanceRecord } from '../types';
+import { AppState, AttendanceRecord, ServiceType } from '../types';
 import { 
   Printer, Search, Calendar, FileText, X, Phone, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard, Download
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -19,6 +19,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const [showPrintView, setShowPrintView] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [exportingType, setExportingType] = useState<string | null>(null);
   
   const [editingValue, setEditingValue] = useState('');
   const [editingDiscount, setEditingDiscount] = useState('');
@@ -40,6 +41,71 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const formatMoney = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formatDate = (dateStr: string) => dateStr.split('-').reverse().join('/');
   const isWithinRange = (dateStr: string) => dateStr >= startDate && dateStr <= endDate;
+
+  // --- FUNÇÕES DE EXPORTAÇÃO ---
+  const downloadCSV = (filename: string, content: string) => {
+    const blob = new Blob(["\ufeff" + content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}_${new Date().getTime()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportInventory = () => {
+    setExportingType('inventory');
+    const headers = ["ID", "ITEM", "CATEGORIA", "QTD ATUAL", "QTD MINIMA", "QTD IDEAL", "VALOR UN", "TOTAL EM ESTOQUE"];
+    const rows = state.inventory.map(i => [
+      i.id, i.name, i.category, i.currentQty, i.minQty, i.idealQty, i.unitValue, (i.currentQty * (i.unitValue || 0))
+    ]);
+    const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
+    downloadCSV("Relatorio_Estoque", csvContent);
+    setTimeout(() => setExportingType(null), 500);
+    notify("Planilha de estoque gerada!");
+  };
+
+  const exportEmployees = () => {
+    setExportingType('employees');
+    const headers = ["ID", "NOME", "CARGO", "STATUS", "DIARIA PADRAO", "CPF", "TELEFONE", "PIX", "ENDERECO"];
+    const rows = state.employees.map(e => [
+      e.id, e.name, e.role, e.status, e.defaultValue, e.cpf || "", e.phone || "", e.pixKey || "", e.address || ""
+    ]);
+    const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
+    downloadCSV("Relatorio_Equipe", csvContent);
+    setTimeout(() => setExportingType(null), 500);
+    notify("Planilha de equipe gerada!");
+  };
+
+  const exportFinance = () => {
+    setExportingType('finance');
+    const headers = ["DATA", "TIPO", "REFERENCIA", "CATEGORIA", "VALOR"];
+    const rowsIn = state.cashIn.map(i => [i.date, "ENTRADA", i.reference, i.category, i.value]);
+    const rowsOut = state.cashOut.map(o => [o.date, "SAIDA", o.reference, o.category, o.value]);
+    const allRows = [...rowsIn, ...rowsOut].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const csvContent = [headers, ...allRows].map(e => e.join(";")).join("\n");
+    downloadCSV("Relatorio_Financeiro", csvContent);
+    setTimeout(() => setExportingType(null), 500);
+    notify("Fluxo de caixa exportado!");
+  };
+
+  const exportProduction = () => {
+    setExportingType('production');
+    const headers = ["DATA", "O.S.", "TIPO SERVICO", "QUANTIDADE", "VALOR UN", "VALOR TOTAL"];
+    const rows: any[] = [];
+    state.areas.forEach(area => {
+      (area.services || []).forEach(s => {
+        rows.push([s.serviceDate, area.name, s.type, s.areaM2, s.unitValue, s.totalValue]);
+      });
+    });
+    const csvContent = [headers, ...rows].sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(e => e.join(";")).join("\n");
+    downloadCSV("Relatorio_Producao", csvContent);
+    setTimeout(() => setExportingType(null), 500);
+    notify("Dados de produção exportados!");
+  };
+  // -----------------------------
 
   const refreshData = async () => {
     if (state.currentUser?.companyId) {
@@ -159,23 +225,40 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </header>
 
+      {/* Central de Exportação - FUNCIONAL AGORA */}
       <section className="bg-slate-900 text-white rounded-[32px] p-6 shadow-2xl relative overflow-hidden print:hidden border border-white/5">
          <div className="relative z-10">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 mb-5 opacity-70">
-              <Database size={16} className="text-blue-400"/> Central de Dados e Exportação
+              <Database size={16} className="text-blue-400"/> Central de Dados e Exportação (CSV)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-blue-600 group">
-                  <TableProperties size={18}/><span className="text-[10px] font-black uppercase">Estoque</span>
+               <button onClick={exportInventory} disabled={exportingType === 'inventory'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-blue-600 group">
+                  {exportingType === 'inventory' ? <Loader2 className="animate-spin" size={18}/> : <TableProperties size={18}/>}
+                  <div className="text-left">
+                     <span className="text-[10px] font-black uppercase block">Estoque</span>
+                     <span className="text-[8px] font-bold opacity-40 uppercase">Exportar Materiais</span>
+                  </div>
                </button>
-               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-emerald-600 group">
-                  <Users size={18}/><span className="text-[10px] font-black uppercase">Equipe</span>
+               <button onClick={exportEmployees} disabled={exportingType === 'employees'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-emerald-600 group">
+                  {exportingType === 'employees' ? <Loader2 className="animate-spin" size={18}/> : <Users size={18}/>}
+                  <div className="text-left">
+                     <span className="text-[10px] font-black uppercase block">Equipe</span>
+                     <span className="text-[8px] font-bold opacity-40 uppercase">Lista Colaboradores</span>
+                  </div>
                </button>
-               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-orange-600 group">
-                  <DollarSign size={18}/><span className="text-[10px] font-black uppercase">Fluxo Caixa</span>
+               <button onClick={exportFinance} disabled={exportingType === 'finance'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-orange-600 group">
+                  {exportingType === 'finance' ? <Loader2 className="animate-spin" size={18}/> : <DollarSign size={18}/>}
+                  <div className="text-left">
+                     <span className="text-[10px] font-black uppercase block">Fluxo Caixa</span>
+                     <span className="text-[8px] font-bold opacity-40 uppercase">Entradas e Saídas</span>
+                  </div>
                </button>
-               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-indigo-600 group">
-                  <MapPin size={18}/><span className="text-[10px] font-black uppercase">Produção</span>
+               <button onClick={exportProduction} disabled={exportingType === 'production'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-indigo-600 group">
+                  {exportingType === 'production' ? <Loader2 className="animate-spin" size={18}/> : <MapPin size={18}/>}
+                  <div className="text-left">
+                     <span className="text-[10px] font-black uppercase block">Produção</span>
+                     <span className="text-[8px] font-bold opacity-40 uppercase">Metragens Campo</span>
+                  </div>
                </button>
             </div>
          </div>
