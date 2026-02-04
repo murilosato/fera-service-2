@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone, Database, ArrowRight, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, AlertCircle
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, AlertCircle, Info
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -20,12 +20,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Estados para edição dinâmica
   const [editingValue, setEditingValue] = useState('');
   const [editingDiscount, setEditingDiscount] = useState('');
   const [editingObservation, setEditingObservation] = useState('');
 
-  // Estados para o lançamento financeiro
   const [showFinanceModal, setShowFinanceModal] = useState(false);
   const [financeTitle, setFinanceTitle] = useState('');
   const [financeCategory, setFinanceCategory] = useState('');
@@ -59,15 +57,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [state.attendanceRecords, selectedEmployeeId, startDate, endDate]);
 
-  const totalToPay = attendanceHistory
-    .reduce((acc, r) => acc + (r.value - (r.discountValue || 0)), 0);
+  // Cálculos para o Relatório
+  const totalBaseValue = attendanceHistory.reduce((acc, r) => acc + r.value, 0);
+  const totalDiscounts = attendanceHistory.reduce((acc, r) => acc + (r.discountValue || 0), 0);
+  const totalToPay = totalBaseValue - totalDiscounts;
 
   const handlePrint = () => {
     setShowPrintView(true);
     setTimeout(() => {
       window.print();
       setShowPrintView(false);
-      // Após imprimir, abre o modal de lançamento financeiro apenas se houver saldo positivo e não pago
       if (totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
@@ -127,7 +126,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         category: financeCategory
       });
       
-      // Marcar todos os registros do período como pagos
       for (const record of attendanceHistory) {
         if (record.paymentStatus !== 'pago') {
           await dbSave('attendance_records', { ...record, paymentStatus: 'pago' });
@@ -144,89 +142,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     }
   };
 
-  // Lógica de Exportação CSV
-  const downloadCSV = (data: any[], filename: string) => {
-    if (data.length === 0) return alert("Não há dados para exportar neste período.");
-    
-    const headers = Object.keys(data[0]).join(';');
-    const rows = data.map(obj => 
-      Object.values(obj).map(val => 
-        typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val
-      ).join(';')
-    ).join('\n');
-    
-    const csvContent = "\uFEFF" + headers + '\n' + rows;
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${filename}_${startDate}_a_${endDate}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportInventoryExits = () => {
-    const filtered = state.inventoryExits.filter(ex => isWithinRange(ex.date));
-    const data = filtered.map(ex => {
-      const item = state.inventory.find(i => i.id === ex.itemId);
-      return {
-        Data: formatDate(ex.date),
-        Item: item?.name || 'N/A',
-        Categoria: item?.category || 'N/A',
-        Quantidade: ex.quantity,
-        Destino: ex.destination,
-        Observação: ex.observation
-      };
-    });
-    downloadCSV(data, 'Movimentacoes_Estoque');
-  };
-
-  const exportEmployees = () => {
-    const data = state.employees.map(e => ({
-      Nome: e.name,
-      CPF: e.cpf || '---',
-      Cargo: e.role,
-      Status: e.status === 'active' ? 'ATIVO' : 'INATIVO',
-      Telefone: e.phone || '---',
-      ValorDiaria: e.defaultValue,
-      PIX: e.pixKey || '---'
-    }));
-    downloadCSV(data, 'Quadro_Funcionarios');
-  };
-
-  const exportCashFlow = () => {
-    const inc = state.cashIn.filter(c => isWithinRange(c.date)).map(c => ({ Data: formatDate(c.date), Tipo: 'ENTRADA', Categoria: c.category, Referencia: c.reference, Valor: c.value }));
-    const out = state.cashOut.filter(c => isWithinRange(c.date)).map(c => ({ Data: formatDate(c.date), Tipo: 'SAIDA', Categoria: c.category, Referencia: c.reference, Valor: c.value }));
-    downloadCSV([...inc, ...out], 'Fluxo_de_Caixa');
-  };
-
-  const exportProduction = () => {
-    const data: any[] = [];
-    state.areas.forEach(area => {
-      (area.services || []).forEach(s => {
-        if (isWithinRange(s.serviceDate)) {
-          data.push({
-            OS: area.name,
-            DataServico: formatDate(s.serviceDate),
-            Tipo: s.type,
-            Producao: s.areaM2,
-            Referencia: `${area.startReference} a ${area.endReference}`,
-            StatusOS: area.status === 'finished' ? 'FINALIZADA' : 'EM EXECUÇÃO'
-          });
-        }
-      });
-    });
-    downloadCSV(data, 'Relatorio_Producao');
-  };
-
   return (
     <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Relatórios</h2>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Geração de Fichas e Central de Exportação</p>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Relatórios de Acerto</h2>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Geração de Fichas Financeiras Individuais</p>
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 p-2 rounded-xl shadow-sm">
           <Calendar size={14} className="text-slate-400" />
@@ -240,35 +161,26 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       <section className="bg-slate-900 text-white rounded-[32px] p-6 shadow-2xl relative overflow-hidden print:hidden border border-white/5">
          <div className="relative z-10">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 mb-5 opacity-70">
-              <Database size={16} className="text-blue-400"/> Central de Exportação Estratégica
+              <Database size={16} className="text-blue-400"/> Central de Dados e Exportação
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-               {[
-                 { label: 'Movimentações Estoque', icon: TableProperties, action: exportInventoryExits, color: 'hover:bg-blue-600' },
-                 { label: 'Quadro Funcionários', icon: Users, action: exportEmployees, color: 'hover:bg-emerald-600' },
-                 { label: 'Fluxo de Caixa', icon: DollarSign, action: exportCashFlow, color: 'hover:bg-orange-600' },
-                 { label: 'Produção Campo', icon: MapPin, action: exportProduction, color: 'hover:bg-indigo-600' }
-               ].map(item => (
-                 <button 
-                  key={item.label} 
-                  onClick={item.action} 
-                  className={`bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:scale-[1.02] group ${item.color}`}
-                 >
-                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center group-hover:bg-white/20 transition-all shrink-0">
-                      <item.icon size={18}/>
-                    </div>
-                    <div className="text-left min-w-0">
-                       <p className="text-[10px] font-black uppercase tracking-tight truncate">{item.label}</p>
-                    </div>
-                    <Download size={14} className="ml-auto opacity-30 group-hover:opacity-100 transition-opacity" />
-                 </button>
-               ))}
+               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-blue-600 group">
+                  <TableProperties size={18}/><span className="text-[10px] font-black uppercase">Estoque</span>
+               </button>
+               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-emerald-600 group">
+                  <Users size={18}/><span className="text-[10px] font-black uppercase">Equipe</span>
+               </button>
+               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-orange-600 group">
+                  <DollarSign size={18}/><span className="text-[10px] font-black uppercase">Fluxo Caixa</span>
+               </button>
+               <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-indigo-600 group">
+                  <MapPin size={18}/><span className="text-[10px] font-black uppercase">Produção</span>
+               </button>
             </div>
          </div>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print:hidden">
-        {/* Campo de Pessoas Redimensionado (Maior Altura) */}
         <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm lg:col-span-1 h-[calc(100vh-320px)] flex flex-col transition-all">
           <div className="p-6 border-b border-slate-100 bg-slate-50/30">
              <div className="relative">
@@ -289,7 +201,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                >
                   <div className="min-w-0">
                      <p className="text-sm font-black uppercase truncate tracking-tight">{emp.name}</p>
-                     <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mt-1 ${selectedEmployeeId === emp.id ? 'text-emerald-400 opacity-100' : 'text-slate-400 opacity-60'}`}>{emp.role}</p>
+                     <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mt-1 ${selectedEmployeeId === emp.id ? 'text-emerald-400' : 'text-slate-400'}`}>{emp.role}</p>
                   </div>
                </button>
              ))}
@@ -309,15 +221,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{selectedEmployee.role}</p>
                             </div>
                          </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Hash size={12}/> CPF: <span className="text-white">{selectedEmployee.cpf || '--'}</span></div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><Smartphone size={12}/> CONTATO: <span className="text-white">{selectedEmployee.phone || '--'}</span></div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><CreditCard size={12}/> PIX: <span className="text-white truncate max-w-[150px]">{selectedEmployee.pixKey || '--'}</span></div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase"><MapPin size={12}/> ENDEREÇO: <span className="text-white truncate max-w-[150px]">{selectedEmployee.address || '--'}</span></div>
+                         <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase"><Hash size={12}/> CPF: <span className="text-white ml-2">{selectedEmployee.cpf || '--'}</span></div>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase"><Smartphone size={12}/> CONTATO: <span className="text-white ml-2">{selectedEmployee.phone || '--'}</span></div>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase col-span-2"><CreditCard size={12}/> PIX: <span className="text-white ml-2 truncate">{selectedEmployee.pixKey || '--'}</span></div>
                          </div>
                       </div>
                       <div className="md:w-64 bg-white/5 p-6 rounded-[32px] border border-white/10 flex flex-col justify-center text-center">
-                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido do Período</p>
+                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido</p>
                          <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
                          <button onClick={handlePrint} className="mt-4 w-full bg-white text-slate-900 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all shadow-xl active:scale-95">
                             <Printer size={16} /> GERAR PDF / IMPRIMIR
@@ -331,17 +242,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                          <tr>
                            <th className="px-8 py-4">Data</th>
                            <th className="px-8 py-4 text-center">Freq.</th>
-                           <th className="px-8 py-4 text-right">Valor</th>
+                           <th className="px-8 py-4 text-right">Valor Diária</th>
                            <th className="px-8 py-4 text-right">Desconto</th>
                            <th className="px-8 py-4 text-center">Status</th>
                            <th className="px-8 py-4 text-right">Ação</th>
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50 text-[11px] font-black uppercase text-slate-700">
-                         {attendanceHistory.length === 0 ? (
-                           <tr><td colSpan={6} className="px-8 py-10 text-center italic text-slate-300">Nenhum registro no período selecionado</td></tr>
-                         ) : (
-                           attendanceHistory.map(h => {
+                         {attendanceHistory.map(h => {
                              const isEditing = editingRecordId === h.id;
                              const isPaid = h.paymentStatus === 'pago';
                              return (
@@ -358,12 +266,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                   </td>
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
-                                       <input 
-                                         type="text" 
-                                         className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black outline-none text-right" 
-                                         value={editingValue} 
-                                         onChange={e => setEditingValue(e.target.value)}
-                                       />
+                                       <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" value={editingValue} onChange={e => setEditingValue(e.target.value)} />
                                      ) : (
                                        <span className="font-bold">{formatMoney(h.value)}</span>
                                      )}
@@ -371,38 +274,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
                                        <div className="flex flex-col gap-1 items-end">
-                                         <input 
-                                           type="text" 
-                                           className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black outline-none text-right" 
-                                           placeholder="DESC."
-                                           value={editingDiscount} 
-                                           onChange={e => setEditingDiscount(e.target.value)}
-                                         />
-                                         <input 
-                                           className="w-40 bg-white border border-slate-200 p-2 rounded-lg text-[8px] font-black outline-none" 
-                                           placeholder="MOTIVO DESCONTO"
-                                           value={editingObservation}
-                                           onChange={e => setEditingObservation(e.target.value)}
-                                         />
+                                         <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" placeholder="DESC." value={editingDiscount} onChange={e => setEditingDiscount(e.target.value)} />
+                                         <input className="w-40 bg-white border border-slate-200 p-2 rounded-lg text-[8px] font-black" placeholder="MOTIVO" value={editingObservation} onChange={e => setEditingObservation(e.target.value)} />
                                        </div>
                                      ) : (
                                        <div className="flex flex-col items-end">
                                           <span className={`${(h.discountValue || 0) > 0 ? 'text-rose-500' : 'text-slate-300'}`}>
                                             - {formatMoney(h.discountValue || 0)}
                                           </span>
-                                          {h.discountObservation && (
-                                            <p className="text-[8px] text-slate-400 lowercase max-w-[120px] truncate">{h.discountObservation}</p>
-                                          )}
                                        </div>
                                      )}
                                   </td>
                                   <td className="px-8 py-3 text-center">
-                                     <button 
-                                       onClick={() => togglePaymentStatus(h)}
-                                       className={`px-3 py-1.5 rounded-xl text-[8px] font-black tracking-widest transition-all ${
-                                         isPaid ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600 hover:bg-amber-200'
-                                       }`}
-                                     >
+                                     <button onClick={() => togglePaymentStatus(h)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black transition-all ${isPaid ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600'}`}>
                                         {isPaid ? 'PAGO' : 'PENDENTE'}
                                      </button>
                                   </td>
@@ -413,15 +297,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                              <button onClick={() => setEditingRecordId(null)} className="p-1.5 text-slate-400 bg-slate-50 rounded-lg"><X size={14}/></button>
                                          </div>
                                      ) : (
-                                         <button 
-                                             onClick={() => { 
-                                               setEditingRecordId(h.id); 
-                                               setEditingValue(String(h.value)); 
-                                               setEditingDiscount(String(h.discountValue || 0));
-                                               setEditingObservation(h.discountObservation || '');
-                                             }} 
-                                             className="p-1.5 text-slate-300 hover:text-blue-500 transition-colors"
-                                         >
+                                         <button onClick={() => { setEditingRecordId(h.id); setEditingValue(String(h.value)); setEditingDiscount(String(h.discountValue || 0)); setEditingObservation(h.discountObservation || ''); }} className="p-1.5 text-slate-300 hover:text-blue-500 transition-colors">
                                              <Edit2 size={12}/>
                                          </button>
                                      )}
@@ -429,7 +305,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                </tr>
                              );
                            })
-                         )}
+                         }
                       </tbody>
                    </table>
                 </div>
@@ -438,146 +314,178 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
              <div className="h-full flex flex-col items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] p-20 text-center opacity-40">
                 <FileText size={48} className="text-slate-300 mb-6" />
                 <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Relatório Individual</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Selecione um colaborador na lista lateral para gerar a ficha de acerto.</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Selecione um colaborador para gerar o acerto.</p>
              </div>
            )}
         </div>
       </div>
 
-      {/* Modal de Lançamento Financeiro Automático */}
+      {/* Modal Financeiro */}
       {showFinanceModal && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[500] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border-2 border-slate-900">
+          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-2 border-slate-900">
              <div className="text-center space-y-3">
-                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                   <Landmark size={32} />
-                </div>
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-tight">Lançar Saída Financeira</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Deseja registrar este pagamento no financeiro agora?</p>
+                <Landmark size={32} className="mx-auto text-emerald-600" />
+                <h3 className="text-sm font-black uppercase text-slate-900">Registrar Saída Financeira</h3>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                   <p className="text-[9px] font-black text-slate-400 uppercase">Valor do Acerto (Líquido)</p>
+                   <p className="text-[9px] font-black text-slate-400 uppercase">Valor Líquido</p>
                    <p className="text-xl font-black text-rose-600">{formatMoney(totalToPay)}</p>
                 </div>
              </div>
-             
              <div className="space-y-4">
-                <div className="space-y-1">
-                   <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Título / Referência</label>
-                   <input 
-                      className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-slate-900" 
-                      placeholder="EX: PAGAMENTO MENSAL" 
-                      value={financeTitle}
-                      onChange={e => setFinanceTitle(e.target.value)}
-                   />
-                </div>
-                <div className="space-y-1">
-                   <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Categoria Financeira</label>
-                   <select 
-                      className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-slate-900"
-                      value={financeCategory}
-                      onChange={e => setFinanceCategory(e.target.value)}
-                   >
-                      <option value="">SELECIONE...</option>
-                      {state.financeCategories.map(cat => (
-                         <option key={cat} value={cat}>{cat.toUpperCase()}</option>
-                      ))}
-                   </select>
-                </div>
+                <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="TÍTULO / REFERÊNCIA" value={financeTitle} onChange={e => setFinanceTitle(e.target.value)} />
+                <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeCategory} onChange={e => setFinanceCategory(e.target.value)}>
+                   <option value="">CATEGORIA...</option>
+                   {state.financeCategories.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
+                </select>
              </div>
-
-             <div className="flex flex-col gap-3 pt-4">
-                <button 
-                   onClick={handleCreateFinanceExit} 
-                   disabled={isLoading}
-                   className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all"
-                >
-                   {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
-                   QUITAR E REGISTRAR SAÍDA
+             <div className="flex flex-col gap-3">
+                <button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all">
+                   {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} CONFIRMAR E QUITAR
                 </button>
-                <button 
-                   onClick={() => setShowFinanceModal(false)}
-                   className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
-                >
-                   FECHAR SEM LANÇAR
-                </button>
+                <button onClick={() => setShowFinanceModal(false)} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">FECHAR</button>
              </div>
           </div>
         </div>
       )}
 
+      {/* VISTA DE IMPRESSÃO PROFISSIONAL */}
       {showPrintView && (
         <div className="fixed inset-0 z-[1000] bg-white overflow-y-auto p-12 text-slate-900 font-sans print:p-0 print:m-0">
-           <style>{`@media print { .print-hide { display: none; } body { background: white; } }`}</style>
-           <div className="max-w-4xl mx-auto border-2 border-slate-900 p-12 relative print:border-none print:p-8">
-              <div className="border-b-4 border-slate-900 pb-8 mb-12 flex justify-between items-end">
+           <style>{`
+             @media print { 
+               .print-hide { display: none; } 
+               body { background: white; -webkit-print-color-adjust: exact; } 
+               @page { margin: 1.5cm; size: A4; }
+             }
+           `}</style>
+           
+           <div className="max-w-4xl mx-auto p-0 relative min-h-screen flex flex-col">
+              {/* Header Profissional */}
+              <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
                  <div className="space-y-1">
-                    <h1 className="text-4xl font-black uppercase tracking-tighter italic">Fera Service</h1>
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Inteligência em Gestão Urbana</p>
-                 </div>
-                 <div className="text-right uppercase space-y-1">
-                    <h2 className="text-xl font-black text-slate-900">Relatório de Acerto Individual</h2>
-                    <p className="text-[10px] font-bold text-slate-500">Período: {formatDate(startDate)} a {formatDate(endDate)}</p>
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-16 mb-12 text-[11px] uppercase border border-slate-100 p-8 rounded-3xl">
-                 <div className="space-y-3">
-                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">COLABORADOR:</span> <span className="font-black">{selectedEmployee?.name}</span></p>
-                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">CARGO/FUNÇÃO:</span> <span className="font-black">{selectedEmployee?.role}</span></p>
-                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">DOCUMENTO CPF:</span> <span className="font-black">{selectedEmployee?.cpf || '--'}</span></p>
-                    <p className="flex justify-between border-b pb-1"><span className="font-black text-slate-400">ENDEREÇO:</span> <span className="font-black truncate max-w-[180px]">{selectedEmployee?.address || '--'}</span></p>
-                 </div>
-                 <div className="space-y-3 text-right">
-                    <div className="bg-slate-900 text-white p-6 rounded-2xl">
-                       <p className="text-[9px] font-black opacity-60 mb-1">VALOR LÍQUIDO A RECEBER</p>
-                       <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
+                    <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none">Fera Service</h1>
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Gestão e Inteligência Operacional Urbana</p>
+                    <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase">
+                       <p>CNPJ: 00.000.000/0001-00</p>
+                       <p>Contato: (00) 00000-0000 | feraservice.com.br</p>
                     </div>
-                    <p className="text-[10px] font-black border-b border-slate-100 pb-1 mt-4">CHAVE PIX: {selectedEmployee?.pixKey || 'NÃO INFORMADA'}</p>
+                 </div>
+                 <div className="text-right uppercase">
+                    <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block">
+                       <h2 className="text-sm font-black tracking-widest">Ficha de Acerto Individual</h2>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-600">Referência do Período</p>
+                    <p className="text-sm font-black text-slate-900">{formatDate(startDate)} a {formatDate(endDate)}</p>
                  </div>
               </div>
 
-              <div className="mb-16">
-                 <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 text-slate-400">Extrato de Presença e Diárias</h4>
+              {/* Dados do Colaborador */}
+              <div className="grid grid-cols-12 gap-6 mb-8">
+                 <div className="col-span-8 grid grid-cols-2 gap-x-8 gap-y-3 bg-slate-50 p-6 rounded-3xl border border-slate-200">
+                    <div className="col-span-2">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador beneficiário</p>
+                       <p className="text-sm font-black uppercase text-slate-900">{selectedEmployee?.name}</p>
+                    </div>
+                    <div>
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cargo / Função</p>
+                       <p className="text-[10px] font-bold uppercase text-slate-700">{selectedEmployee?.role}</p>
+                    </div>
+                    <div>
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
+                       <p className="text-[10px] font-bold text-slate-700">{selectedEmployee?.cpf || 'Não informado'}</p>
+                    </div>
+                    <div>
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Endereço Residencial</p>
+                       <p className="text-[9px] font-bold text-slate-700 leading-tight truncate">{selectedEmployee?.address || 'Não informado'}</p>
+                    </div>
+                    <div>
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Chave PIX para Pagamento</p>
+                       <p className="text-[10px] font-bold text-blue-600">{selectedEmployee?.pixKey || 'Não informada'}</p>
+                    </div>
+                 </div>
+
+                 {/* Resumo Financeiro no PDF */}
+                 <div className="col-span-4 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-between">
+                    <div className="space-y-2">
+                       <div className="flex justify-between items-center text-[9px] font-black uppercase border-b border-slate-100 pb-1">
+                          <span className="text-slate-400">Valor Bruto (Base)</span>
+                          <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-[9px] font-black uppercase border-b border-slate-100 pb-1">
+                          <span className="text-rose-400">Total Descontos (-)</span>
+                          <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
+                       </div>
+                    </div>
+                    <div className="pt-4 border-t-2 border-slate-900 mt-2">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center mb-1">Valor Líquido a Receber</p>
+                       <p className="text-2xl font-black text-slate-900 text-center tracking-tighter">{formatMoney(totalToPay)}</p>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Tabela de Extrato de Diárias */}
+              <div className="flex-1">
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900 flex items-center gap-2">
+                    <FileText size={12}/> Extrato Detalhado de Serviços e Frequência
+                 </h4>
                  <table className="w-full text-[10px] border-collapse uppercase">
                     <thead>
-                       <tr className="bg-slate-100">
-                         <th className="border-b-2 border-slate-900 p-3 text-left">Data</th>
-                         <th className="border-b-2 border-slate-900 p-3 text-center">Status</th>
-                         <th className="border-b-2 border-slate-900 p-3 text-right">Valor Base</th>
-                         <th className="border-b-2 border-slate-900 p-3 text-right">Desconto</th>
-                         <th className="border-b-2 border-slate-900 p-3 text-left">Obs. Desconto</th>
-                         <th className="border-b-2 border-slate-900 p-3 text-right">Líquido</th>
+                       <tr className="bg-slate-900 text-white">
+                         <th className="p-3 text-left border border-slate-900">Data</th>
+                         <th className="p-3 text-center border border-slate-900">Status</th>
+                         <th className="p-3 text-right border border-slate-900">V. Diária (R$)</th>
+                         <th className="p-3 text-right border border-slate-900">Desconto (R$)</th>
+                         <th className="p-3 text-left border border-slate-900">Justificativa / Obs.</th>
+                         <th className="p-3 text-right border border-slate-900">Líquido (R$)</th>
                        </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-200">
                        {attendanceHistory.map(h => (
-                          <tr key={h.id}>
-                             <td className="p-3 font-bold">{formatDate(h.date)}</td>
-                             <td className="p-3 text-center font-black">
-                                {h.status === 'present' ? 'TRAB.' : h.status === 'partial' ? 'PARC.' : 'FALTA'}
+                          <tr key={h.id} className="border-x border-slate-200">
+                             <td className="p-3 font-bold border-r">{formatDate(h.date)}</td>
+                             <td className="p-3 text-center font-black border-r">
+                                {h.status === 'present' ? 'INTEGRAL' : h.status === 'partial' ? 'MEIA' : 'FALTA'}
                              </td>
-                             <td className="p-3 text-right">{formatMoney(h.value)}</td>
-                             <td className="p-3 text-right text-rose-500">{formatMoney(h.discountValue || 0)}</td>
-                             <td className="p-3 text-left text-[8px] opacity-60 italic">{h.discountObservation || '-'}</td>
+                             <td className="p-3 text-right border-r">{formatMoney(h.value)}</td>
+                             <td className="p-3 text-right text-rose-600 border-r">{h.discountValue ? formatMoney(h.discountValue) : '-'}</td>
+                             <td className="p-3 text-[8px] italic border-r leading-tight">{h.discountObservation || '-'}</td>
                              <td className="p-3 text-right font-black">{formatMoney(h.value - (h.discountValue || 0))}</td>
                           </tr>
                        ))}
-                       <tr className="bg-slate-50">
-                          <td colSpan={5} className="p-4 text-right font-black text-xs uppercase">Soma Total Líquida do Período:</td>
-                          <td className="p-4 text-right font-black text-xs">{formatMoney(totalToPay)}</td>
+                       <tr className="bg-slate-100">
+                          <td colSpan={5} className="p-4 text-right font-black text-xs uppercase border border-slate-200">Total Geral de Créditos:</td>
+                          <td className="p-4 text-right font-black text-xs border border-slate-200">{formatMoney(totalToPay)}</td>
                        </tr>
                     </tbody>
                  </table>
+                 
+                 <div className="mt-8 bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3">
+                    <Info size={16} className="text-blue-600 shrink-0 mt-1" />
+                    <p className="text-[9px] font-bold text-blue-700 uppercase leading-relaxed">
+                       Este documento serve como extrato informativo para conferência de diárias e lançamentos do período especificado. 
+                       Em caso de divergência, procure o departamento administrativo da unidade.
+                    </p>
+                 </div>
               </div>
 
-              <div className="mt-24 grid grid-cols-2 gap-24 text-center">
-                 <div className="space-y-4">
-                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee?.name}</div>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
+              {/* Rodapé e Assinaturas */}
+              <div className="mt-auto pt-24">
+                 <div className="grid grid-cols-2 gap-24 text-center">
+                    <div className="space-y-2">
+                       <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee?.name}</div>
+                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
+                    </div>
+                    <div className="space-y-2">
+                       <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Administração Fera Service</div>
+                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
+                    </div>
                  </div>
-                 <div className="space-y-4">
-                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Fera Service Corporativo</div>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
+                 
+                 <div className="mt-16 border-t border-slate-100 pt-4 flex justify-between items-center text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    <span>Emissão: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</span>
+                    <span>Página 01 / 01</span>
+                    <span>Autenticação: {Math.random().toString(36).substring(7).toUpperCase()}</span>
                  </div>
               </div>
            </div>
