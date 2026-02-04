@@ -57,22 +57,20 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [state.attendanceRecords, selectedEmployeeId, startDate, endDate]);
 
-  // Cálculos para o Relatório
   const totalBaseValue = attendanceHistory.reduce((acc, r) => acc + r.value, 0);
   const totalDiscounts = attendanceHistory.reduce((acc, r) => acc + (r.discountValue || 0), 0);
   const totalToPay = totalBaseValue - totalDiscounts;
 
   const handlePrint = () => {
     setShowPrintView(true);
-    // Pequeno delay para garantir que o DOM renderizou antes de abrir o diálogo do sistema
     setTimeout(() => {
       window.print();
-      setShowPrintView(false);
       if (totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
       }
+      // Não fechamos o showPrintView imediatamente para que ele fique visível sob o modal
     }, 500);
   };
 
@@ -135,6 +133,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
       await refreshData();
       setShowFinanceModal(false);
+      setShowPrintView(false); // Fecha a vista de impressão após quitar
       notify("Saída financeira registrada e frequências quitadas!");
     } catch (e) {
       notify("Erro ao gerar saída financeira", "error");
@@ -158,7 +157,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </header>
 
-      {/* Central de Exportação */}
+      {/* Central de Exportação - Escondida na Impressão */}
       <section className="bg-slate-900 text-white rounded-[32px] p-6 shadow-2xl relative overflow-hidden print:hidden border border-white/5">
          <div className="relative z-10">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 mb-5 opacity-70">
@@ -321,20 +320,20 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      {/* Modal Financeiro */}
+      {/* Modal Financeiro - Fundo mais transparente para ver o PDF atrás */}
       {showFinanceModal && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[500] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-2 border-slate-900">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-4 border-slate-900 animate-in zoom-in-95">
              <div className="text-center space-y-3">
                 <Landmark size={32} className="mx-auto text-emerald-600" />
-                <h3 className="text-sm font-black uppercase text-slate-900">Registrar Saída Financeira</h3>
+                <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest">Registrar Saída Financeira</h3>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                    <p className="text-[9px] font-black text-slate-400 uppercase">Valor Líquido</p>
-                   <p className="text-xl font-black text-rose-600">{formatMoney(totalToPay)}</p>
+                   <p className="text-2xl font-black text-rose-600 tracking-tighter">{formatMoney(totalToPay)}</p>
                 </div>
              </div>
              <div className="space-y-4">
-                <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="TÍTULO / REFERÊNCIA" value={financeTitle} onChange={e => setFinanceTitle(e.target.value)} />
+                <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-slate-900" placeholder="TÍTULO / REFERÊNCIA" value={financeTitle} onChange={e => setFinanceTitle(e.target.value)} />
                 <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeCategory} onChange={e => setFinanceCategory(e.target.value)}>
                    <option value="">CATEGORIA...</option>
                    {state.financeCategories.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
@@ -344,169 +343,226 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 <button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all">
                    {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} CONFIRMAR E QUITAR
                 </button>
-                <button onClick={() => setShowFinanceModal(false)} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">FECHAR</button>
+                <button onClick={() => { setShowFinanceModal(false); setShowPrintView(false); }} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">FECHAR</button>
              </div>
           </div>
         </div>
       )}
 
-      {/* VISTA DE IMPRESSÃO PROFISSIONAL - SEM SCROLL LATERAL */}
+      {/* VISTA DE IMPRESSÃO - ESTRUTURA PARA MÚLTIPLAS PÁGINAS */}
       {showPrintView && (
-        <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print:p-0 print:m-0">
+        <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-container overflow-y-auto">
            <style>{`
              @media screen {
-                /* Estiliza o fundo da visualização na tela como se fosse uma folha real */
                 body { background-color: #f1f5f9; }
+                .print-container { padding: 40px 0; }
                 .sheet {
                    background: white;
-                   box-shadow: 0 0 20px rgba(0,0,0,0.1);
-                   margin: 20px auto;
-                   padding: 2cm;
+                   box-shadow: 0 0 40px rgba(0,0,0,0.1);
+                   margin: 0 auto;
+                   padding: 1.5cm;
                    width: 210mm;
                    min-height: 297mm;
                 }
              }
              @media print { 
-               .print-hide { display: none; } 
-               body { background: white; -webkit-print-color-adjust: exact; margin: 0; padding: 0; } 
-               .sheet { width: 100%; margin: 0; padding: 1cm; box-shadow: none; }
-               @page { margin: 1cm; size: A4; }
+               /* Garante que o PDF ignore o resto do app */
+               body * { visibility: hidden !important; }
+               .print-container, .print-container * { visibility: visible !important; }
+               .print-container { 
+                 position: absolute; 
+                 left: 0; 
+                 top: 0; 
+                 width: 100%; 
+                 height: auto !important;
+                 overflow: visible !important;
+               }
+               
+               /* Configuração de Página A4 */
+               @page { 
+                 margin: 1.5cm; 
+                 size: A4; 
+                 counter-increment: page;
+               }
+
+               /* Remove barras de rolagem e resets de cor */
+               html, body { 
+                 height: auto !important; 
+                 overflow: visible !important; 
+                 background: white !important; 
+               }
+
+               .sheet { 
+                 width: 100% !important; 
+                 margin: 0 !important; 
+                 padding: 0 !important; 
+                 box-shadow: none !important; 
+                 height: auto !important;
+               }
+
+               /* Paginação Dinâmica */
+               .page-number:after { content: counter(page); }
+               .page-count:after { content: counter(pages); }
              }
-             /* Remove barra de rolagem da vista fixa para impressão */
-             .no-scroll { overflow: hidden !important; }
+
+             /* Layout de Tabela para Cabeçalhos e Rodapés repetidos */
+             .print-table {
+               width: 100%;
+               border-collapse: collapse;
+               table-layout: fixed;
+             }
+             .print-header { display: table-header-group; }
+             .print-footer { display: table-footer-group; }
+             .print-body { display: table-row-group; }
+
+             /* Reseta contadores */
+             body { counter-reset: page; }
            `}</style>
            
-           <div className="sheet relative flex flex-col animate-in fade-in duration-500">
-              {/* Header Profissional */}
-              <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
-                 <div className="space-y-1">
-                    <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none">Fera Service</h1>
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Gestão e Inteligência Operacional Urbana</p>
-                    <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase">
-                       <p>CNPJ: 00.000.000/0001-00</p>
-                       <p>Contato: (00) 00000-0000 | feraservice.com.br</p>
-                    </div>
-                 </div>
-                 <div className="text-right uppercase">
-                    <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block">
-                       <h2 className="text-sm font-black tracking-widest">Ficha de Acerto Individual</h2>
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-600">Referência do Período</p>
-                    <p className="text-sm font-black text-slate-900">{formatDate(startDate)} a {formatDate(endDate)}</p>
-                 </div>
-              </div>
+           <div className="sheet">
+              <table className="print-table">
+                {/* Cabeçalho que repete em todas as páginas */}
+                <thead className="print-header">
+                  <tr>
+                    <td>
+                      <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
+                         <div className="space-y-1">
+                            <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none text-slate-900">Fera Service</h1>
+                            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Gestão e Inteligência Operacional Urbana</p>
+                            <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase">
+                               <p>CNPJ: 00.000.000/0001-00</p>
+                               <p>Contato: (00) 00000-0000 | feraservice.com.br</p>
+                            </div>
+                         </div>
+                         <div className="text-right uppercase">
+                            <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block">
+                               <h2 className="text-sm font-black tracking-widest">Ficha de Acerto Individual</h2>
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-600">Referência do Período</p>
+                            <p className="text-sm font-black text-slate-900">{formatDate(startDate)} a {formatDate(endDate)}</p>
+                         </div>
+                      </div>
+                    </td>
+                  </tr>
+                </thead>
 
-              {/* Dados do Colaborador e Resumo de Valores */}
-              <div className="grid grid-cols-12 gap-6 mb-8">
-                 <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200">
-                    <div className="mb-4">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador beneficiário</p>
-                       <p className="text-sm font-black uppercase text-slate-900">{selectedEmployee?.name}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-y-3 gap-x-6">
-                        <div>
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cargo / Função</p>
-                           <p className="text-[10px] font-bold uppercase text-slate-700">{selectedEmployee?.role}</p>
-                        </div>
-                        <div>
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
-                           <p className="text-[10px] font-bold text-slate-700">{selectedEmployee?.cpf || 'Não informado'}</p>
-                        </div>
-                        <div>
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Endereço Residencial</p>
-                           <p className="text-[9px] font-bold text-slate-700 leading-tight truncate">{selectedEmployee?.address || 'Não informado'}</p>
-                        </div>
-                        <div>
-                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Chave PIX</p>
-                           <p className="text-[10px] font-bold text-blue-600 uppercase">{selectedEmployee?.pixKey || 'Não informada'}</p>
-                        </div>
-                    </div>
-                 </div>
+                {/* Corpo do Conteúdo (Extrato) */}
+                <tbody className="print-body">
+                  <tr>
+                    <td>
+                      {/* Dados do Colaborador */}
+                      <div className="grid grid-cols-12 gap-6 mb-8">
+                         <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200">
+                            <div className="mb-4">
+                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador beneficiário</p>
+                               <p className="text-base font-black uppercase text-slate-900">{selectedEmployee?.name}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-y-3 gap-x-6">
+                                <div>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cargo / Função</p>
+                                   <p className="text-[10px] font-bold uppercase text-slate-700">{selectedEmployee?.role}</p>
+                                </div>
+                                <div>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
+                                   <p className="text-[10px] font-bold text-slate-700">{selectedEmployee?.cpf || 'Não informado'}</p>
+                                </div>
+                                <div>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Chave PIX</p>
+                                   <p className="text-[10px] font-bold text-blue-600 uppercase">{selectedEmployee?.pixKey || 'Não informada'}</p>
+                                </div>
+                            </div>
+                         </div>
 
-                 {/* Resumo Financeiro Estruturado */}
-                 <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
-                    <div className="space-y-2 border-b-2 border-slate-100 pb-4">
-                       <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                          <span className="text-slate-500">VALOR BRUTO (BASE)</span>
-                          <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
-                       </div>
-                       <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                          <span className="text-rose-500">TOTAL DESCONTOS (-)</span>
-                          <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
-                       </div>
-                    </div>
-                    <div className="text-center pt-2">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO A RECEBER</p>
-                       <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
-                    </div>
-                 </div>
-              </div>
+                         {/* Resumo Financeiro */}
+                         <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
+                            <div className="space-y-2 border-b-2 border-slate-100 pb-4">
+                               <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                                  <span className="text-slate-500">VALOR BRUTO (BASE)</span>
+                                  <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
+                               </div>
+                               <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                                  <span className="text-rose-500">TOTAL DESCONTOS (-)</span>
+                                  <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
+                               </div>
+                            </div>
+                            <div className="text-center pt-2">
+                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO A RECEBER</p>
+                               <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+                            </div>
+                         </div>
+                      </div>
 
-              {/* Tabela de Extrato de Diárias */}
-              <div className="flex-1">
-                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900 flex items-center gap-2">
-                    <FileText size={12}/> EXTRATO DETALHADO DE SERVIÇOS E FREQUÊNCIA
-                 </h4>
-                 <table className="w-full text-[10px] border-collapse uppercase table-fixed">
-                    <thead>
-                       <tr className="bg-slate-900 text-white">
-                         <th className="p-3 text-left border border-slate-900 w-24">Data</th>
-                         <th className="p-3 text-center border border-slate-900 w-20">Status</th>
-                         <th className="p-3 text-right border border-slate-900 w-28">V. Diária (R$)</th>
-                         <th className="p-3 text-right border border-slate-900 w-28">Desconto (R$)</th>
-                         <th className="p-3 text-left border border-slate-900">Justificativa / Obs.</th>
-                         <th className="p-3 text-right border border-slate-900 w-28">Líquido (R$)</th>
-                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                       {attendanceHistory.map(h => (
-                          <tr key={h.id} className="border-x border-slate-200">
-                             <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
-                             <td className="p-3 text-center font-black border-r text-slate-900">
-                                {h.status === 'present' ? 'INTEGRAL' : h.status === 'partial' ? 'MEIA' : 'FALTA'}
-                             </td>
-                             <td className="p-3 text-right border-r text-slate-600">{formatMoney(h.value)}</td>
-                             <td className="p-3 text-right text-rose-500 border-r">{h.discountValue ? formatMoney(h.discountValue) : '-'}</td>
-                             <td className="p-3 text-[8px] italic border-r leading-tight text-slate-500">{h.discountObservation || '-'}</td>
-                             <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
-                          </tr>
-                       ))}
-                       <tr className="bg-slate-100">
-                          <td colSpan={5} className="p-4 text-right font-black text-xs uppercase border border-slate-200">Soma Total Líquida do Período:</td>
-                          <td className="p-4 text-right font-black text-xs border border-slate-200">{formatMoney(totalToPay)}</td>
-                       </tr>
-                    </tbody>
-                 </table>
-                 
-                 <div className="mt-8 bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-start gap-3">
-                    <Info size={16} className="text-slate-400 shrink-0 mt-1" />
-                    <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
-                       Este documento serve como extrato informativo para conferência de diárias e lançamentos do período especificado. 
-                       O pagamento é efetivado via PIX conforme dados informados acima.
-                    </p>
-                 </div>
-              </div>
+                      {/* Tabela de Extrato */}
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900 flex items-center gap-2">
+                         <FileText size={12}/> EXTRATO DETALHADO DE SERVIÇOS E FREQUÊNCIA
+                      </h4>
+                      <table className="w-full text-[10px] border-collapse uppercase table-fixed">
+                         <thead>
+                            <tr className="bg-slate-900 text-white">
+                              <th className="p-3 text-left border border-slate-900 w-24">Data</th>
+                              <th className="p-3 text-center border border-slate-900 w-20">Status</th>
+                              <th className="p-3 text-right border border-slate-900 w-28">V. Diária</th>
+                              <th className="p-3 text-right border border-slate-900 w-28 text-rose-300">Desc.</th>
+                              <th className="p-3 text-left border border-slate-900">Obs.</th>
+                              <th className="p-3 text-right border border-slate-900 w-28">Líquido</th>
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-200">
+                            {attendanceHistory.map(h => (
+                               <tr key={h.id} className="border-x border-slate-200">
+                                  <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
+                                  <td className="p-3 text-center font-black border-r text-slate-900">
+                                     {h.status === 'present' ? 'INTEGRAL' : h.status === 'partial' ? 'MEIA' : 'FALTA'}
+                                  </td>
+                                  <td className="p-3 text-right border-r text-slate-600">{formatMoney(h.value)}</td>
+                                  <td className="p-3 text-right text-rose-500 border-r">{h.discountValue ? formatMoney(h.discountValue) : '-'}</td>
+                                  <td className="p-3 text-[8px] italic border-r leading-tight text-slate-500">{h.discountObservation || '-'}</td>
+                                  <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
+                               </tr>
+                            ))}
+                            <tr className="bg-slate-100">
+                               <td colSpan={5} className="p-4 text-right font-black text-xs uppercase border border-slate-200">Soma Total Líquida:</td>
+                               <td className="p-4 text-right font-black text-xs border border-slate-200">{formatMoney(totalToPay)}</td>
+                            </tr>
+                         </tbody>
+                      </table>
 
-              {/* Rodapé e Assinaturas - Fixados na base */}
-              <div className="mt-16 pt-12">
-                 <div className="grid grid-cols-2 gap-24 text-center">
-                    <div className="space-y-2">
-                       <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">{selectedEmployee?.name}</div>
-                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
-                    </div>
-                    <div className="space-y-2">
-                       <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Fera Service</div>
-                       <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
-                    </div>
-                 </div>
-                 
-                 {/* Barra de Paginação e Autenticação */}
-                 <div className="mt-16 border-t border-slate-100 pt-4 flex justify-between items-center text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">
-                    <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR')}</span>
-                    <span className="text-slate-400">PÁGINA 01 / 01</span>
-                    <span>REF: {selectedEmployee?.id.slice(0, 8).toUpperCase()}</span>
-                 </div>
-              </div>
+                      <div className="mt-8 bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-start gap-3 page-break-avoid">
+                         <Info size={16} className="text-slate-400 shrink-0 mt-1" />
+                         <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
+                            Este documento serve como extrato informativo para conferência de diárias e lançamentos do período especificado. 
+                            O pagamento é efetivado via PIX conforme dados informados acima.
+                         </p>
+                      </div>
+
+                      {/* Assinaturas */}
+                      <div className="mt-16 pt-12 grid grid-cols-2 gap-24 text-center page-break-avoid">
+                         <div className="space-y-2">
+                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">{selectedEmployee?.name}</div>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
+                         </div>
+                         <div className="space-y-2">
+                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Fera Service</div>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
+                         </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+
+                {/* Rodapé que repete em todas as páginas */}
+                <tfoot className="print-footer">
+                  <tr>
+                    <td>
+                      <div className="pt-12 flex justify-between items-center text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] border-t border-slate-100 mt-8">
+                         <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR')}</span>
+                         <span className="text-slate-400">PÁGINA <span className="page-number"></span></span>
+                         <span>AUTENTICAÇÃO: {selectedEmployee?.id.slice(0, 8).toUpperCase()}</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
            </div>
         </div>
       )}
