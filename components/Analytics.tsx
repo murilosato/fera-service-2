@@ -62,19 +62,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const totalToPay = totalBaseValue - totalDiscounts;
 
   const handlePrint = () => {
-    // 1. Salva o título original e limpa para a impressão (remove o nome do sistema no topo)
     const originalTitle = document.title;
     document.title = ""; 
-
     setShowPrintView(true);
-    
-    // Pequeno delay para garantir que o DOM da folha de impressão renderizou
     setTimeout(() => {
       window.print();
-      
-      // Restaura o título após o diálogo de impressão fechar
       document.title = originalTitle;
-
       if (totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
@@ -166,7 +159,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </header>
 
-      {/* Central de Exportação - Escondida na Impressão */}
       <section className="bg-slate-900 text-white rounded-[32px] p-6 shadow-2xl relative overflow-hidden print:hidden border border-white/5">
          <div className="relative z-10">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 mb-5 opacity-70">
@@ -329,7 +321,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      {/* Modal Financeiro - Transparente e Refinado */}
       {showFinanceModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-4 border-slate-900 animate-in zoom-in-95">
@@ -358,7 +349,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       )}
 
-      {/* VISTA DE IMPRESSÃO - CORREÇÃO DEFINITIVA PARA PÁGINA EM BRANCO */}
       {showPrintView && (
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
@@ -377,10 +367,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 }
              }
              @media print { 
-               /* 1. Esconde tudo que está no #root (corpo do app) */
                body > #root { visibility: hidden; height: 0; overflow: hidden; }
-               
-               /* 2. Mostra apenas o container de impressão */
                .print-view-container, .print-view-container * { visibility: visible !important; }
                .print-view-container { 
                  position: absolute !important; 
@@ -392,13 +379,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                  z-index: 9999 !important;
                  background: white !important;
                }
-
                @page { 
                  margin: 1cm; 
                  size: A4; 
                  counter-increment: page;
                }
-
                .sheet { 
                  width: 100% !important; 
                  margin: 0 !important; 
@@ -408,11 +393,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                  overflow: visible !important;
                  border: none !important;
                }
-
-               /* Paginação Dinâmica */
                .page-number:after { content: counter(page); }
              }
-
              .print-table { width: 100%; border-collapse: collapse; border: none; }
              .print-header { display: table-header-group; }
              .print-footer { display: table-footer-group; }
@@ -501,13 +483,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                       </h4>
                       <table className="w-full text-[10px] border-collapse uppercase table-fixed border border-slate-200">
                          <thead>
-                            <tr className="bg-slate-900 text-white" style={{ backgroundColor: '#0f172a', color: 'white' }}>
-                              <th className="p-3 text-left border-r border-slate-800 w-24">Data</th>
-                              <th className="p-3 text-center border-r border-slate-800 w-20">Status</th>
-                              <th className="p-3 text-right border-r border-slate-800 w-28">V. Diária</th>
-                              <th className="p-3 text-right border-r border-slate-800 w-28">Desc.</th>
-                              <th className="p-3 text-left border-r border-slate-800">Obs.</th>
-                              <th className="p-3 text-right">Líquido</th>
+                            <tr style={{ backgroundColor: '#f8fafc', color: '#0f172a' }}>
+                              <th className="p-3 text-left border-r border-b border-slate-200 w-24">Data</th>
+                              <th className="p-3 text-center border-r border-b border-slate-200 w-20">Status</th>
+                              <th className="p-3 text-right border-r border-b border-slate-200 w-28">V. Diária</th>
+                              <th className="p-3 text-right border-r border-b border-slate-200 w-28">Desc.</th>
+                              <th className="p-3 text-left border-r border-b border-slate-200">Obs.</th>
+                              <th className="p-3 text-right border-b border-slate-200">Líquido</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-slate-200">
@@ -523,7 +505,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                   <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
                                </tr>
                             ))}
-                            <tr className="bg-slate-100" style={{ backgroundColor: '#f1f5f9' }}>
+                            <tr style={{ backgroundColor: '#f8fafc' }}>
                                <td colSpan={5} className="p-4 text-right font-black text-xs uppercase border-r border-slate-200">Soma Total Líquida:</td>
                                <td className="p-4 text-right font-black text-xs">{formatMoney(totalToPay)}</td>
                             </tr>
