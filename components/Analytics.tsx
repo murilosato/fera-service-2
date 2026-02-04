@@ -2,8 +2,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
-  Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone, Database, ArrowRight, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, AlertCircle, Info, Globe, Mail
+  Printer, Search, Calendar, FileText, X, Phone, User, Hash, Smartphone, Database, TableProperties,
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -62,9 +62,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const totalToPay = totalBaseValue - totalDiscounts;
 
   const handlePrint = () => {
+    // 1. Salva o título original e limpa para a impressão (remove o nome do sistema no topo)
+    const originalTitle = document.title;
+    document.title = ""; 
+
     setShowPrintView(true);
+    
+    // Pequeno delay para garantir que o DOM da folha de impressão renderizou
     setTimeout(() => {
       window.print();
+      
+      // Restaura o título após o diálogo de impressão fechar
+      document.title = originalTitle;
+
       if (totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
@@ -173,7 +183,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                   <DollarSign size={18}/><span className="text-[10px] font-black uppercase">Fluxo Caixa</span>
                </button>
                <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-indigo-600 group">
-                  <MapPin size={18}/><span className="text-[10px) font-black uppercase">Produção</span>
+                  <MapPin size={18}/><span className="text-[10px] font-black uppercase">Produção</span>
                </button>
             </div>
          </div>
@@ -273,7 +283,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
                                        <div className="flex flex-col gap-1 items-end">
-                                         {/* Fix: Adicionado o parâmetro 'e' no manipulador onChange */}
                                          <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" placeholder="DESC." value={editingDiscount} onChange={e => setEditingDiscount(e.target.value)} />
                                          <input className="w-40 bg-white border border-slate-200 p-2 rounded-lg text-[8px] font-black" placeholder="MOTIVO" value={editingObservation} onChange={e => setEditingObservation(e.target.value)} />
                                        </div>
@@ -326,10 +335,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
           <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-4 border-slate-900 animate-in zoom-in-95">
              <div className="text-center space-y-3">
                 <Landmark size={32} className="mx-auto text-emerald-600" />
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest">Registrar Saída Financeira</h3>
+                <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest text-center">REGISTRAR SAÍDA FINANCEIRA</h3>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                   <p className="text-[9px] font-black text-slate-400 uppercase">Valor Líquido</p>
-                   <p className="text-2xl font-black text-rose-600 tracking-tighter">{formatMoney(totalToPay)}</p>
+                   <p className="text-[9px] font-black text-slate-400 uppercase text-center">Valor Líquido</p>
+                   <p className="text-2xl font-black text-rose-600 tracking-tighter text-center">{formatMoney(totalToPay)}</p>
                 </div>
              </div>
              <div className="space-y-4">
@@ -349,13 +358,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       )}
 
-      {/* VISTA DE IMPRESSÃO - ESTRUTURA PARA MÚLTIPLAS PÁGINAS SEM CABEÇALHOS DO NAVEGADOR */}
+      {/* VISTA DE IMPRESSÃO - CORREÇÃO DEFINITIVA PARA PÁGINA EM BRANCO */}
       {showPrintView && (
-        <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-container overflow-y-auto">
+        <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
              @media screen {
-                body { background-color: #f1f5f9; }
-                .print-container { padding: 40px 0; }
+                .print-view-container { 
+                  padding: 40px 0; 
+                  background-color: #f1f5f9;
+                }
                 .sheet {
                    background: white;
                    box-shadow: 0 0 40px rgba(0,0,0,0.1);
@@ -366,35 +377,43 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 }
              }
              @media print { 
-               /* Suprime títulos automáticos do navegador colocando margem 0 no @page e padding na folha */
+               /* 1. Esconde tudo que está no #root (corpo do app) */
+               body > #root { visibility: hidden; height: 0; overflow: hidden; }
+               
+               /* 2. Mostra apenas o container de impressão */
+               .print-view-container, .print-view-container * { visibility: visible !important; }
+               .print-view-container { 
+                 position: absolute !important; 
+                 left: 0 !important; 
+                 top: 0 !important; 
+                 width: 100% !important; 
+                 height: auto !important;
+                 overflow: visible !important;
+                 z-index: 9999 !important;
+                 background: white !important;
+               }
+
                @page { 
-                 margin: 0 !important; 
+                 margin: 1cm; 
                  size: A4; 
                  counter-increment: page;
                }
-               body { 
-                 margin: 0 !important; 
-                 padding: 0 !important;
-                 overflow: visible !important;
-                 background: white !important;
-               }
+
                .sheet { 
-                 width: 210mm !important; 
+                 width: 100% !important; 
                  margin: 0 !important; 
-                 padding: 1.5cm !important; 
+                 padding: 0 !important; 
                  box-shadow: none !important; 
                  height: auto !important;
                  overflow: visible !important;
+                 border: none !important;
                }
-               /* Garante que o PDF ignore o resto do app */
-               body > *:not(.print-container) { display: none !important; }
-               .print-container, .print-container * { visibility: visible !important; }
-               
+
                /* Paginação Dinâmica */
                .page-number:after { content: counter(page); }
              }
 
-             .print-table { width: 100%; border-collapse: collapse; }
+             .print-table { width: 100%; border-collapse: collapse; border: none; }
              .print-header { display: table-header-group; }
              .print-footer { display: table-footer-group; }
              .print-body { display: table-row-group; }
@@ -409,18 +428,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                     <td>
                       <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
                          <div className="space-y-1">
-                            <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none text-slate-900">
-                               {state.company?.name || "FERA SERVICE"}
+                            <h1 className="text-3xl font-black uppercase tracking-tighter italic leading-none text-slate-900">
+                               {state.company?.name || "UNIDADE DE OPERAÇÃO"}
                             </h1>
-                            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Gestão e Inteligência Operacional Urbana</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Inteligência em Gestão Urbana</p>
                             <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase space-y-1">
                                {state.company?.cnpj && <p>CNPJ: {state.company.cnpj}</p>}
                                {state.company?.address && <p className="max-w-[300px] leading-tight">{state.company.address}</p>}
-                               <p className="flex items-center gap-3">
-                                  {state.company?.phone && <span><Phone size={8} className="inline mr-1"/> {state.company.phone}</span>}
-                                  {state.company?.website && <span><Globe size={8} className="inline mr-1"/> {state.company.website}</span>}
-                               </p>
-                               {!state.company?.cnpj && <p className="text-rose-400 lowercase font-bold italic opacity-50">Configurar dados da empresa em Configurações</p>}
+                               <div className="flex items-center gap-3">
+                                  {state.company?.phone && <span>{state.company.phone}</span>}
+                                  {state.company?.website && <span>{state.company.website}</span>}
+                               </div>
                             </div>
                          </div>
                          <div className="text-right uppercase">
@@ -439,7 +457,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                   <tr>
                     <td>
                       <div className="grid grid-cols-12 gap-6 mb-8">
-                         <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200">
+                         <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                             <div className="mb-4">
                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador beneficiário</p>
                                <p className="text-base font-black uppercase text-slate-900">{selectedEmployee?.name}</p>
@@ -450,7 +468,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                    <p className="text-[10px] font-bold uppercase text-slate-700">{selectedEmployee?.role}</p>
                                 </div>
                                 <div>
-                                   <p className="text-[8px) font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
                                    <p className="text-[10px] font-bold text-slate-700">{selectedEmployee?.cpf || 'Não informado'}</p>
                                 </div>
                                 <div>
@@ -460,7 +478,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                             </div>
                          </div>
 
-                         <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
+                         <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4" style={{ border: '2px solid #0f172a' }}>
                             <div className="space-y-2 border-b-2 border-slate-100 pb-4">
                                <div className="flex justify-between items-center text-[10px] font-black uppercase">
                                   <span className="text-slate-500">VALOR BRUTO (BASE)</span>
@@ -479,40 +497,40 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                       </div>
 
                       <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900 flex items-center gap-2">
-                         <FileText size={12}/> EXTRATO DETALHADO DE SERVIÇOS E FREQUÊNCIA
+                         EXTRATO DETALHADO DE SERVIÇOS E FREQUÊNCIA
                       </h4>
-                      <table className="w-full text-[10px] border-collapse uppercase table-fixed">
+                      <table className="w-full text-[10px] border-collapse uppercase table-fixed border border-slate-200">
                          <thead>
-                            <tr className="bg-slate-900 text-white">
-                              <th className="p-3 text-left border border-slate-900 w-24">Data</th>
-                              <th className="p-3 text-center border border-slate-900 w-20">Status</th>
-                              <th className="p-3 text-right border border-slate-900 w-28">V. Diária</th>
-                              <th className="p-3 text-right border border-slate-900 w-28 text-rose-300">Desc.</th>
-                              <th className="p-3 text-left border border-slate-900">Obs.</th>
-                              <th className="p-3 text-right border border-slate-900 w-28">Líquido</th>
+                            <tr className="bg-slate-900 text-white" style={{ backgroundColor: '#0f172a', color: 'white' }}>
+                              <th className="p-3 text-left border-r border-slate-800 w-24">Data</th>
+                              <th className="p-3 text-center border-r border-slate-800 w-20">Status</th>
+                              <th className="p-3 text-right border-r border-slate-800 w-28">V. Diária</th>
+                              <th className="p-3 text-right border-r border-slate-800 w-28">Desc.</th>
+                              <th className="p-3 text-left border-r border-slate-800">Obs.</th>
+                              <th className="p-3 text-right">Líquido</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-slate-200">
                             {attendanceHistory.map(h => (
-                               <tr key={h.id} className="border-x border-slate-200">
-                                  <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
-                                  <td className="p-3 text-center font-black border-r text-slate-900">
+                               <tr key={h.id}>
+                                  <td className="p-3 font-bold border-r border-slate-200 text-slate-600">{formatDate(h.date)}</td>
+                                  <td className="p-3 text-center font-black border-r border-slate-200 text-slate-900">
                                      {h.status === 'present' ? 'INTEGRAL' : h.status === 'partial' ? 'MEIA' : 'FALTA'}
                                   </td>
-                                  <td className="p-3 text-right border-r text-slate-600">{formatMoney(h.value)}</td>
-                                  <td className="p-3 text-right text-rose-500 border-r">{h.discountValue ? formatMoney(h.discountValue) : '-'}</td>
-                                  <td className="p-3 text-[8px] italic border-r leading-tight text-slate-500">{h.discountObservation || '-'}</td>
+                                  <td className="p-3 text-right border-r border-slate-200 text-slate-600">{formatMoney(h.value)}</td>
+                                  <td className="p-3 text-right text-rose-500 border-r border-slate-200">{h.discountValue ? formatMoney(h.discountValue) : '-'}</td>
+                                  <td className="p-3 text-[8px] italic border-r border-slate-200 leading-tight text-slate-500">{h.discountObservation || '-'}</td>
                                   <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
                                </tr>
                             ))}
-                            <tr className="bg-slate-100">
-                               <td colSpan={5} className="p-4 text-right font-black text-xs uppercase border border-slate-200">Soma Total Líquida:</td>
-                               <td className="p-4 text-right font-black text-xs border border-slate-200">{formatMoney(totalToPay)}</td>
+                            <tr className="bg-slate-100" style={{ backgroundColor: '#f1f5f9' }}>
+                               <td colSpan={5} className="p-4 text-right font-black text-xs uppercase border-r border-slate-200">Soma Total Líquida:</td>
+                               <td className="p-4 text-right font-black text-xs">{formatMoney(totalToPay)}</td>
                             </tr>
                          </tbody>
                       </table>
 
-                      <div className="mt-8 bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-start gap-3 page-break-avoid">
+                      <div className="mt-8 bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-start gap-3 page-break-avoid" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                          <Info size={16} className="text-slate-400 shrink-0 mt-1" />
                          <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
                             Este documento serve como extrato informativo para conferência de diárias e lançamentos do período especificado. 
@@ -522,11 +540,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
                       <div className="mt-16 pt-12 grid grid-cols-2 gap-24 text-center page-break-avoid">
                          <div className="space-y-2">
-                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">{selectedEmployee?.name}</div>
+                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900" style={{ borderTop: '2px solid #0f172a' }}>{selectedEmployee?.name}</div>
                             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
                          </div>
                          <div className="space-y-2">
-                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Unidade</div>
+                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900" style={{ borderTop: '2px solid #0f172a' }}>Administração Operacional</div>
                             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
                          </div>
                       </div>
