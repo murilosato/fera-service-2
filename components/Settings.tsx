@@ -72,6 +72,23 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     }
   };
 
+  const handleUpdateRates = async () => {
+    if (!state.currentUser?.companyId) return;
+    setIsLoading(true);
+    try {
+      await dbSave('companies', {
+        id: state.currentUser.companyId,
+        service_rates: localRates
+      });
+      await refreshData();
+      notify("Tabela de preços atualizada!");
+    } catch (e) {
+      notify("Erro ao salvar valores unitários", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleUpdateList = async (listKey: 'finance' | 'inventory' | 'roles', action: 'add' | 'remove', value: string) => {
     const companyId = state.currentUser?.companyId;
     if (!companyId) return notify("Erro: Empresa não identificada", "error");
@@ -190,13 +207,49 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </button>
         </div>
 
+        {/* Tabela de Preços (Unitários) */}
+        <div className="bg-white border border-slate-200 p-8 rounded-[40px] shadow-sm space-y-6">
+          <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
+            <DollarSign size={20} className="text-emerald-500"/> Tabela de Preços (Unitários)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            {Object.keys(localRates).map((serviceType) => (
+              <div key={serviceType} className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block truncate" title={serviceType}>
+                  {serviceType}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">R$</span>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all" 
+                    value={localRates[serviceType]} 
+                    onChange={e => setLocalRates({...localRates, [serviceType]: parseFloat(e.target.value) || 0})} 
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <button onClick={handleUpdateRates} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+             {isLoading ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} ATUALIZAR TABELA DE PREÇOS
+          </button>
+        </div>
+
         {/* Planejamento Mensal */}
-        <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-6 border border-white/5">
+        <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-6 border border-white/5 lg:col-span-2">
             <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Planejamento Mensal</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="space-y-1">
                  <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Mês</label>
                  <input type="month" className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-xs font-black outline-none focus:border-emerald-500 text-white" value={goalForm.month} onChange={e => setGoalForm({...goalForm, month: e.target.value})} />
+              </div>
+              <div className="space-y-1">
+                 <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Tipo de Meta</label>
+                 <select className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-xs font-black outline-none text-white" value={goalForm.type} onChange={e => setGoalForm({...goalForm, type: e.target.value as any})}>
+                   <option value="production">PRODUÇÃO (M²)</option>
+                   <option value="revenue">FATURAMENTO (R$)</option>
+                 </select>
               </div>
               <div className="space-y-1">
                  <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Valor Alvo</label>
@@ -208,11 +261,11 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
             </button>
             <div className="grid grid-cols-2 gap-4">
                <div className="bg-white/5 border border-white/10 p-4 rounded-[24px]">
-                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Prod. Alvo</p>
+                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Prod. Alvo ({goalForm.month})</p>
                   <p className="text-sm font-black text-blue-400">{currentGoalDisplay?.production || 0} m²</p>
                </div>
                <div className="bg-white/5 border border-white/10 p-4 rounded-[24px]">
-                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Rec. Alvo</p>
+                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Rec. Alvo ({goalForm.month})</p>
                   <p className="text-sm font-black text-emerald-400">R$ {currentGoalDisplay?.revenue || 0}</p>
                </div>
             </div>
@@ -220,7 +273,7 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Categorias e Cargos - Remanescentes */}
+        {/* Categorias e Cargos */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-emerald-600 flex gap-2 items-center tracking-widest"><Tag size={16}/> Categorias de Fluxo</h4>
           <div className="flex gap-2">
