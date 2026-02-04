@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Fingerprint, CreditCard, CheckCircle2, Search, Calendar, FileText, X, Phone, MapPin, User, Hash, Download, Smartphone, Database, ArrowRight, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, AlertCircle, Info
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, AlertCircle, Info, Globe, Mail
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -70,7 +70,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
       }
-      // Não fechamos o showPrintView imediatamente para que ele fique visível sob o modal
     }, 500);
   };
 
@@ -133,7 +132,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
       await refreshData();
       setShowFinanceModal(false);
-      setShowPrintView(false); // Fecha a vista de impressão após quitar
+      setShowPrintView(false);
       notify("Saída financeira registrada e frequências quitadas!");
     } catch (e) {
       notify("Erro ao gerar saída financeira", "error");
@@ -174,7 +173,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                   <DollarSign size={18}/><span className="text-[10px] font-black uppercase">Fluxo Caixa</span>
                </button>
                <button onClick={() => notify("Função em desenvolvimento")} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-indigo-600 group">
-                  <MapPin size={18}/><span className="text-[10px] font-black uppercase">Produção</span>
+                  <MapPin size={18}/><span className="text-[10px) font-black uppercase">Produção</span>
                </button>
             </div>
          </div>
@@ -274,6 +273,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
                                        <div className="flex flex-col gap-1 items-end">
+                                         {/* Fix: Adicionado o parâmetro 'e' no manipulador onChange */}
                                          <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" placeholder="DESC." value={editingDiscount} onChange={e => setEditingDiscount(e.target.value)} />
                                          <input className="w-40 bg-white border border-slate-200 p-2 rounded-lg text-[8px] font-black" placeholder="MOTIVO" value={editingObservation} onChange={e => setEditingObservation(e.target.value)} />
                                        </div>
@@ -320,9 +320,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      {/* Modal Financeiro - Fundo mais transparente para ver o PDF atrás */}
+      {/* Modal Financeiro - Transparente e Refinado */}
       {showFinanceModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-4 border-slate-900 animate-in zoom-in-95">
              <div className="text-center space-y-3">
                 <Landmark size={32} className="mx-auto text-emerald-600" />
@@ -340,7 +340,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 </select>
              </div>
              <div className="flex flex-col gap-3">
-                <button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all">
+                <button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-slate-900 transition-all">
                    {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} CONFIRMAR E QUITAR
                 </button>
                 <button onClick={() => { setShowFinanceModal(false); setShowPrintView(false); }} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">FECHAR</button>
@@ -349,7 +349,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       )}
 
-      {/* VISTA DE IMPRESSÃO - ESTRUTURA PARA MÚLTIPLAS PÁGINAS */}
+      {/* VISTA DE IMPRESSÃO - ESTRUTURA PARA MÚLTIPLAS PÁGINAS SEM CABEÇALHOS DO NAVEGADOR */}
       {showPrintView && (
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-container overflow-y-auto">
            <style>{`
@@ -366,72 +366,61 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 }
              }
              @media print { 
-               /* Garante que o PDF ignore o resto do app */
-               body * { visibility: hidden !important; }
-               .print-container, .print-container * { visibility: visible !important; }
-               .print-container { 
-                 position: absolute; 
-                 left: 0; 
-                 top: 0; 
-                 width: 100%; 
-                 height: auto !important;
-                 overflow: visible !important;
-               }
-               
-               /* Configuração de Página A4 */
+               /* Suprime títulos automáticos do navegador colocando margem 0 no @page e padding na folha */
                @page { 
-                 margin: 1.5cm; 
+                 margin: 0 !important; 
                  size: A4; 
                  counter-increment: page;
                }
-
-               /* Remove barras de rolagem e resets de cor */
-               html, body { 
-                 height: auto !important; 
-                 overflow: visible !important; 
-                 background: white !important; 
-               }
-
-               .sheet { 
-                 width: 100% !important; 
+               body { 
                  margin: 0 !important; 
-                 padding: 0 !important; 
+                 padding: 0 !important;
+                 overflow: visible !important;
+                 background: white !important;
+               }
+               .sheet { 
+                 width: 210mm !important; 
+                 margin: 0 !important; 
+                 padding: 1.5cm !important; 
                  box-shadow: none !important; 
                  height: auto !important;
+                 overflow: visible !important;
                }
-
+               /* Garante que o PDF ignore o resto do app */
+               body > *:not(.print-container) { display: none !important; }
+               .print-container, .print-container * { visibility: visible !important; }
+               
                /* Paginação Dinâmica */
                .page-number:after { content: counter(page); }
-               .page-count:after { content: counter(pages); }
              }
 
-             /* Layout de Tabela para Cabeçalhos e Rodapés repetidos */
-             .print-table {
-               width: 100%;
-               border-collapse: collapse;
-               table-layout: fixed;
-             }
+             .print-table { width: 100%; border-collapse: collapse; }
              .print-header { display: table-header-group; }
              .print-footer { display: table-footer-group; }
              .print-body { display: table-row-group; }
-
-             /* Reseta contadores */
              body { counter-reset: page; }
+             .page-break-avoid { page-break-inside: avoid; }
            `}</style>
            
            <div className="sheet">
               <table className="print-table">
-                {/* Cabeçalho que repete em todas as páginas */}
                 <thead className="print-header">
                   <tr>
                     <td>
                       <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
                          <div className="space-y-1">
-                            <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none text-slate-900">Fera Service</h1>
+                            <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none text-slate-900">
+                               {state.company?.name || "FERA SERVICE"}
+                            </h1>
                             <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Gestão e Inteligência Operacional Urbana</p>
-                            <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase">
-                               <p>CNPJ: 00.000.000/0001-00</p>
-                               <p>Contato: (00) 00000-0000 | feraservice.com.br</p>
+                            <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase space-y-1">
+                               {state.company?.cnpj && <p>CNPJ: {state.company.cnpj}</p>}
+                               {state.company?.address && <p className="max-w-[300px] leading-tight">{state.company.address}</p>}
+                               <p className="flex items-center gap-3">
+                                  {state.company?.phone && <span><Phone size={8} className="inline mr-1"/> {state.company.phone}</span>}
+                                  {state.company?.website && <span><Globe size={8} className="inline mr-1"/> {state.company.website}</span>}
+                               </p>
+                               {!state.company?.cnpj && <p className="text-rose-400 lowercase font-bold italic opacity-50">Configurar dados da empresa em Configurações</p>}
                             </div>
                          </div>
                          <div className="text-right uppercase">
@@ -446,11 +435,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                   </tr>
                 </thead>
 
-                {/* Corpo do Conteúdo (Extrato) */}
                 <tbody className="print-body">
                   <tr>
                     <td>
-                      {/* Dados do Colaborador */}
                       <div className="grid grid-cols-12 gap-6 mb-8">
                          <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200">
                             <div className="mb-4">
@@ -463,7 +450,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                    <p className="text-[10px] font-bold uppercase text-slate-700">{selectedEmployee?.role}</p>
                                 </div>
                                 <div>
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
+                                   <p className="text-[8px) font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
                                    <p className="text-[10px] font-bold text-slate-700">{selectedEmployee?.cpf || 'Não informado'}</p>
                                 </div>
                                 <div>
@@ -473,7 +460,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                             </div>
                          </div>
 
-                         {/* Resumo Financeiro */}
                          <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
                             <div className="space-y-2 border-b-2 border-slate-100 pb-4">
                                <div className="flex justify-between items-center text-[10px] font-black uppercase">
@@ -492,7 +478,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                          </div>
                       </div>
 
-                      {/* Tabela de Extrato */}
                       <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900 flex items-center gap-2">
                          <FileText size={12}/> EXTRATO DETALHADO DE SERVIÇOS E FREQUÊNCIA
                       </h4>
@@ -535,14 +520,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                          </p>
                       </div>
 
-                      {/* Assinaturas */}
                       <div className="mt-16 pt-12 grid grid-cols-2 gap-24 text-center page-break-avoid">
                          <div className="space-y-2">
                             <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">{selectedEmployee?.name}</div>
                             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
                          </div>
                          <div className="space-y-2">
-                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Fera Service</div>
+                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Unidade</div>
                             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
                          </div>
                       </div>
@@ -550,13 +534,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                   </tr>
                 </tbody>
 
-                {/* Rodapé que repete em todas as páginas */}
                 <tfoot className="print-footer">
                   <tr>
                     <td>
                       <div className="pt-12 flex justify-between items-center text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] border-t border-slate-100 mt-8">
                          <span>EMISSÃO: {new Date().toLocaleDateString('pt-BR')} {new Date().toLocaleTimeString('pt-BR')}</span>
-                         <span className="text-slate-400">PÁGINA <span className="page-number"></span></span>
+                         <span className="text-slate-400 uppercase">PÁGINA <span className="page-number"></span></span>
                          <span>AUTENTICAÇÃO: {selectedEmployee?.id.slice(0, 8).toUpperCase()}</span>
                       </div>
                     </td>

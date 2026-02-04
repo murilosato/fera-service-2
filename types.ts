@@ -30,6 +30,11 @@ export interface Company {
   financeCategories?: string[];
   inventoryCategories?: string[];
   employeeRoles?: string[];
+  cnpj?: string;
+  phone?: string;
+  address?: string;
+  email?: string;
+  website?: string;
 }
 
 export interface User {
@@ -158,5 +163,6 @@ export interface AppState {
   employeeRoles: string[];
   currentUser: User | null;
   users: User[];
+  company: Company | null;
   isSyncing?: boolean;
 }

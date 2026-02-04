@@ -64,7 +64,9 @@ export const INITIAL_STATE: AppState = {
         ai: true
       }
     }
-  ]
+  ],
+  // Fix: Adicionado propriedade 'company' inicial para satisfazer a interface AppState
+  company: null
 };
 
 export const SERVICE_OPTIONS = Object.values(ServiceType);

@@ -122,7 +122,19 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     [ServiceType.PINTURA_MEIO_FIO]: 1.20,
   };
 
+  const company = companyInfo?.data;
+
   return {
+    company: company ? {
+      id: company.id,
+      name: company.name,
+      cnpj: company.cnpj,
+      phone: company.phone,
+      address: company.address,
+      email: company.email,
+      website: company.website,
+      plan: company.plan
+    } : null,
     areas: areas.map((a: any) => ({
       id: a.id, 
       companyId: a.company_id, 
@@ -163,10 +175,10 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       discountValue: Number(r.discount_value || 0), discountObservation: r.discount_observation
     })),
     monthlyGoals: goalsMap,
-    serviceRates: companyInfo.data?.service_rates || defaultRates,
-    financeCategories: companyInfo.data?.finance_categories || ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
-    inventoryCategories: companyInfo.data?.inventory_categories || ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
-    employeeRoles: companyInfo.data?.employee_roles || ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado']
+    serviceRates: company?.service_rates || defaultRates,
+    financeCategories: company?.finance_categories || ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
+    inventoryCategories: company?.inventory_categories || ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
+    employeeRoles: company?.employee_roles || ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado']
   };
 };
 
