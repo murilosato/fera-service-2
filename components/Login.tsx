@@ -50,18 +50,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans antialiased relative overflow-hidden">
+    <div className="min-h-screen bg-[#010a1b] flex items-center justify-center p-4 font-sans antialiased relative overflow-hidden">
+      {/* Imagem de Fundo Personalizada */}
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center"
         style={{ 
-          backgroundImage: 'url("https://images.unsplash.com/photo-1621905252507-b354bcadcabc?q=80&w=2070&auto=format&fit=crop")',
-          opacity: 0.1 
+          backgroundImage: 'url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzAyMjcwODMsImV4cCI6MTgwMTc2MzA4M30.cA-OAiqJhMZ92PpPQUCXMq948fMnvreYeXCdslKYLaI")',
+          opacity: 0.6
         }}
       />
       
+      {/* Overlay para melhorar leitura */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#010a1b]/40 to-[#010a1b]/80" />
+      
       <button 
         onClick={() => setShowInstallModal(true)}
-        className="fixed top-8 right-8 flex items-center gap-3 bg-white border border-slate-200 px-6 py-3 rounded-2xl shadow-sm hover:bg-slate-50 text-[#2e3545] transition-all active:scale-95 z-10"
+        className="fixed top-8 right-8 flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 px-6 py-3 rounded-2xl shadow-sm hover:bg-white/20 text-white transition-all active:scale-95 z-10"
       >
         <Download size={18} />
         <span className="text-[10px] font-black uppercase tracking-widest">Instalar Terminal</span>
@@ -69,10 +73,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       <div className="w-full max-w-[440px] relative z-10">
         <div className="text-center mb-10">
-           <h1 className="text-4xl font-black text-[#010a1b] tracking-tighter uppercase leading-none">
+           <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none drop-shadow-lg">
              FERA SERVICE
            </h1>
-           <p className="text-[#2e3545] text-[10px] font-black uppercase tracking-[0.4em] mt-4 opacity-70">
+           <p className="text-white/70 text-[10px] font-black uppercase tracking-[0.4em] mt-4 opacity-70">
              Unidade de Operações Urbanas
            </p>
         </div>
