@@ -55,8 +55,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center"
         style={{ 
-          backgroundImage: 'url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzAyMjcwODMsImV4cCI6MTgwMTc2MzA4M30.cA-OAiqJhMZ92PpPQUCXMq948fMnvreYeXCdslKYLaI")',
-          opacity: 0.6
+          backgroundImage: 'url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.17.44.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE3LjQ0LmpwZWciLCJpYXQiOjE3NzAyMjY3NTksImV4cCI6MTgwMTc2Mjc1OX0.4WifHdXiNMvCv21vQX4QN-VLFmEhI7fcf4498YYzx6A")',
+          opacity: 0.5
         }}
       />
       
@@ -81,29 +81,30 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
            </p>
         </div>
 
-        <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border border-slate-100">
+        {/* Container com opacidade 0.2 e Backdrop Blur */}
+        <div className="bg-white/20 backdrop-blur-xl rounded-[40px] shadow-2xl overflow-hidden border border-white/20">
           <form onSubmit={handleSubmit} className="p-12 space-y-8">
             <div className="text-center">
-               <h2 className="text-[11px] font-black text-[#010a1b] uppercase tracking-[0.2em]">
+               <h2 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">
                   Terminal de Acesso Seguro
                </h2>
             </div>
 
             {error && (
-              <div className="bg-rose-50 border border-rose-100 text-rose-600 p-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center animate-in shake duration-300">
+              <div className="bg-rose-500/20 backdrop-blur-md border border-rose-500/30 text-white p-5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center animate-in shake duration-300">
                 {error}
               </div>
             )}
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest ml-1">E-mail Corporativo</label>
+                <label className="text-[9px] font-black text-white/60 uppercase tracking-widest ml-1">E-mail Corporativo</label>
                 <div className="relative">
-                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40" size={18} />
                   <input 
                     type="email" 
                     required
-                    className="w-full bg-slate-50 border-2 border-slate-100 pl-14 pr-4 py-5 rounded-3xl text-[13px] text-[#010a1b] font-black outline-none focus:border-[#010a1b] transition-all"
+                    className="w-full bg-white/10 border-2 border-white/10 pl-14 pr-4 py-5 rounded-3xl text-[13px] text-white font-black outline-none focus:border-white/40 transition-all placeholder:text-white/20"
                     placeholder="usuario@feraservice.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -112,18 +113,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest ml-1">Senha de Operação</label>
+                <label className="text-[9px] font-black text-white/60 uppercase tracking-widest ml-1">Senha de Operação</label>
                 <div className="relative">
-                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40" size={18} />
                   <input 
                     type={showPassword ? 'text' : 'password'} 
                     required
-                    className="w-full bg-slate-50 border-2 border-slate-100 pl-14 pr-14 py-5 rounded-3xl text-[13px] text-[#010a1b] font-black outline-none focus:border-[#010a1b] transition-all"
+                    className="w-full bg-white/10 border-2 border-white/10 pl-14 pr-14 py-5 rounded-3xl text-[13px] text-white font-black outline-none focus:border-white/40 transition-all placeholder:text-white/20"
                     placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#010a1b]">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
@@ -133,15 +134,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <button 
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#010a1b] hover:bg-emerald-600 disabled:opacity-50 text-white py-6 rounded-3xl font-black uppercase text-[11px] tracking-[0.3em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-2xl"
+              className="w-full bg-white text-[#010a1b] hover:bg-emerald-500 hover:text-white disabled:opacity-50 py-6 rounded-3xl font-black uppercase text-[11px] tracking-[0.3em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-2xl"
             >
               {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>ENTRAR NO SISTEMA <ArrowRight size={20} /></>}
             </button>
           </form>
 
-          <div className="bg-slate-50 p-6 flex items-center justify-center gap-3 border-t border-slate-100">
-             <Smartphone size={16} className="text-slate-300" />
-             <span className="text-[9px] font-black text-[#2e3545] uppercase tracking-[0.1em] opacity-50">Conexão Criptografada Cloud v3.5</span>
+          <div className="bg-black/20 p-6 flex items-center justify-center gap-3 border-t border-white/10">
+             <Smartphone size={16} className="text-white/30" />
+             <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.1em]">Conexão Criptografada Cloud v3.5</span>
           </div>
         </div>
       </div>
