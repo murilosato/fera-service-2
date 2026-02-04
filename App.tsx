@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, UserRole } from './types';
 import { INITIAL_STATE } from './constants';
 import { supabase, fetchUserProfile, fetchCompleteCompanyData, signOut } from './lib/supabase';
@@ -23,6 +23,9 @@ const App = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  
+  // Ref para rastrear o ID do usuário atual e evitar sincronizações duplicadas
+  const currentUserRef = useRef<string | null>(null);
 
   const notify = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -66,6 +69,7 @@ const App = () => {
         ...(companyData || {})
       }));
       
+      currentUserRef.current = userId;
       setInitError(null);
       setIsInitializing(false);
     } catch (e: any) {
@@ -80,6 +84,7 @@ const App = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          currentUserRef.current = session.user.id;
           await syncData(session.user.id);
         } else {
           setIsInitializing(false);
@@ -94,10 +99,14 @@ const App = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        setIsInitializing(true);
-        setInitError(null);
-        syncData(session.user.id);
+        // Só reinicializa se o usuário mudou ou se não temos um usuário atual
+        if (currentUserRef.current !== session.user.id) {
+          setIsInitializing(true);
+          setInitError(null);
+          syncData(session.user.id);
+        }
       } else if (event === 'SIGNED_OUT') {
+        currentUserRef.current = null;
         setState({ ...INITIAL_STATE, currentUser: null });
         setIsInitializing(false);
         setInitError(null);
