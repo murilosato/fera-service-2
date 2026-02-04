@@ -38,6 +38,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'inventoryCategories') newKey = 'inventory_categories';
     else if (k === 'employeeRoles') newKey = 'employee_roles';
     else if (k === 'serviceRates') newKey = 'service_rates';
+    else if (k === 'serviceGoals') newKey = 'service_goals';
     else if (k === 'serviceDate') newKey = 'service_date';
     else if (k === 'productionGoal') newKey = 'production_goal';
     else if (k === 'revenueGoal') newKey = 'revenue_goal';
@@ -122,6 +123,15 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     [ServiceType.PINTURA_MEIO_FIO]: 1.20,
   };
 
+  const defaultServiceGoals = {
+    [ServiceType.VARRICAO_KM]: 500,
+    [ServiceType.CAPINA_MANUAL_M2]: 10000,
+    [ServiceType.ROCADA_MECANIZADA_M2]: 20000,
+    [ServiceType.ROCADA_TRATOR_M2]: 30000,
+    [ServiceType.BOCA_DE_LOBO]: 100,
+    [ServiceType.PINTURA_MEIO_FIO]: 5000,
+  };
+
   const company = companyInfo?.data;
 
   return {
@@ -176,6 +186,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     })),
     monthlyGoals: goalsMap,
     serviceRates: company?.service_rates || defaultRates,
+    serviceGoals: company?.service_goals || defaultServiceGoals,
     financeCategories: company?.finance_categories || ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
     inventoryCategories: company?.inventory_categories || ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
     employeeRoles: company?.employee_roles || ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado']
@@ -215,7 +226,6 @@ export const signOut = async () => {
   } catch (e) {
     console.error("SignOut error:", e);
   } finally {
-    // Limpeza bruta de segurança para evitar sessões órfãs
     localStorage.clear();
     sessionStorage.clear();
     window.location.href = '/';

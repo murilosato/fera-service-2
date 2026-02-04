@@ -32,9 +32,11 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   });
 
   const [localRates, setLocalRates] = useState<Record<string, number>>(state.serviceRates);
+  const [localServiceGoals, setLocalServiceGoals] = useState<Record<string, number>>(state.serviceGoals);
 
   useEffect(() => {
     setLocalRates(state.serviceRates);
+    setLocalServiceGoals(state.serviceGoals);
     if (state.company) {
       setCompanyForm({
         name: state.company.name || '',
@@ -45,7 +47,7 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
         website: state.company.website || ''
       });
     }
-  }, [state.serviceRates, state.company]);
+  }, [state.serviceRates, state.serviceGoals, state.company]);
 
   const refreshData = async () => {
     const targetId = state.currentUser?.companyId;
@@ -72,18 +74,21 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     }
   };
 
-  const handleUpdateRates = async () => {
+  const handleUpdateRatesAndGoals = async () => {
     if (!state.currentUser?.companyId) return;
     setIsLoading(true);
     try {
+      // Usando chaves camelCase para compatibilidade com camelToSnake do lib/supabase.ts
       await dbSave('companies', {
         id: state.currentUser.companyId,
-        service_rates: localRates
+        serviceRates: localRates,
+        serviceGoals: localServiceGoals
       });
       await refreshData();
-      notify("Tabela de preços atualizada!");
+      notify("Valores técnicos e metas atualizados!");
     } catch (e) {
-      notify("Erro ao salvar valores unitários", "error");
+      console.error(e);
+      notify("Erro ao salvar configurações técnicas", "error");
     } finally {
       setIsLoading(false);
     }
@@ -103,13 +108,13 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       let stateKey: keyof AppState;
 
       if (listKey === 'finance') {
-        dbField = 'finance_categories';
+        dbField = 'financeCategories';
         stateKey = 'financeCategories';
       } else if (listKey === 'inventory') {
-        dbField = 'inventory_categories';
+        dbField = 'inventoryCategories';
         stateKey = 'inventoryCategories';
       } else {
-        dbField = 'employee_roles';
+        dbField = 'employeeRoles';
         stateKey = 'employeeRoles';
       }
 
@@ -154,18 +159,16 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     try {
       const existing = state.monthlyGoals[goalForm.month] || { production: 0, revenue: 0, inventory: 0, finance: 0 };
       await dbSave('monthly_goals', {
-        company_id: state.currentUser?.companyId,
-        month_key: goalForm.month,
-        production_goal: goalForm.type === 'production' ? val : existing.production,
-        revenue_goal: goalForm.type === 'revenue' ? val : existing.revenue,
+        companyId: state.currentUser?.companyId,
+        monthKey: goalForm.month,
+        productionGoal: goalForm.type === 'production' ? val : existing.production,
+        revenueGoal: goalForm.type === 'revenue' ? val : existing.revenue,
       });
       await refreshData();
       setGoalForm({...goalForm, value: ''});
       notify("Meta mensal atualizada!");
     } catch (e) { notify("Erro ao salvar meta", "error"); } finally { setIsLoading(false); }
   };
-
-  const currentGoalDisplay = state.monthlyGoals[goalForm.month];
 
   return (
     <div className="space-y-6 pb-24">
@@ -207,38 +210,58 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </button>
         </div>
 
-        {/* Tabela de Preços (Unitários) */}
+        {/* Tabela de Preços e Metas Técnicas */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] shadow-sm space-y-6">
           <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
-            <DollarSign size={20} className="text-emerald-500"/> Tabela de Preços (Unitários)
+            <DollarSign size={20} className="text-emerald-500"/> Configuração de Metas e Preços
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-            {Object.keys(localRates).map((serviceType) => (
-              <div key={serviceType} className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block truncate" title={serviceType}>
-                  {serviceType}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">R$</span>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all" 
-                    value={localRates[serviceType]} 
-                    onChange={e => setLocalRates({...localRates, [serviceType]: parseFloat(e.target.value) || 0})} 
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-[9px] font-black uppercase text-slate-400 border-b">
+                  <th className="py-2">Serviço</th>
+                  <th className="py-2 text-right">V. Unitário (R$)</th>
+                  <th className="py-2 text-right">Meta Técnica (m²/KM)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {Object.keys(localRates).map((serviceType) => (
+                  <tr key={serviceType}>
+                    <td className="py-3 text-[9px] font-black uppercase text-slate-600 truncate max-w-[120px]" title={serviceType}>
+                      {serviceType}
+                    </td>
+                    <td className="py-2 text-right">
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        className="w-20 bg-slate-50 border border-slate-100 p-2 rounded-xl text-[10px] font-black text-right outline-none focus:bg-white" 
+                        value={localRates[serviceType]} 
+                        onChange={e => setLocalRates({...localRates, [serviceType]: parseFloat(e.target.value) || 0})} 
+                      />
+                    </td>
+                    <td className="py-2 text-right">
+                      <input 
+                        type="number" 
+                        step="1" 
+                        className="w-24 bg-slate-50 border border-slate-100 p-2 rounded-xl text-[10px] font-black text-right outline-none focus:bg-white" 
+                        placeholder="Meta..."
+                        value={localServiceGoals[serviceType] || 0} 
+                        onChange={e => setLocalServiceGoals({...localServiceGoals, [serviceType]: parseFloat(e.target.value) || 0})} 
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <button onClick={handleUpdateRates} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
-             {isLoading ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} ATUALIZAR TABELA DE PREÇOS
+          <button onClick={handleUpdateRatesAndGoals} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+             {isLoading ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} SALVAR PARÂMETROS TÉCNICOS
           </button>
         </div>
 
-        {/* Planejamento Mensal */}
+        {/* Planejamento Geral Mensal */}
         <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-6 border border-white/5 lg:col-span-2">
-            <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Planejamento Mensal</h3>
+            <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Planejamento Geral Mensal</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="space-y-1">
                  <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Mês</label>
@@ -247,8 +270,8 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
               <div className="space-y-1">
                  <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Tipo de Meta</label>
                  <select className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-xs font-black outline-none text-white" value={goalForm.type} onChange={e => setGoalForm({...goalForm, type: e.target.value as any})}>
-                   <option value="production">PRODUÇÃO (M²)</option>
-                   <option value="revenue">FATURAMENTO (R$)</option>
+                   <option value="production">PRODUÇÃO TOTAL (M²)</option>
+                   <option value="revenue">FATURAMENTO TOTAL (R$)</option>
                  </select>
               </div>
               <div className="space-y-1">
@@ -257,23 +280,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
               </div>
             </div>
             <button onClick={handleSaveGoal} disabled={isLoading} className="w-full bg-emerald-500 text-slate-900 py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2">
-               {isLoading ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} SALVAR META
+               {isLoading ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} SALVAR META MENSAL
             </button>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="bg-white/5 border border-white/10 p-4 rounded-[24px]">
-                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Prod. Alvo ({goalForm.month})</p>
-                  <p className="text-sm font-black text-blue-400">{currentGoalDisplay?.production || 0} m²</p>
-               </div>
-               <div className="bg-white/5 border border-white/10 p-4 rounded-[24px]">
-                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Rec. Alvo ({goalForm.month})</p>
-                  <p className="text-sm font-black text-emerald-400">R$ {currentGoalDisplay?.revenue || 0}</p>
-               </div>
-            </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Categorias e Cargos */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-emerald-600 flex gap-2 items-center tracking-widest"><Tag size={16}/> Categorias de Fluxo</h4>
           <div className="flex gap-2">

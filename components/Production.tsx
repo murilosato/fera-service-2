@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText, DollarSign } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -64,12 +64,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   };
 
   const handleAddService = async (areaId: string) => {
-    const qty = parseFloat(newService.quantity);
+    const qty = parseFloat(newService.quantity.replace(',', '.'));
     if (isNaN(qty) || qty <= 0) return alert("Quantidade inválida");
     setIsLoading(true);
     try {
       const unitValue = state.serviceRates[newService.type] || 0;
-      // Removido o campo serviceDate do lançamento individual conforme solicitação
       await dbSave('services', {
         companyId: state.currentUser?.companyId,
         areaId: areaId,
@@ -77,7 +76,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         areaM2: qty,
         unitValue: unitValue,
         totalValue: unitValue * qty,
-        serviceDate: new Date().toISOString().split('T')[0] // Mantido internamente apenas para histórico DB, mas oculto na UI
+        serviceDate: new Date().toISOString().split('T')[0]
       });
       await refreshData();
       setNewService({ ...newService, quantity: '' });
@@ -126,6 +125,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   }, [state.areas, viewStatus, searchName, filterDateStart, filterDateEnd]);
 
   const formatDate = (d?: string) => d ? d.split('-').reverse().join('/') : '--/--/----';
+  const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatNumber = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="space-y-6 pb-24">
@@ -141,7 +142,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
           </div>
           <button 
             onClick={() => setIsAddingArea(true)} 
-            className="bg-gradient-to-r from-[#010a1b] to-[#1e293b] text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-2xl hover:scale-105 active:scale-95 transition-all ring-4 ring-[#010a1b]/5"
+            className="bg-[#010a1b] text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-2xl hover:bg-emerald-600 transition-all active:scale-95"
           >
             <Plus size={18} /> Nova O.S.
           </button>
@@ -220,7 +221,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <select className="w-full bg-slate-50 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-[#010a1b]" value={newService.type} onChange={e => setNewService({...newService, type: e.target.value as any})}>
                           {SERVICE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                         </select>
-                        <input type="number" className="w-full bg-slate-50 p-4 rounded-2xl text-xs font-black outline-none focus:border-[#010a1b]" placeholder="Metragem / Qtd" value={newService.quantity} onChange={e => setNewService({...newService, quantity: e.target.value})} />
+                        <input type="text" className="w-full bg-slate-50 p-4 rounded-2xl text-xs font-black outline-none focus:border-[#010a1b]" placeholder="Quantidade (KM ou m²)" value={newService.quantity} onChange={e => setNewService({...newService, quantity: e.target.value})} />
                         <button onClick={(e) => { e.stopPropagation(); handleAddService(area.id); }} disabled={isLoading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-colors">
                           Confirmar Lançamento
                         </button>
@@ -242,41 +243,44 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       </div>
 
                       <div className="bg-[#010a1b] p-8 rounded-[32px] text-white shadow-xl">
-                        <h4 className="font-black uppercase text-[10px] text-slate-500 mb-4 tracking-widest">Saldo Acumulado</h4>
+                        <h4 className="font-black uppercase text-[10px] text-slate-500 mb-4 tracking-widest flex items-center gap-2">
+                          <DollarSign size={14}/> Faturamento do Trecho
+                        </h4>
                         <div className="space-y-4">
                           <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                             <span className="text-[9px] font-black opacity-60">PRODUZIDO</span>
-                             <p className="text-xl font-black text-emerald-400">{(area.services || []).reduce((acc, s) => acc + s.areaM2, 0).toLocaleString('pt-BR')} {area.services?.[0]?.type.includes('KM') ? 'KM' : 'm²'}</p>
+                             <span className="text-[9px] font-black opacity-60 uppercase">VALOR BRUTO TOTAL</span>
+                             <p className="text-xl font-black text-emerald-400">{(area.services || []).reduce((acc, s) => acc + (s.totalValue || 0), 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
                           </div>
-                          <div className="flex justify-between items-center">
-                             <span className="text-[9px] font-black opacity-60">VALOR TOTAL</span>
-                             <p className="text-xl font-black">{(area.services || []).reduce((acc, s) => acc + (s.totalValue || 0), 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
-                          </div>
+                          <p className="text-[8px] font-bold text-slate-500 uppercase leading-relaxed">
+                            * O saldo técnico (produção por item) é detalhado individualmente na tabela ao lado para evitar conflito de unidades.
+                          </p>
                         </div>
                       </div>
                     </div>
 
                     <div className="lg:col-span-2 bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm flex flex-col min-h-[400px]">
                       <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                         <h4 className="text-[10px] font-black uppercase text-[#2e3545] tracking-widest">Detalhamento da Produção</h4>
+                         <h4 className="text-[10px] font-black uppercase text-[#2e3545] tracking-widest">Detalhamento da Produção Técnica</h4>
                          <span className="px-4 py-1.5 bg-white border rounded-xl text-[9px] font-black uppercase text-[#2e3545]">{(area.services || []).length} Lançamentos</span>
                       </div>
                       <div className="overflow-y-auto flex-1">
                         <table className="w-full text-left">
                           <thead className="bg-white text-[9px] font-black uppercase text-[#2e3545] border-b">
                             <tr>
-                              <th className="px-8 py-5">Tipo de Serviço</th>
-                              <th className="px-8 py-5 text-right">Quantidade</th>
-                              <th className="px-8 py-5 text-right">Valor Unit.</th>
-                              <th className="px-8 py-5 text-center">Remover</th>
+                              <th className="px-8 py-5">Item / Serviço</th>
+                              <th className="px-8 py-5 text-right">Quantidade Real</th>
+                              <th className="px-8 py-5 text-right">V. Unitário</th>
+                              <th className="px-8 py-5 text-center">Excluir</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y text-[11px] font-black uppercase text-[#010a1b]">
                             {(area.services || []).map(s => (
                                 <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                                   <td className="px-8 py-4">{s.type}</td>
-                                  <td className="px-8 py-4 text-right text-emerald-600 font-black">{s.areaM2.toLocaleString('pt-BR')}</td>
-                                  <td className="px-8 py-4 text-right text-slate-400">{s.unitValue.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
+                                  <td className="px-8 py-4 text-right text-emerald-600 font-black">
+                                    {formatNumber(s.areaM2)} {s.type.includes('KM') ? 'KM' : 'm²'}
+                                  </td>
+                                  <td className="px-8 py-4 text-right text-slate-400">{formatMoney(s.unitValue)}</td>
                                   <td className="px-8 py-4 text-center">
                                     <button onClick={(e) => { e.stopPropagation(); setConfirmDelete({ isOpen: true, areaId: area.id, serviceId: s.id }); }} className="p-2 text-rose-300 hover:text-rose-600 transition-all">
                                       <Trash2 size={16}/>
@@ -298,7 +302,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
       {/* Modal de Nova O.S. */}
       {isAddingArea && (
-        <div className="fixed inset-0 bg-[#010a1b]/60 backdrop-blur-md z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-[#010a1b]/60 backdrop-blur-md z-[500] flex items-center justify-center p-4">
            <form onSubmit={handleAddArea} className="bg-white rounded-[40px] w-full max-w-xl p-10 space-y-8 shadow-2xl animate-in zoom-in-95 border border-white/20">
               <div className="flex justify-between items-center border-b pb-6 border-slate-100">
                 <div>
@@ -387,7 +391,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
       {confirmFinish && (
         <div className="fixed inset-0 bg-[#010a1b]/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-           <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
+           <div className="bg-white rounded-[40px] w-full max-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
               <div className="text-center space-y-2">
                  <CheckCircle2 size={40} className="mx-auto text-emerald-600" />
                  <h3 className="text-sm font-black uppercase text-[#010a1b]">Encerrar Ordem de Serviço</h3>

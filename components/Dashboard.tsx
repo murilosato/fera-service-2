@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { AppState } from '../types';
+import { AppState, ServiceType } from '../types';
+import { SERVICE_OPTIONS } from '../constants';
 import { 
   BarChart, 
   Bar, 
@@ -20,7 +21,9 @@ import {
   Calendar, 
   Filter, 
   X, 
-  Package
+  Package,
+  Layers,
+  Target
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -33,6 +36,7 @@ type MetricType = 'production' | 'revenue' | 'balance';
 
 const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
   const [activeMetric, setActiveMetric] = useState<MetricType>('production');
+  const [selectedService, setSelectedService] = useState<string>('TOTAL');
   const [showFilter, setShowFilter] = useState(false);
   
   const [rangeMonths, setRangeMonths] = useState(6);
@@ -48,7 +52,20 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     danger: '#ef4444'
   };
 
-  const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const currentUnit = useMemo(() => {
+    if (selectedService === 'TOTAL') return 'm²';
+    return selectedService.includes('KM') ? 'KM' : 'm²';
+  }, [selectedService]);
+
+  const displayTitle = useMemo(() => {
+    if (selectedService === 'TOTAL') return 'PRODUÇÃO GERAL ACUMULADA (m²)';
+    // Se o serviço já tem a unidade no nome, não repetimos
+    const hasUnit = selectedService.includes('(m²)') || selectedService.includes('(KM)') || selectedService.includes('m²') || selectedService.includes('KM');
+    return `PRODUÇÃO REALIZADA: ${selectedService}${hasUnit ? '' : ` (${currentUnit})`}`;
+  }, [selectedService, currentUnit]);
+
+  const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatNumber = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const monthlySeries = useMemo(() => {
     const months = [];
@@ -74,13 +91,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       let rev = 0;
       
       state.areas.forEach(area => {
-        const isFinished = area.status === 'finished';
-        const finishedInThisMonth = area.endDate?.startsWith(m.key);
+        const finishedInThisMonth = area.status === 'finished' && area.endDate?.startsWith(m.key);
         
-        if (isFinished && finishedInThisMonth) {
+        if (finishedInThisMonth) {
           (area.services || []).forEach(s => {
-            prod += s.areaM2;
-            rev += s.totalValue;
+            if (selectedService === 'TOTAL' || s.type === selectedService) {
+              prod += s.areaM2;
+              rev += s.totalValue;
+            }
           });
         }
       });
@@ -88,62 +106,74 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       const inc = state.cashIn.filter(c => c.date?.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
       const out = state.cashOut.filter(c => c.date?.startsWith(m.key)).reduce((acc, c) => acc + c.value, 0);
       
-      const goal = state.monthlyGoals[m.key] || { production: 0, revenue: 0 };
+      const monthlyGoal = state.monthlyGoals[m.key] || { production: 0, revenue: 0 };
+      const productionGoal = selectedService === 'TOTAL' 
+        ? monthlyGoal.production 
+        : (state.serviceGoals[selectedService as ServiceType] || 0);
 
       return {
         name: m.label,
         fullName: m.fullName,
         production: prod,
-        productionGoal: goal.production,
+        productionGoal: productionGoal,
         revenue: rev,
-        revenueGoal: goal.revenue,
+        revenueGoal: monthlyGoal.revenue,
         balance: inc - out,
         income: inc,
         expense: out
       };
     });
-  }, [state.areas, state.cashIn, state.cashOut, monthlySeries, state.monthlyGoals]);
+  }, [state.areas, state.cashIn, state.cashOut, monthlySeries, state.monthlyGoals, state.serviceGoals, selectedService]);
 
   const periodTotals = useMemo(() => {
-    const lastMonthKey = monthlySeries[monthlySeries.length - 1].key;
-    const currentMonthGoal = state.monthlyGoals[lastMonthKey] || { production: 0, revenue: 0 };
+    const filterKey = endPeriod; 
+    const currentMonthGoal = state.monthlyGoals[filterKey] || { production: 0, revenue: 0 };
     
     let prodMonth = 0;
     let revMonth = 0;
     
     state.areas.forEach(area => {
-      if (area.status === 'finished' && area.endDate?.startsWith(lastMonthKey)) {
+      const isFinishedInPeriod = area.status === 'finished' && area.endDate?.startsWith(filterKey);
+      
+      if (isFinishedInPeriod) {
         (area.services || []).forEach(s => {
-          prodMonth += s.areaM2;
-          revMonth += s.totalValue;
+          if (selectedService === 'TOTAL' || s.type === selectedService) {
+            prodMonth += s.areaM2;
+            revMonth += s.totalValue;
+          }
         });
       }
     });
 
-    const inc = state.cashIn.filter(c => c.date?.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
-    const out = state.cashOut.filter(c => c.date?.startsWith(lastMonthKey)).reduce((acc, c) => acc + c.value, 0);
-    
-    const currentInventoryValue = state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0);
+    const goalProd = selectedService === 'TOTAL' 
+      ? currentMonthGoal.production 
+      : (state.serviceGoals[selectedService as ServiceType] || 0);
 
     return {
       production: prodMonth,
       revenue: revMonth,
-      balance: inc - out,
-      inventoryValue: currentInventoryValue,
-      goalProd: currentMonthGoal.production,
+      balance: state.cashIn.filter(c => c.date?.startsWith(filterKey)).reduce((acc, c) => acc + c.value, 0) - state.cashOut.filter(c => c.date?.startsWith(filterKey)).reduce((acc, c) => acc + c.value, 0),
+      inventoryValue: state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0),
+      goalProd: goalProd,
       goalRev: currentMonthGoal.revenue,
-      prodPercentage: currentMonthGoal.production > 0 ? (prodMonth / currentMonthGoal.production) * 100 : 0,
+      prodPercentage: goalProd > 0 ? (prodMonth / goalProd) * 100 : 0,
       revPercentage: currentMonthGoal.revenue > 0 ? (revMonth / currentMonthGoal.revenue) * 100 : 0
     };
-  }, [state.areas, state.cashIn, state.cashOut, state.monthlyGoals, state.inventory, monthlySeries]);
-
-  const lowStock = state.inventory.filter(i => i.currentQty <= i.minQty);
+  }, [state.areas, state.cashIn, state.cashOut, state.monthlyGoals, state.serviceGoals, state.inventory, endPeriod, selectedService]);
 
   const stats = [
-    { id: 'production', label: 'PRODUÇÃO MÊS (FINALIZADA)', value: `${periodTotals.production.toLocaleString('pt-BR')} m²`, progress: periodTotals.prodPercentage, icon: Map, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { id: 'revenue', label: 'FATURAMENTO MÊS (FECHADO)', value: formatMoney(periodTotals.revenue), progress: periodTotals.revPercentage, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { 
+      id: 'production', 
+      label: selectedService === 'TOTAL' ? `PRODUÇÃO REALIZADA (${currentUnit})` : `PRODUÇÃO: ${selectedService.split(' (')[0]}`, 
+      value: `${formatNumber(periodTotals.production)} ${currentUnit}`, 
+      progress: periodTotals.prodPercentage, 
+      icon: Map, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-50' 
+    },
+    { id: 'revenue', label: 'FATURAMENTO MÊS', value: formatMoney(periodTotals.revenue), progress: periodTotals.revPercentage, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { id: 'inventoryValue', label: 'VALOR EM ESTOQUE', value: formatMoney(periodTotals.inventoryValue), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { id: 'stock', label: 'ESTOQUE CRÍTICO', value: `${lowStock.length} itens`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
+    { id: 'stock', label: 'ESTOQUE CRÍTICO', value: `${state.inventory.filter(i => i.currentQty <= i.minQty).length} itens`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-orange-50' },
   ];
 
   return (
@@ -154,8 +184,24 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           <p className="text-[10px] text-[#2e3545] font-bold uppercase tracking-widest opacity-70">Cálculo baseado em O.S. Finalizadas</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="relative w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full sm:w-64">
+             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                <Layers size={14} />
+             </div>
+             <select 
+              className="w-full bg-white border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-[#010a1b] shadow-sm appearance-none cursor-pointer"
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+             >
+                <option value="TOTAL">Produção Geral (m²)</option>
+                {SERVICE_OPTIONS.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+             </select>
+          </div>
+
+          <div className="relative w-full sm:w-auto">
             <button 
               onClick={() => setShowFilter(!showFilter)}
               className="w-full flex items-center justify-between md:justify-start gap-3 bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm hover:border-[#010a1b] transition-all group"
@@ -163,7 +209,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-[#2e3545] group-hover:text-[#010a1b]" />
                 <span className="text-[10px] font-black text-[#2e3545] uppercase tracking-widest whitespace-nowrap">
-                  Período: {monthlySeries[0].label} - {monthlySeries[monthlySeries.length-1].label}
+                  MÊS: {monthlySeries[monthlySeries.length-1].fullName}
                 </span>
               </div>
               <Filter size={14} className="text-slate-300" />
@@ -172,24 +218,23 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
             {showFilter && (
               <div className="absolute right-0 top-full mt-2 w-full md:w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] p-6 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-[10px] font-black text-[#010a1b] uppercase tracking-[0.2em]">Filtro de Período</h4>
+                  <h4 className="text-[10px] font-black text-[#010a1b] uppercase tracking-[0.2em]">Configurar Período</h4>
                   <button onClick={() => setShowFilter(false)} className="text-slate-300 hover:text-[#010a1b]"><X size={16} /></button>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest">Mês Final</label>
+                    <label className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest">Mês Referência</label>
                     <input type="month" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-bold outline-none focus:border-[#010a1b]" value={endPeriod} onChange={(e) => setEndPeriod(e.target.value)} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest">Extensão</label>
+                    <label className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest">Janela do Gráfico</label>
                     <select className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-bold outline-none focus:border-[#010a1b]" value={rangeMonths} onChange={(e) => setRangeMonths(Number(e.target.value))}>
-                      <option value={1}>1 Mês</option>
                       <option value={3}>3 Meses</option>
                       <option value={6}>6 Meses</option>
                       <option value={12}>12 Meses</option>
                     </select>
                   </div>
-                  <button onClick={() => setShowFilter(false)} className="w-full bg-[#010a1b] text-white py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest">Filtrar</button>
+                  <button onClick={() => setShowFilter(false)} className="w-full bg-[#010a1b] text-white py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest">Aplicar Filtros</button>
                 </div>
               </div>
             )}
@@ -202,11 +247,9 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           <button 
             key={stat.id} 
             onClick={() => {
-              if (stat.id === 'inventoryValue' || stat.id === 'stock') {
-                setActiveTab('inventory');
-              } else {
-                setActiveMetric(stat.id as MetricType);
-              }
+              if (stat.id === 'inventoryValue' || stat.id === 'stock') setActiveTab('inventory');
+              else if (stat.id === 'revenue') setActiveMetric('revenue');
+              else setActiveMetric('production');
             }}
             className={`bg-white p-6 border text-left transition-all relative overflow-hidden group rounded-[32px] ${activeMetric === stat.id ? 'border-[#010a1b] ring-4 ring-[#010a1b]/5 shadow-lg' : 'border-slate-200 hover:border-[#010a1b]'}`}
           >
@@ -218,7 +261,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                 </span>
               )}
             </div>
-            <p className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest mb-1">{stat.label}</p>
+            <p className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest mb-1 truncate">{stat.label}</p>
             <p className="text-xl font-black text-[#010a1b] truncate">{stat.value}</p>
             {stat.progress !== undefined && (
               <div className="mt-4 w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -233,16 +276,24 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm min-h-[400px] w-full">
             <h3 className="font-black text-[10px] text-[#2e3545] uppercase tracking-[0.2em] mb-8">
-              Gráfico de Desempenho Mensal (Itens Finalizados)
+              {displayTitle}
             </h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
-                  <YAxis fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
+                  <YAxis 
+                    fontSize={10} 
+                    fontWeight="900" 
+                    stroke="#94a3b8" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(value) => value.toLocaleString('pt-BR')}
+                  />
                   <Tooltip 
                     cursor={{fill: '#f8fafc'}} 
+                    formatter={(value: number) => [formatNumber(value), ""]}
                     contentStyle={{ border: 'none', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '11px', fontWeight: '900', color: '#010a1b', textTransform: 'uppercase' }}
                   />
                   <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }} />
@@ -255,7 +306,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                     barSize={20}
                   >
                     {chartData.map((entry, index) => {
-                      // Se for saldo, mantém cores de alerta, senão usa o padrão preto (realizado)
                       let color = COLORS.realized;
                       if(activeMetric === 'balance') color = entry.balance >= 0 ? COLORS.goal : COLORS.danger;
                       return <Cell key={`cell-${index}`} fill={color} />;
@@ -311,33 +361,35 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
         <div className="bg-[#010a1b] text-white rounded-[40px] p-10 shadow-xl space-y-10 flex flex-col border border-white/5">
           <div className="flex items-center gap-3">
             <TrendingUp size={24} className="text-emerald-400" />
-            <h3 className="font-black text-xs uppercase tracking-[0.2em]">Metas: Mês Atual</h3>
+            <h3 className="font-black text-xs uppercase tracking-[0.2em]">Desempenho da Produção</h3>
           </div>
           
           <div className="space-y-8 flex-1">
             <div className="space-y-3">
               <div className="flex justify-between">
-                <p className="text-[10px] font-black text-slate-500 uppercase">Produção (Finalizada)</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase">Produção Realizada</p>
                 <p className="text-[10px] font-black">{periodTotals.prodPercentage.toFixed(1)}%</p>
               </div>
               <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 transition-all duration-700 shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${Math.min(periodTotals.prodPercentage, 100)}%` }} />
               </div>
+              <p className="text-[8px] font-black text-slate-400 text-right uppercase">Realizado: {formatNumber(periodTotals.production)} {currentUnit} / Meta: {formatNumber(periodTotals.goalProd)} {currentUnit}</p>
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between">
-                <p className="text-[10px] font-black text-slate-500 uppercase">Faturamento (Auditado)</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase">Faturamento Auditado</p>
                 <p className="text-[10px] font-black">{periodTotals.revPercentage.toFixed(1)}%</p>
               </div>
               <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
                 <div className="h-full bg-emerald-500 transition-all duration-700 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(periodTotals.revPercentage, 100)}%` }} />
               </div>
+              <p className="text-[8px] font-black text-slate-400 text-right uppercase">Meta: {formatMoney(periodTotals.goalRev)}</p>
             </div>
 
             <div className="pt-8 border-t border-white/10">
-               <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Valor Imobilizado</p>
-               <p className="text-2xl font-black text-white tracking-tighter">{formatMoney(periodTotals.inventoryValue)}</p>
+               <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Valor Imobilizado (Estoque)</p>
+               <p className="text-2xl font-black text-white tracking-tighter">{formatMoney(state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0))}</p>
             </div>
           </div>
 
