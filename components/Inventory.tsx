@@ -131,7 +131,6 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
     }
   };
 
-  // Lógica de Filtragem Avançada
   const filteredItems = useMemo(() => {
     return state.inventory.filter(item => {
       const nameMatch = item.name.toLowerCase().includes(itemSearchText.toLowerCase());
@@ -145,7 +144,6 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
     });
   }, [state.inventory, itemSearchText, categoryFilter, statusFilter]);
 
-  // Cálculos de Subtotais
   const filteredSubTotal = useMemo(() => {
     return filteredItems.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0);
   }, [filteredItems]);
@@ -177,11 +175,13 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
 
       {!showHistory ? (
         <>
-          <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm relative z-40">
-            <h3 className="text-[9px] font-black text-slate-400 uppercase mb-4 tracking-widest flex items-center gap-2"><ArrowRightLeft size={14}/> Terminal de Lançamento e Precificação</h3>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-              <div className="md:col-span-3 relative">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1 ml-1 block">Produto</label>
+          <div className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-sm relative z-40 overflow-hidden">
+            <h3 className="text-[9px] font-black text-slate-400 uppercase mb-5 tracking-widest flex items-center gap-2">
+              <ArrowRightLeft size={14}/> Terminal de Lançamento e Precificação
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-4 items-end">
+              <div className="md:col-span-3 lg:col-span-3 relative">
+                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">Produto</label>
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                   <input className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 rounded-2xl text-[11px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all uppercase" placeholder="BUSCAR ITEM..." value={itemSearchText} onFocus={() => setIsDropdownOpen(true)} onChange={e => setItemSearchText(e.target.value)} />
@@ -197,19 +197,19 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                   )}
                 </div>
               </div>
-              <div className="md:col-span-1">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1 ml-1 block">Qtd</label>
+              <div className="md:col-span-1 lg:col-span-1">
+                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">Qtd</label>
                 <input type="number" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] outline-none focus:bg-white" value={movementQty} onChange={e => setMovementQty(e.target.value)} />
               </div>
-              <div className="md:col-span-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1 ml-1 block">V. Unitário (R$)</label>
+              <div className="md:col-span-2 lg:col-span-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">V. Unitário (R$)</label>
                 <input type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] outline-none focus:bg-white" placeholder="0,00" value={movementPrice} onChange={e => setMovementPrice(e.target.value)} />
               </div>
-              <div className="md:col-span-3">
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1 ml-1 block">Destino / Origem</label>
+              <div className="md:col-span-3 lg:col-span-3">
+                <label className="text-[9px] font-black text-slate-500 uppercase mb-1.5 ml-1 block">Destino / Origem</label>
                 <input className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-2xl font-black text-[11px] outline-none focus:bg-white uppercase" placeholder="EX: COMPRA NF 01" value={movementDest} onChange={e => setMovementDest(e.target.value)} />
               </div>
-              <div className="md:col-span-3 flex gap-2">
+              <div className="md:col-span-3 lg:col-span-3 flex gap-2">
                  <button onClick={() => handleMovement('out')} className="flex-1 bg-white border-2 border-rose-100 text-rose-600 p-3.5 rounded-2xl font-black uppercase text-[9px] hover:bg-rose-50 transition-all shadow-sm">RETIRADA</button>
                  <button onClick={() => handleMovement('in')} className="flex-1 bg-slate-900 text-white p-3.5 rounded-2xl font-black uppercase text-[9px] hover:bg-emerald-600 transition-all shadow-lg">ENTRADA</button>
               </div>
@@ -218,7 +218,9 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
 
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/30 gap-4">
-               <div className="flex items-center gap-2 text-slate-500 font-black text-[10px] uppercase tracking-widest"><Filter size={16}/> Filtragem de Saldos e Categorias</div>
+               <div className="flex items-center gap-2 text-slate-500 font-black text-[10px] uppercase tracking-widest">
+                 <Filter size={16}/> Filtragem de Saldos e Categorias
+               </div>
                <div className="flex flex-wrap items-center gap-3">
                   <select 
                     className="bg-white border border-slate-200 p-2 rounded-xl text-[9px] font-black uppercase outline-none focus:border-slate-900"
@@ -307,7 +309,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                     <tr>
                       <td colSpan={4} className="px-8 py-4 text-[9px] font-black uppercase tracking-widest flex items-center justify-between">
                         <span>Resumo Financeiro do Filtro ({filteredItems.length} Itens)</span>
-                        <span className="text-slate-500 ml-4">Total Geral do Almoxarifado: {formatMoney(totalInventoryValue)}</span>
+                        <span className="text-slate-500 ml-4 hidden sm:inline">Total Geral: {formatMoney(totalInventoryValue)}</span>
                       </td>
                       <td className="px-8 py-4 text-right text-emerald-400 text-sm font-black">
                          {formatMoney(filteredSubTotal)}

@@ -33,12 +33,17 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
     { id: 'finance', label: 'Financeiro', icon: DollarSign, permission: user?.permissions.finance },
     { id: 'inventory', label: 'Almoxarifado', icon: Package, permission: user?.permissions.inventory },
     { id: 'employees', label: 'Equipe & RH', icon: Users, permission: user?.permissions.employees },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, permission: user?.permissions.analytics },
+    { id: 'analytics', label: 'Relatórios & Auditoria', icon: BarChart3, permission: user?.permissions.analytics },
     { id: 'management', label: 'Gestão de Acessos', icon: ShieldCheck, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
     { id: 'settings', label: 'Configurações', icon: Settings, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
   ];
 
   const visibleItems = menuItems.filter(item => item.permission);
+
+  const translateTab = (id: string) => {
+    const item = menuItems.find(m => m.id === id);
+    return item ? item.label : id;
+  };
 
   const roleLabel = (role: UserRole) => {
     switch(role) {
@@ -106,7 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
       <div className="lg:hidden flex items-center justify-between px-6 py-4 bg-white border-b-4 border-slate-900 sticky top-0 z-40">
         <div className="flex items-center gap-3">
            <span className="font-black text-slate-900 text-sm uppercase tracking-tighter border-l-4 border-emerald-600 pl-2">
-             {activeTab}
+             {translateTab(activeTab)}
            </span>
         </div>
         <button 

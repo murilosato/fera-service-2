@@ -255,7 +255,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                     })}
                   </Bar>
                   {(activeMetric === 'production' || activeMetric === 'revenue') && (
-                    <Bar name="Meta" dataKey={activeMetric === 'production' ? 'productionGoal' : 'revenueGoal'} fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar 
+                      name="Meta" 
+                      dataKey={activeMetric === 'production' ? 'productionGoal' : 'revenueGoal'} 
+                      fill="#10b981" 
+                      fillOpacity={0.2} 
+                      radius={[4, 4, 0, 0]} 
+                      barSize={20} 
+                    />
                   )}
                 </BarChart>
               </ResponsiveContainer>
@@ -278,7 +285,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
                   </thead>
                   <tbody className="divide-y text-[10px] font-black uppercase text-slate-700">
                      {chartData.map((month, idx) => (
-                       <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                       <tr key={idx} className="hover:bg-slate-50/30 transition-colors">
                           <td className="py-4 text-slate-500">{month.name}</td>
                           <td className="py-4 text-emerald-600">{formatMoney(month.income)}</td>
                           <td className="py-4 text-rose-600">{formatMoney(month.expense)}</td>

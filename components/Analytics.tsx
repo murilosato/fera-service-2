@@ -157,7 +157,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState }) => {
     <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Auditoria & Analytics</h2>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Relatórios & Auditoria</h2>
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Geração de Fichas e Central de Exportação</p>
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 p-2 rounded-xl shadow-sm">
