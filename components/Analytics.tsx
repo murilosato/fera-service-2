@@ -413,7 +413,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                             <h1 className="text-3xl font-black uppercase tracking-tighter italic leading-none text-slate-900">
                                {state.company?.name || "UNIDADE DE OPERAÇÃO"}
                             </h1>
-                            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500">Inteligência em Gestão Urbana</p>
                             <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase space-y-1">
                                {state.company?.cnpj && <p>CNPJ: {state.company.cnpj}</p>}
                                {state.company?.address && <p className="max-w-[300px] leading-tight">{state.company.address}</p>}
@@ -513,11 +512,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                       </table>
 
                       <div className="mt-8 bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-start gap-3 page-break-avoid" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                         <Info size={16} className="text-slate-400 shrink-0 mt-1" />
-                         <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
-                            Este documento serve como extrato informativo para conferência de diárias e lançamentos do período especificado. 
-                            O pagamento é efetivado via PIX conforme dados informados acima.
-                         </p>
+                         <div className="mt-1 flex gap-3">
+                            <Info size={16} className="text-slate-400 shrink-0" />
+                            <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
+                                Este documento serve como extrato informativo para conferência de diárias e lançamentos do período especificado. 
+                                O pagamento é efetivado via PIX conforme dados informados acima.
+                            </p>
+                         </div>
                       </div>
 
                       <div className="mt-16 pt-12 grid grid-cols-2 gap-24 text-center page-break-avoid">
