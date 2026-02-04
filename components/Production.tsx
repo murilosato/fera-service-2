@@ -180,7 +180,18 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       </p>
                     </div>
                  </div>
-                 <div className="flex gap-2">
+                 <div className="flex gap-2 items-center">
+                    {/* Botão de Excluir O.S. reintroduzido */}
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setConfirmDelete({ isOpen: true, areaId: area.id }); 
+                      }} 
+                      className="p-4 rounded-2xl text-[#2e3545] hover:text-rose-600 hover:bg-rose-50 transition-all"
+                      title="Excluir O.S."
+                    >
+                      <Trash2 size={20} />
+                    </button>
                     <div className={`p-4 rounded-2xl transition-colors ${expandedAreaId === area.id ? 'bg-[#010a1b] text-white' : 'bg-slate-50 text-[#2e3545]'}`}>
                       {expandedAreaId === area.id ? <ChevronUp/> : <ChevronDown/>}
                     </div>
@@ -199,6 +210,17 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <button onClick={(e) => { e.stopPropagation(); handleAddService(area.id); }} disabled={isLoading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-colors">
                           Lançar Produção
                         </button>
+                        {area.status === 'executing' && (
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setConfirmFinish({ isOpen: true, area, date: new Date().toISOString().split('T')[0] }); 
+                            }} 
+                            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle2 size={16} /> Finalizar Ordem
+                          </button>
+                        )}
                       </div>
 
                       <div className="bg-[#010a1b] p-8 rounded-[32px] text-white shadow-xl">
@@ -261,8 +283,30 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         onClose={() => setConfirmDelete(null)} 
         onConfirm={performDelete} 
         title="Remover Registro" 
-        message="Deseja excluir permanentemente este lançamento de produção?" 
+        message={confirmDelete?.serviceId ? "Deseja excluir permanentemente este lançamento de produção?" : "Deseja excluir permanentemente esta Ordem de Serviço e todos os seus lançamentos?"} 
       />
+
+      {confirmFinish && (
+        <div className="fixed inset-0 bg-[#010a1b]/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
+              <div className="text-center space-y-2">
+                 <CheckCircle2 size={40} className="mx-auto text-emerald-600" />
+                 <h3 className="text-sm font-black uppercase text-[#010a1b]">Finalizar Ordem de Serviço</h3>
+                 <p className="text-[10px] font-bold text-[#2e3545] uppercase tracking-widest opacity-70">Confirme a data de conclusão para arquivamento</p>
+              </div>
+              <div className="space-y-4">
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black text-[#2e3545] uppercase ml-1 block">Data de Encerramento</label>
+                    <input type="date" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black outline-none focus:border-[#010a1b]" value={confirmFinish.date} onChange={e => setConfirmFinish({...confirmFinish, date: e.target.value})} />
+                 </div>
+                 <button onClick={handleFinishArea} disabled={isLoading} className="w-full bg-[#010a1b] text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600 transition-all">
+                    {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR FINALIZAÇÃO'}
+                 </button>
+                 <button onClick={() => setConfirmFinish(null)} className="w-full bg-slate-100 text-[#2e3545] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">CANCELAR</button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };
