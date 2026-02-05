@@ -34,6 +34,13 @@ const camelToSnake = (obj: any) => {
     else if (k === 'minQty') newKey = 'min_qty';
     else if (k === 'idealQty') newKey = 'ideal_qty';
     else if (k === 'paymentStatus') newKey = 'payment_status';
+    else if (k === 'paymentModality') newKey = 'payment_modality';
+    else if (k === 'startTime') newKey = 'start_time';
+    else if (k === 'breakStart') newKey = 'break_start';
+    else if (k === 'breakEnd') newKey = 'break_end';
+    else if (k === 'endTime') newKey = 'end_time';
+    else if (k === 'clockIn') newKey = 'clock_in';
+    else if (k === 'clockOut') newKey = 'clock_out';
     else if (k === 'financeCategories') newKey = 'finance_categories';
     else if (k === 'inventoryCategories') newKey = 'inventory_categories';
     else if (k === 'employeeRoles') newKey = 'employee_roles';
@@ -167,9 +174,19 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       }))
     })),
     employees: emps.map((e: any) => ({
-      id: e.id, companyId: e.company_id, name: e.name, role: e.role, status: e.status || 'active',
-      defaultValue: Number(e.default_value), paymentModality: e.payment_modality,
-      cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address
+      id: e.id, 
+      companyId: e.company_id, 
+      name: e.name, 
+      role: e.role, 
+      status: e.status || 'active',
+      defaultValue: Number(e.default_value), 
+      paymentModality: e.payment_modality || 'DIARIA',
+      cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address,
+      workload: e.workload,
+      startTime: e.start_time,
+      breakStart: e.break_start,
+      breakEnd: e.break_end,
+      endTime: e.end_time
     })),
     inventory: inv.map((i: any) => ({
       id: i.id, companyId: i.company_id, name: i.name, category: i.category,
@@ -181,8 +198,19 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     cashIn: flow.filter((f: any) => f.type === 'in').map((f: any) => ({ id: f.id, companyId: f.company_id, date: f.date, value: Number(f.value), reference: f.reference, type: f.type, category: f.category })),
     cashOut: flow.filter((f: any) => f.type === 'out').map((f: any) => ({ id: f.id, companyId: f.company_id, date: f.date, value: Number(f.value), type: f.type, category: f.category, reference: f.reference })),
     attendanceRecords: att.map((r: any) => ({
-      id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status,
-      discountValue: Number(r.discount_value || 0), discountObservation: r.discount_observation
+      id: r.id, 
+      companyId: r.company_id, 
+      employeeId: r.employee_id, 
+      date: r.date, 
+      status: r.status, 
+      value: Number(r.value), 
+      paymentStatus: r.payment_status,
+      discountValue: Number(r.discount_value || 0), 
+      discountObservation: r.discount_observation,
+      clockIn: r.clock_in,
+      clockOut: r.clock_out,
+      breakStart: r.break_start,
+      breakEnd: r.break_end
     })),
     monthlyGoals: goalsMap,
     serviceRates: company?.service_rates || defaultRates,

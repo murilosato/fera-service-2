@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord, ServiceType } from '../types';
 import { 
   Printer, Search, Calendar, FileText, X, Phone, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard, Download
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard, Download, Clock
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -42,7 +42,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const formatDate = (dateStr: string) => dateStr.split('-').reverse().join('/');
   const isWithinRange = (dateStr: string) => dateStr >= startDate && dateStr <= endDate;
 
-  // --- FUNÇÕES DE EXPORTAÇÃO ---
   const downloadCSV = (filename: string, content: string) => {
     const blob = new Blob(["\ufeff" + content], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
@@ -69,9 +68,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
   const exportEmployees = () => {
     setExportingType('employees');
-    const headers = ["ID", "NOME", "CARGO", "STATUS", "DIARIA PADRAO", "CPF", "TELEFONE", "PIX", "ENDERECO"];
+    const headers = ["ID", "NOME", "CARGO", "STATUS", "DIARIA PADRAO", "CPF", "MODALIDADE", "CARGA HORARIA"];
     const rows = state.employees.map(e => [
-      e.id, e.name, e.role, e.status, e.defaultValue, e.cpf || "", e.phone || "", e.pixKey || "", e.address || ""
+      e.id, e.name, e.role, e.status, e.defaultValue, e.cpf || "", e.paymentModality, e.workload || ""
     ]);
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Equipe", csvContent);
@@ -105,7 +104,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     setTimeout(() => setExportingType(null), 500);
     notify("Dados de produção exportados!");
   };
-  // -----------------------------
 
   const refreshData = async () => {
     if (state.currentUser?.companyId) {
@@ -128,12 +126,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const totalToPay = totalBaseValue - totalDiscounts;
 
   const handlePrint = () => {
-    const originalTitle = document.title;
-    document.title = ""; 
     setShowPrintView(true);
     setTimeout(() => {
       window.print();
-      document.title = originalTitle;
       if (totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
@@ -158,11 +153,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       await refreshData();
       setEditingRecordId(null);
       notify("Alterações salvas!");
-    } catch (e) {
-      notify("Erro ao salvar alterações", "error");
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (e) { notify("Erro ao salvar", "error"); } finally { setIsLoading(false); }
   };
 
   const togglePaymentStatus = async (record: AttendanceRecord) => {
@@ -172,11 +163,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       await dbSave('attendance_records', { ...record, paymentStatus: newStatus });
       await refreshData();
       notify(`Status alterado para ${newStatus.toUpperCase()}`);
-    } catch (e) {
-      notify("Erro ao alterar status de pagamento", "error");
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (e) { notify("Erro ao alterar status", "error"); } finally { setIsLoading(false); }
   };
 
   const handleCreateFinanceExit = async () => {
@@ -203,11 +190,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       setShowFinanceModal(false);
       setShowPrintView(false);
       notify("Saída financeira registrada e frequências quitadas!");
-    } catch (e) {
-      notify("Erro ao gerar saída financeira", "error");
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (e) { notify("Erro ao gerar saída financeira", "error"); } finally { setIsLoading(false); }
   };
 
   return (
@@ -225,36 +208,35 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </header>
 
-      {/* Central de Exportação - FUNCIONAL AGORA */}
       <section className="bg-slate-900 text-white rounded-[32px] p-6 shadow-2xl relative overflow-hidden print:hidden border border-white/5">
          <div className="relative z-10">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 mb-5 opacity-70">
               <Database size={16} className="text-blue-400"/> Central de Dados e Exportação (CSV)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-               <button onClick={exportInventory} disabled={exportingType === 'inventory'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-blue-600 group">
-                  {exportingType === 'inventory' ? <Loader2 className="animate-spin" size={18}/> : <TableProperties size={18}/>}
+               <button onClick={exportInventory} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-blue-600 group">
+                  <TableProperties size={18}/>
                   <div className="text-left">
                      <span className="text-[10px] font-black uppercase block">Estoque</span>
                      <span className="text-[8px] font-bold opacity-40 uppercase">Exportar Materiais</span>
                   </div>
                </button>
-               <button onClick={exportEmployees} disabled={exportingType === 'employees'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-emerald-600 group">
-                  {exportingType === 'employees' ? <Loader2 className="animate-spin" size={18}/> : <Users size={18}/>}
+               <button onClick={exportEmployees} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-emerald-600 group">
+                  <Users size={18}/>
                   <div className="text-left">
                      <span className="text-[10px] font-black uppercase block">Equipe</span>
                      <span className="text-[8px] font-bold opacity-40 uppercase">Lista Colaboradores</span>
                   </div>
                </button>
-               <button onClick={exportFinance} disabled={exportingType === 'finance'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-orange-600 group">
-                  {exportingType === 'finance' ? <Loader2 className="animate-spin" size={18}/> : <DollarSign size={18}/>}
+               <button onClick={exportFinance} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-orange-600 group">
+                  <DollarSign size={18}/>
                   <div className="text-left">
                      <span className="text-[10px] font-black uppercase block">Fluxo Caixa</span>
                      <span className="text-[8px] font-bold opacity-40 uppercase">Entradas e Saídas</span>
                   </div>
                </button>
-               <button onClick={exportProduction} disabled={exportingType === 'production'} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-indigo-600 group">
-                  {exportingType === 'production' ? <Loader2 className="animate-spin" size={18}/> : <MapPin size={18}/>}
+               <button onClick={exportProduction} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 transition-all hover:bg-indigo-600 group">
+                  <MapPin size={18}/>
                   <div className="text-left">
                      <span className="text-[10px] font-black uppercase block">Produção</span>
                      <span className="text-[8px] font-bold opacity-40 uppercase">Metragens Campo</span>
@@ -284,8 +266,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                  }`}
                >
                   <div className="min-w-0">
-                     <p className="text-sm font-black uppercase truncate tracking-tight">{emp.name}</p>
-                     <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mt-1 ${selectedEmployeeId === emp.id ? 'text-emerald-400' : 'text-slate-400'}`}>{emp.role}</p>
+                     <p className="text-sm font-black uppercase truncate tracking-tight flex items-center gap-2">
+                        {emp.paymentModality === 'CLT' && <Clock size={12} className="text-blue-400" />}
+                        {emp.name}
+                     </p>
+                     <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mt-1 ${selectedEmployeeId === emp.id ? 'text-emerald-400' : 'text-slate-400'}`}>{emp.role} • {emp.paymentModality}</p>
                   </div>
                </button>
              ))}
@@ -302,13 +287,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                             <div className="p-3 bg-white/10 rounded-2xl border border-white/5"><User size={20} className="text-emerald-400" /></div>
                             <div>
                                <h4 className="text-xl font-black uppercase leading-tight tracking-tight">{selectedEmployee.name}</h4>
-                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{selectedEmployee.role}</p>
+                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{selectedEmployee.role} • {selectedEmployee.paymentModality}</p>
                             </div>
                          </div>
-                         <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                         <div className="grid grid-cols-2 gap-4">
                             <div className="text-[10px] text-slate-400 font-bold uppercase"><Hash size={12}/> CPF: <span className="text-white ml-2">{selectedEmployee.cpf || '--'}</span></div>
                             <div className="text-[10px] text-slate-400 font-bold uppercase"><Smartphone size={12}/> CONTATO: <span className="text-white ml-2">{selectedEmployee.phone || '--'}</span></div>
-                            <div className="text-[10px] text-slate-400 font-bold uppercase col-span-2"><CreditCard size={12}/> PIX: <span className="text-white ml-2 truncate">{selectedEmployee.pixKey || '--'}</span></div>
+                            {selectedEmployee.paymentModality === 'CLT' && (
+                               <div className="text-[10px] text-blue-400 font-black uppercase col-span-2 flex items-center gap-2">
+                                  <Clock size={12}/> JORNADA: {selectedEmployee.workload} ({selectedEmployee.startTime} às {selectedEmployee.endTime})
+                               </div>
+                            )}
                          </div>
                       </div>
                       <div className="md:w-64 bg-white/5 p-6 rounded-[32px] border border-white/10 flex flex-col justify-center text-center">
@@ -325,28 +314,31 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                       <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b border-slate-100 sticky top-0 z-10">
                          <tr>
                            <th className="px-8 py-4">Data</th>
-                           <th className="px-8 py-4 text-center">Freq.</th>
-                           <th className="px-8 py-4 text-right">Valor Diária</th>
-                           <th className="px-8 py-4 text-right">Desconto</th>
-                           <th className="px-8 py-4 text-center">Status</th>
+                           <th className="px-8 py-4 text-center">Registro</th>
+                           <th className="px-8 py-4 text-center">Horários (Ent-Sai)</th>
+                           <th className="px-8 py-4 text-right">Base</th>
+                           <th className="px-8 py-4 text-right">Desc.</th>
+                           <th className="px-8 py-4 text-center">Pagamento</th>
                            <th className="px-8 py-4 text-right">Ação</th>
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50 text-[11px] font-black uppercase text-slate-700">
                          {attendanceHistory.map(h => {
                              const isEditing = editingRecordId === h.id;
-                             const isPaid = h.paymentStatus === 'pago';
                              return (
                                <tr key={h.id} className="hover:bg-slate-50 transition-colors">
                                   <td className="px-8 py-3 text-slate-500">{formatDate(h.date)}</td>
                                   <td className="px-8 py-3 text-center">
-                                     <span className={`px-4 py-1 rounded-lg text-[9px] font-black ${
-                                         h.status === 'present' ? 'bg-emerald-50 text-emerald-600' : 
+                                     <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${
+                                         h.status === 'present' ? (selectedEmployee.paymentModality === 'CLT' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600') : 
                                          h.status === 'partial' ? 'bg-amber-50 text-amber-600' : 
                                          'bg-rose-50 text-rose-600'
                                      }`}>
-                                        {h.status === 'present' ? 'P' : h.status === 'partial' ? 'H' : 'F'}
+                                        {h.status === 'present' ? 'INTEGRAL' : h.status === 'partial' ? 'PARCIAL' : 'FALTA'}
                                      </span>
+                                  </td>
+                                  <td className="px-8 py-3 text-center font-bold text-slate-400">
+                                     {h.clockIn ? `${h.clockIn} - ${h.clockOut || '??'}` : '--'}
                                   </td>
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
@@ -355,31 +347,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                        <span className="font-bold">{formatMoney(h.value)}</span>
                                      )}
                                   </td>
-                                  <td className="px-8 py-3 text-right">
+                                  <td className="px-8 py-3 text-right text-rose-500">
                                      {isEditing ? (
-                                       <div className="flex flex-col gap-1 items-end">
-                                         <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" placeholder="DESC." value={editingDiscount} onChange={e => setEditingDiscount(e.target.value)} />
-                                         <input className="w-40 bg-white border border-slate-200 p-2 rounded-lg text-[8px] font-black" placeholder="MOTIVO" value={editingObservation} onChange={e => setEditingObservation(e.target.value)} />
-                                       </div>
+                                       <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" value={editingDiscount} onChange={e => setEditingDiscount(e.target.value)} />
                                      ) : (
-                                       <div className="flex flex-col items-end">
-                                          <span className={`${(h.discountValue || 0) > 0 ? 'text-rose-500' : 'text-slate-300'}`}>
-                                            - {formatMoney(h.discountValue || 0)}
-                                          </span>
-                                       </div>
+                                       `- ${formatMoney(h.discountValue || 0)}`
                                      )}
                                   </td>
                                   <td className="px-8 py-3 text-center">
-                                     <button onClick={() => togglePaymentStatus(h)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black transition-all ${isPaid ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600'}`}>
-                                        {isPaid ? 'PAGO' : 'PENDENTE'}
+                                     <button onClick={() => togglePaymentStatus(h)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black transition-all ${h.paymentStatus === 'pago' ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600'}`}>
+                                        {h.paymentStatus === 'pago' ? 'PAGO' : 'PENDENTE'}
                                      </button>
                                   </td>
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
-                                         <div className="flex items-center justify-end gap-2">
-                                             <button onClick={() => handleSaveValue(h)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded-lg"><Save size={14}/></button>
-                                             <button onClick={() => setEditingRecordId(null)} className="p-1.5 text-slate-400 bg-slate-50 rounded-lg"><X size={14}/></button>
-                                         </div>
+                                         <button onClick={() => handleSaveValue(h)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded-lg"><Save size={14}/></button>
                                      ) : (
                                          <button onClick={() => { setEditingRecordId(h.id); setEditingValue(String(h.value)); setEditingDiscount(String(h.discountValue || 0)); setEditingObservation(h.discountObservation || ''); }} className="p-1.5 text-slate-300 hover:text-blue-500 transition-colors">
                                              <Edit2 size={12}/>
@@ -404,220 +386,125 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      {showFinanceModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl border-4 border-slate-900 animate-in zoom-in-95 border border-slate-100">
-             <div className="text-center space-y-3">
-                <Landmark size={32} className="mx-auto text-emerald-600" />
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-widest text-center">REGISTRAR SAÍDA FINANCEIRA</h3>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                   <p className="text-[9px] font-black text-slate-400 uppercase text-center">Valor Líquido</p>
-                   <p className="text-2xl font-black text-rose-600 tracking-tighter text-center">{formatMoney(totalToPay)}</p>
-                </div>
-             </div>
-             <div className="space-y-4">
-                <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-slate-900" placeholder="TÍTULO / REFERÊNCIA" value={financeTitle} onChange={e => setFinanceTitle(e.target.value)} />
-                <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeCategory} onChange={e => setFinanceCategory(e.target.value)}>
-                   <option value="">CATEGORIA...</option>
-                   {state.financeCategories.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
-                </select>
-             </div>
-             <div className="flex flex-col gap-3">
-                <button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-slate-900 transition-all">
-                   {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} CONFIRMAR E QUITAR
-                </button>
-                <button onClick={() => { setShowFinanceModal(false); setShowPrintView(false); }} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">FECHAR</button>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {showPrintView && (
+      {showPrintView && selectedEmployee && (
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
-             @media screen {
-                .print-view-container { 
-                  padding: 40px 0; 
-                  background-color: #f1f5f9;
-                }
-                .sheet {
-                   background: white;
-                   box-shadow: 0 0 40px rgba(0,0,0,0.1);
-                   margin: 0 auto;
-                   padding: 1.5cm;
-                   width: 210mm;
-                   min-height: 297mm;
-                }
-             }
              @media print { 
                body > #root { visibility: hidden; height: 0; overflow: hidden; }
                .print-view-container, .print-view-container * { visibility: visible !important; }
                .print-view-container { 
-                 position: absolute !important; 
-                 left: 0 !important; 
-                 top: 0 !important; 
-                 width: 100% !important; 
-                 height: auto !important;
-                 overflow: visible !important;
-                 z-index: 9999 !important;
-                 background: white !important;
+                 position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important;
                }
-               @page { 
-                 margin: 1cm; 
-                 size: A4; 
-                 counter-increment: page;
-               }
-               .sheet { 
-                 width: 100% !important; 
-                 margin: 0 !important; 
-                 padding: 0 !important; 
-                 box-shadow: none !important; 
-                 height: auto !important;
-                 overflow: visible !important;
-                 border: none !important;
-               }
-               .page-number:after { content: counter(page); }
+               @page { margin: 1cm; size: A4; }
              }
-             .print-table { width: 100%; border-collapse: collapse; border: none; }
-             .print-header { display: table-header-group; }
-             .print-footer { display: table-footer-group; }
-             .print-body { display: table-row-group; }
-             body { counter-reset: page; }
-             .page-break-avoid { page-break-inside: avoid; }
+             .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; }
            `}</style>
            
            <div className="sheet">
-              <table className="print-table">
-                <thead className="print-header">
-                  <tr>
-                    <td>
-                      <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
-                         <div className="space-y-1">
-                            <h1 className="text-3xl font-black uppercase tracking-tighter italic leading-none text-slate-900">
-                               {state.company?.name || "UNIDADE DE OPERAÇÃO"}
-                            </h1>
-                            <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase space-y-1">
-                               {state.company?.cnpj && <p>CNPJ: {state.company.cnpj}</p>}
-                               {state.company?.address && <p className="max-w-[300px] leading-tight">{state.company.address}</p>}
-                               <div className="flex items-center gap-3">
-                                  {state.company?.phone && <span>{state.company.phone}</span>}
-                                  {state.company?.website && <span>{state.company.website}</span>}
-                               </div>
-                            </div>
-                         </div>
-                         <div className="text-right uppercase">
-                            <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block">
-                               <h2 className="text-sm font-black tracking-widest">Ficha de Acerto Individual</h2>
-                            </div>
-                            <p className="text-[10px] font-bold text-slate-600">Referência do Período</p>
-                            <p className="text-sm font-black text-slate-900">{formatDate(startDate)} a {formatDate(endDate)}</p>
-                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                </thead>
+              <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
+                 <div className="space-y-1">
+                    <h1 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900">
+                       {state.company?.name || "FERA SERVICE"}
+                    </h1>
+                    <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase">
+                       {state.company?.cnpj && <p>CNPJ: {state.company.cnpj}</p>}
+                       <p className="max-w-[300px]">{state.company?.address}</p>
+                    </div>
+                 </div>
+                 <div className="text-right uppercase">
+                    <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block">
+                       <h2 className="text-sm font-black tracking-widest">Ficha de Acerto de Jornada</h2>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-600">Período de Referência</p>
+                    <p className="text-sm font-black text-slate-900">{formatDate(startDate)} a {formatDate(endDate)}</p>
+                 </div>
+              </div>
 
-                <tbody className="print-body">
-                  <tr>
-                    <td>
-                      <div className="grid grid-cols-12 gap-6 mb-8">
-                         <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                            <div className="mb-4">
-                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador beneficiário</p>
-                               <p className="text-base font-black uppercase text-slate-900">{selectedEmployee?.name}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-y-3 gap-x-6">
-                                <div>
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cargo / Função</p>
-                                   <p className="text-[10px] font-bold uppercase text-slate-700">{selectedEmployee?.role}</p>
-                                </div>
-                                <div>
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
-                                   <p className="text-[10px] font-bold text-slate-700">{selectedEmployee?.cpf || 'Não informado'}</p>
-                                </div>
-                                <div>
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Chave PIX</p>
-                                   <p className="text-[10px] font-bold text-blue-600 uppercase">{selectedEmployee?.pixKey || 'Não informada'}</p>
-                                </div>
-                            </div>
-                         </div>
+              <div className="grid grid-cols-12 gap-6 mb-8">
+                 <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200">
+                    <div className="mb-4">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador</p>
+                       <p className="text-base font-black uppercase text-slate-900">{selectedEmployee.name}</p>
+                       <p className="text-[10px] font-bold text-blue-600 uppercase mt-1">Modalidade: {selectedEmployee.paymentModality}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-6">
+                        <div>
+                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cargo</p>
+                           <p className="text-[10px] font-bold text-slate-700">{selectedEmployee.role}</p>
+                        </div>
+                        <div>
+                           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
+                           <p className="text-[10px] font-bold text-slate-700">{selectedEmployee.cpf || '--'}</p>
+                        </div>
+                        {selectedEmployee.paymentModality === 'CLT' && (
+                           <div className="col-span-2">
+                              <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Carga Horária Contratada</p>
+                              <p className="text-[10px] font-bold text-blue-700">{selectedEmployee.workload} ({selectedEmployee.startTime}h às {selectedEmployee.endTime}h)</p>
+                           </div>
+                        )}
+                    </div>
+                 </div>
 
-                         <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4" style={{ border: '2px solid #0f172a' }}>
-                            <div className="space-y-2 border-b-2 border-slate-100 pb-4">
-                               <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                                  <span className="text-slate-500">VALOR BRUTO (BASE)</span>
-                                  <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
-                               </div>
-                               <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                                  <span className="text-rose-500">TOTAL DESCONTOS (-)</span>
-                                  <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
-                               </div>
-                            </div>
-                            <div className="text-center pt-2">
-                               <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO A RECEBER</p>
-                               <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
-                            </div>
-                         </div>
-                      </div>
+                 <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
+                    <div className="space-y-2 border-b-2 border-slate-100 pb-4">
+                       <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-500">
+                          <span>PROVENTOS BASE</span>
+                          <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-[10px] font-black uppercase text-rose-500">
+                          <span>DESCONTOS (-)</span>
+                          <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
+                       </div>
+                    </div>
+                    <div className="text-center pt-2">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO</p>
+                       <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+                    </div>
+                 </div>
+              </div>
 
-                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900 flex items-center gap-2">
-                         EXTRATO DETALHADO DE SERVIÇOS E FREQUÊNCIA
-                      </h4>
-                      <table className="w-full text-[10px] border-collapse uppercase table-fixed border border-slate-200">
-                         <thead>
-                            <tr style={{ backgroundColor: '#f8fafc', color: '#0f172a' }}>
-                              <th className="p-3 text-left border-r border-b border-slate-200 w-24">Data</th>
-                              <th className="p-3 text-center border-r border-b border-slate-200 w-20">Status</th>
-                              <th className="p-3 text-right border-r border-b border-slate-200 w-28">V. Diária</th>
-                              <th className="p-3 text-right border-r border-b border-slate-200 w-28">Desc.</th>
-                              <th className="p-3 text-left border-r border-b border-slate-200">Obs.</th>
-                              <th className="p-3 text-right border-b border-slate-200">Líquido</th>
-                            </tr>
-                         </thead>
-                         <tbody className="divide-y divide-slate-200">
-                            {attendanceHistory.map(h => (
-                               <tr key={h.id}>
-                                  <td className="p-3 font-bold border-r border-slate-200 text-slate-600">{formatDate(h.date)}</td>
-                                  <td className="p-3 text-center font-black border-r border-slate-200 text-slate-900">
-                                     {h.status === 'present' ? 'INTEGRAL' : h.status === 'partial' ? 'MEIA' : 'FALTA'}
-                                  </td>
-                                  <td className="p-3 text-right border-r border-slate-200 text-slate-600">{formatMoney(h.value)}</td>
-                                  <td className="p-3 text-right text-rose-500 border-r border-slate-200">{h.discountValue ? formatMoney(h.discountValue) : '-'}</td>
-                                  <td className="p-3 text-[8px] italic border-r border-slate-200 leading-tight text-slate-500">{h.discountObservation || '-'}</td>
-                                  <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
-                               </tr>
-                            ))}
-                            <tr style={{ backgroundColor: '#f8fafc' }}>
-                               <td colSpan={5} className="p-4 text-right font-black text-xs uppercase border-r border-slate-200">Soma Total Líquida:</td>
-                               <td className="p-4 text-right font-black text-xs">{formatMoney(totalToPay)}</td>
-                            </tr>
-                         </tbody>
-                      </table>
-
-                      <div className="mt-8 bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-start gap-3 page-break-avoid" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                         <div className="mt-1 flex gap-3">
-                            <Info size={16} className="text-slate-400 shrink-0" />
-                            <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
-                                Este documento serve como extrato informativo para conferência de diárias e lançamentos do período especificado. 
-                                O pagamento é efetivado via PIX conforme dados informados acima.
-                            </p>
-                         </div>
-                      </div>
-
-                      <div className="mt-16 pt-12 grid grid-cols-2 gap-24 text-center page-break-avoid">
-                         <div className="space-y-2">
-                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900" style={{ borderTop: '2px solid #0f172a' }}>{selectedEmployee?.name}</div>
-                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
-                         </div>
-                         <div className="space-y-2">
-                            <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900" style={{ borderTop: '2px solid #0f172a' }}>Administração Operacional</div>
-                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
-                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900">Extrato de Registros Detalhados</h4>
+              <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
+                 <thead>
+                    <tr className="bg-slate-900 text-white">
+                      <th className="p-3 text-left border-r border-slate-800">Data</th>
+                      <th className="p-3 text-center border-r border-slate-800">Freq.</th>
+                      <th className="p-3 text-center border-r border-slate-800">Entrada</th>
+                      <th className="p-3 text-center border-r border-slate-800">Intrajornada</th>
+                      <th className="p-3 text-center border-r border-slate-800">Saída</th>
+                      <th className="p-3 text-right">Líquido</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-slate-200">
+                    {attendanceHistory.map(h => (
+                       <tr key={h.id}>
+                          <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
+                          <td className="p-3 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'partial' ? 'PRC' : 'FLT'}</td>
+                          <td className="p-3 text-center border-r font-bold">{h.clockIn || '--'}</td>
+                          <td className="p-3 text-center border-r text-[8px] text-slate-400">
+                             {h.breakStart ? `${h.breakStart} - ${h.breakEnd}` : '--'}
+                          </td>
+                          <td className="p-3 text-center border-r font-bold">{h.clockOut || '--'}</td>
+                          <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
+                       </tr>
+                    ))}
+                    <tr className="bg-slate-50 font-black">
+                       <td colSpan={5} className="p-4 text-right uppercase border-r">Saldo Final do Período:</td>
+                       <td className="p-4 text-right text-xs">{formatMoney(totalToPay)}</td>
+                    </tr>
+                 </tbody>
               </table>
+
+              <div className="mt-20 pt-12 grid grid-cols-2 gap-24 text-center">
+                 <div className="space-y-2">
+                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">{selectedEmployee.name}</div>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
+                 </div>
+                 <div className="space-y-2">
+                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Operacional</div>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
+                 </div>
+              </div>
            </div>
         </div>
       )}

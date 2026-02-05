@@ -80,11 +80,16 @@ export interface Employee {
   role: string;
   status: 'active' | 'inactive';
   defaultValue: number;
-  paymentModality: string;
+  paymentModality: 'DIARIA' | 'CLT';
   cpf?: string;
   phone?: string;
   pixKey?: string;
   address?: string;
+  workload?: string;
+  startTime?: string;
+  breakStart?: string;
+  breakEnd?: string;
+  endTime?: string;
 }
 
 export interface AttendanceRecord {
@@ -97,6 +102,10 @@ export interface AttendanceRecord {
   paymentStatus: string;
   discountValue?: number;
   discountObservation?: string;
+  clockIn?: string;
+  clockOut?: string;
+  breakStart?: string;
+  breakEnd?: string;
 }
 
 export interface CashIn {
