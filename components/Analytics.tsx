@@ -1,10 +1,9 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { AppState, AttendanceRecord, ServiceType } from '../types';
+import { useState, useMemo } from 'react';
+import { AppState, AttendanceRecord } from '../types';
 import { 
-  Printer, Search, Calendar, FileText, X, Phone, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard, Download, Clock,
-  CheckCircle2, AlertCircle
+  Printer, Search, Calendar, FileText, User, Hash, Smartphone, Database, TableProperties,
+  Users, DollarSign, Edit2, Save, Loader2, Clock, CheckCircle2, MapPin, X
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -124,15 +123,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
   const handlePrint = () => {
     setShowPrintView(true);
+    // Pequeno delay para garantir que o DOM renderizou antes da captura do navegador
     setTimeout(() => {
       window.print();
-      // Após o fechamento da janela de impressão, perguntamos sobre o lançamento financeiro
       if (totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
       }
-    }, 800);
+    }, 1000);
   };
 
   const handleSaveValue = async (record: AttendanceRecord) => {
@@ -388,25 +387,61 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
              @media print { 
-               body > #root { visibility: hidden !important; height: 0 !important; overflow: hidden !important; }
+               /* Oculta tudo que está no root do aplicativo */
+               body > *:not(.print-view-container) { display: none !important; }
+               
+               /* Força a exibição do container de impressão e seus filhos */
+               .print-view-container, .print-view-container * { 
+                 visibility: visible !important; 
+                 display: block !important;
+               }
+
+               /* Ajustes de layout para a folha A4 */
                .print-view-container { 
-                 position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important;
+                 position: absolute !important; 
+                 left: 0 !important; 
+                 top: 0 !important; 
+                 width: 100% !important; 
+                 height: auto !important;
+                 background: white !important;
                  overflow: visible !important;
                }
+
+               .sheet { 
+                 margin: 0 !important; 
+                 padding: 1.5cm !important; 
+                 width: 210mm !important; 
+                 box-shadow: none !important;
+                 display: block !important;
+               }
+
+               /* Oculta o botão de fechar e outros elementos indesejados no PDF */
                .no-print { display: none !important; }
-               @page { margin: 1cm; size: A4; }
-               ::-webkit-scrollbar { display: none; }
+               
+               /* Remove cabeçalhos/rodapés automáticos do navegador e barras de rolagem */
+               @page { margin: 1cm; size: A4 portrait; }
+               ::-webkit-scrollbar { display: none !important; }
              }
-             .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; position: relative; }
+
+             /* Estilo visual na tela (preview) */
+             .sheet { 
+               background: white; 
+               margin: 2rem auto; 
+               padding: 1.5cm; 
+               width: 210mm; 
+               min-height: 297mm; 
+               box-shadow: 0 0 50px rgba(0,0,0,0.1);
+               position: relative;
+             }
            `}</style>
            
            <div className="sheet">
-              {/* Botão de Fechar Visualização */}
+              {/* Botão de Fechar Visualização - Visível apenas na tela */}
               <button 
                 onClick={() => setShowPrintView(false)} 
-                className="no-print absolute top-8 right-8 bg-rose-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-slate-900 transition-all"
+                className="no-print absolute top-8 right-8 bg-rose-600 text-white px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-slate-900 transition-all z-[1100] flex items-center gap-2"
               >
-                Fechar Visualização
+                <X size={18}/> FECHAR VISUALIZAÇÃO
               </button>
 
               <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
@@ -480,6 +515,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                       <th className="p-3 text-center border-r border-slate-800">Entrada</th>
                       <th className="p-3 text-center border-r border-slate-800">Intrajornada</th>
                       <th className="p-3 text-center border-r border-slate-800">Saída</th>
+                      {/* OCULTA COLUNA LÍQUIDO SE FOR CLT */}
                       {selectedEmployee.paymentModality !== 'CLT' && (
                         <th className="p-3 text-right">Líquido</th>
                       )}
@@ -495,14 +531,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                              {h.breakStart ? `${h.breakStart} - ${h.breakEnd}` : '--'}
                           </td>
                           <td className="p-3 text-center border-r font-bold">{h.clockOut || '--'}</td>
+                          {/* OCULTA VALOR LÍQUIDO DIÁRIO SE FOR CLT */}
                           {selectedEmployee.paymentModality !== 'CLT' && (
                             <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
                           )}
                        </tr>
                     ))}
                     <tr className="bg-slate-50 font-black">
-                       <td colSpan={selectedEmployee.paymentModality === 'CLT' ? 5 : 5} className="p-4 text-right uppercase border-r">Saldo Final do Período:</td>
-                       <td className="p-4 text-right text-xs">{formatMoney(totalToPay)}</td>
+                       {/* AJUSTE DO COLSPAN NO RODAPÉ */}
+                       <td colSpan={5} className="p-4 text-right uppercase border-r">Saldo Final do Período:</td>
+                       <td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td>
                     </tr>
                  </tbody>
               </table>
@@ -540,7 +578,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                  <div className="space-y-1">
                     <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Categoria Financeira</label>
                     <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeCategory} onChange={e => setFinanceCategory(e.target.value)}>
-                       {state.financeCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                       {state.financeCategories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
                     </select>
                  </div>
                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
