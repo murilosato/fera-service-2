@@ -3,7 +3,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord, ServiceType } from '../types';
 import { 
   Printer, Search, Calendar, FileText, X, Phone, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard, Download, Clock
+  Users, DollarSign, Edit2, Save, Loader2, Landmark, Info, Globe, MapPin, CreditCard, Download, Clock,
+  CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -57,9 +58,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const exportInventory = () => {
     setExportingType('inventory');
     const headers = ["ID", "ITEM", "CATEGORIA", "QTD ATUAL", "QTD MINIMA", "QTD IDEAL", "VALOR UN", "TOTAL EM ESTOQUE"];
-    const rows = state.inventory.map(i => [
-      i.id, i.name, i.category, i.currentQty, i.minQty, i.idealQty, i.unitValue, (i.currentQty * (i.unitValue || 0))
-    ]);
+    const rows = state.inventory.map(i => [i.id, i.name, i.category, i.currentQty, i.minQty, i.idealQty, i.unitValue, (i.currentQty * (i.unitValue || 0))]);
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Estoque", csvContent);
     setTimeout(() => setExportingType(null), 500);
@@ -69,9 +68,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const exportEmployees = () => {
     setExportingType('employees');
     const headers = ["ID", "NOME", "CARGO", "STATUS", "DIARIA PADRAO", "CPF", "MODALIDADE", "CARGA HORARIA"];
-    const rows = state.employees.map(e => [
-      e.id, e.name, e.role, e.status, e.defaultValue, e.cpf || "", e.paymentModality, e.workload || ""
-    ]);
+    const rows = state.employees.map(e => [e.id, e.name, e.role, e.status, e.defaultValue, e.cpf || "", e.paymentModality, e.workload || ""]);
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Equipe", csvContent);
     setTimeout(() => setExportingType(null), 500);
@@ -129,12 +126,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     setShowPrintView(true);
     setTimeout(() => {
       window.print();
+      // Após o fechamento da janela de impressão, perguntamos sobre o lançamento financeiro
       if (totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
       }
-    }, 500);
+    }, 800);
   };
 
   const handleSaveValue = async (record: AttendanceRecord) => {
@@ -390,17 +388,27 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
              @media print { 
-               body > #root { visibility: hidden; height: 0; overflow: hidden; }
-               .print-view-container, .print-view-container * { visibility: visible !important; }
+               body > #root { visibility: hidden !important; height: 0 !important; overflow: hidden !important; }
                .print-view-container { 
                  position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important;
+                 overflow: visible !important;
                }
+               .no-print { display: none !important; }
                @page { margin: 1cm; size: A4; }
+               ::-webkit-scrollbar { display: none; }
              }
-             .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; }
+             .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; position: relative; }
            `}</style>
            
            <div className="sheet">
+              {/* Botão de Fechar Visualização */}
+              <button 
+                onClick={() => setShowPrintView(false)} 
+                className="no-print absolute top-8 right-8 bg-rose-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-slate-900 transition-all"
+              >
+                Fechar Visualização
+              </button>
+
               <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
                  <div className="space-y-1">
                     <h1 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900">
@@ -472,7 +480,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                       <th className="p-3 text-center border-r border-slate-800">Entrada</th>
                       <th className="p-3 text-center border-r border-slate-800">Intrajornada</th>
                       <th className="p-3 text-center border-r border-slate-800">Saída</th>
-                      <th className="p-3 text-right">Líquido</th>
+                      {selectedEmployee.paymentModality !== 'CLT' && (
+                        <th className="p-3 text-right">Líquido</th>
+                      )}
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-200">
@@ -485,11 +495,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                              {h.breakStart ? `${h.breakStart} - ${h.breakEnd}` : '--'}
                           </td>
                           <td className="p-3 text-center border-r font-bold">{h.clockOut || '--'}</td>
-                          <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
+                          {selectedEmployee.paymentModality !== 'CLT' && (
+                            <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
+                          )}
                        </tr>
                     ))}
                     <tr className="bg-slate-50 font-black">
-                       <td colSpan={5} className="p-4 text-right uppercase border-r">Saldo Final do Período:</td>
+                       <td colSpan={selectedEmployee.paymentModality === 'CLT' ? 5 : 5} className="p-4 text-right uppercase border-r">Saldo Final do Período:</td>
                        <td className="p-4 text-right text-xs">{formatMoney(totalToPay)}</td>
                     </tr>
                  </tbody>
@@ -504,6 +516,41 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                     <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Operacional</div>
                     <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
                  </div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO FINANCEIRA PÓS-IMPRESSÃO */}
+      {showFinanceModal && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
+              <div className="text-center space-y-2">
+                 <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 size={32} />
+                 </div>
+                 <h3 className="text-sm font-black uppercase text-slate-900">Gerar Saída Financeira?</h3>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deseja registrar este acerto como uma saída no caixa?</p>
+              </div>
+              <div className="space-y-4">
+                 <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Título do Lançamento</label>
+                    <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeTitle} onChange={e => setFinanceTitle(e.target.value)} />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Categoria Financeira</label>
+                    <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeCategory} onChange={e => setFinanceCategory(e.target.value)}>
+                       {state.financeCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                 </div>
+                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
+                    <p className="text-xl font-black text-emerald-600">{formatMoney(totalToPay)}</p>
+                    <p className="text-[8px] font-black text-emerald-400 uppercase mt-1">Valor Total do Período</p>
+                 </div>
+                 <button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600 transition-all">
+                    {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR E QUITAR'}
+                 </button>
+                 <button onClick={() => setShowFinanceModal(false)} className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">APENAS FECHAR</button>
               </div>
            </div>
         </div>
