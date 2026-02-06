@@ -97,7 +97,7 @@ export interface AttendanceRecord {
   companyId: string;
   employeeId: string;
   date: string;
-  status: 'present' | 'absent' | 'partial';
+  status: 'present' | 'absent' | 'partial' | 'atestado' | 'justified' | 'vacation';
   value: number;
   paymentStatus: string;
   discountValue?: number;

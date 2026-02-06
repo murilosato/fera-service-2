@@ -298,8 +298,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <div className="space-y-4">
                           <div className="flex justify-between items-center border-b border-white/5 pb-4">
                              <span className="text-[9px] font-black opacity-60 uppercase">VALOR BRUTO TOTAL</span>
-                             {/* Added explicit type casting for reduce accumulator and current value to resolve TS errors */}
-                             <p className="text-xl font-black text-emerald-400">{(area.services || []).reduce((acc: number, s: Service) => acc + (s.totalValue || 0), 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                             {/* Fix: Ensured numeric summation using Number() and explicitly typed accumulator to resolve TS unknown error */}
+                             <p className="text-xl font-black text-emerald-400">{formatMoney((area.services || []).reduce((acc: number, s: Service) => acc + (Number(s.totalValue) || 0), 0))}</p>
                           </div>
                           <div className="space-y-3 pt-2">
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumo Quantitativo da O.S.:</p>
@@ -309,7 +309,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                                (area.services || []).forEach((s: Service) => {
                                  const val: number = Number(s.areaM2) || 0;
                                  const typeKey: string = s.type as string;
-                                 areaTotals[typeKey] = (areaTotals[typeKey] || 0) + val;
+                                 areaTotals[typeKey] = (Number(areaTotals[typeKey]) || 0) + val;
                                });
                                const entries = Object.entries(areaTotals);
                                if (entries.length === 0) return <p className="text-[8px] font-bold text-slate-600 uppercase italic">Nenhuma produção registrada</p>;

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
-import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase } from 'lucide-react';
+import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface EmployeesProps {
@@ -36,12 +36,13 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   
   const [employeeForm, setEmployeeForm] = useState(initialFormState);
 
-  // Estado para o terminal de ponto CLT
   const [pointForm, setPointForm] = useState({
     clockIn: '',
     breakStart: '',
     breakEnd: '',
-    clockOut: ''
+    clockOut: '',
+    status: 'present' as AttendanceRecord['status'],
+    observation: ''
   });
 
   const refreshData = async () => {
@@ -58,19 +59,19 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
     const existing = state.attendanceRecords.find(r => r.employeeId === empId && r.date === date);
 
-    // Se for CLT, abre o modal de ponto em vez de alternar status
     if (emp.paymentModality === 'CLT') {
       setPointForm({
         clockIn: existing?.clockIn || emp.startTime || '08:00',
         breakStart: existing?.breakStart || emp.breakStart || '12:00',
         breakEnd: existing?.breakEnd || emp.breakEnd || '13:00',
-        clockOut: existing?.clockOut || emp.endTime || '17:00'
+        clockOut: existing?.clockOut || emp.endTime || '17:00',
+        status: existing?.status || 'present',
+        observation: existing?.discountObservation || ''
       });
       setShowTimeModal({ emp, date, record: existing });
       return;
     }
 
-    // Lógica para Diarista (Cíclica)
     try {
       if (!existing) {
         await dbSave('attendance_records', {
@@ -85,6 +86,10 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         await dbSave('attendance_records', { ...existing, status: 'partial', value: emp.defaultValue / 2 });
       } else if (existing.status === 'partial') {
         await dbSave('attendance_records', { ...existing, status: 'absent', value: 0 });
+      } else if (existing.status === 'absent') {
+        await dbSave('attendance_records', { ...existing, status: 'atestado', value: 0 });
+      } else if (existing.status === 'atestado') {
+        await dbSave('attendance_records', { ...existing, status: 'justified', value: 0 });
       } else {
         await dbDelete('attendance_records', existing.id);
       }
@@ -103,19 +108,20 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         companyId: state.currentUser?.companyId,
         employee_id: emp.id,
         date,
-        status: 'present', // CLT presente por padrão ao salvar ponto
-        value: emp.defaultValue,
+        status: pointForm.status,
+        value: (pointForm.status === 'present' || pointForm.status === 'partial') ? emp.defaultValue : 0,
         payment_status: record?.paymentStatus || 'pendente',
-        clock_in: pointForm.clockIn,
-        break_start: pointForm.breakStart,
-        break_end: pointForm.breakEnd,
-        clock_out: pointForm.clockOut
+        clock_in: pointForm.status === 'present' ? pointForm.clockIn : null,
+        break_start: pointForm.status === 'present' ? pointForm.breakStart : null,
+        break_end: pointForm.status === 'present' ? pointForm.breakEnd : null,
+        clock_out: pointForm.status === 'present' ? pointForm.clockOut : null,
+        discount_observation: pointForm.observation
       });
       await refreshData();
       setShowTimeModal(null);
-      notify("Ponto registrado com sucesso");
+      notify("Registro atualizado");
     } catch (e) {
-      notify("Erro ao salvar registro de ponto", "error");
+      notify("Erro ao salvar registro", "error");
     } finally {
       setIsLoading(false);
     }
@@ -135,17 +141,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     e.preventDefault();
     if (!employeeForm.name) return notify("Nome completo é obrigatório", "error");
     
-    const cleanCpf = employeeForm.cpf.replace(/\D/g, '');
-    if (cleanCpf) {
-      const duplicate = state.employees.find(emp => 
-        emp.id !== editingId && 
-        emp.cpf?.replace(/\D/g, '') === cleanCpf
-      );
-      if (duplicate) {
-        return notify(`Erro: O CPF ${employeeForm.cpf} já está cadastrado para: ${duplicate.name}`, "error");
-      }
-    }
-
     setIsLoading(true);
     try {
       await dbSave('employees', {
@@ -200,6 +195,31 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const filteredEmployees = state.employees.filter(e => showInactive || e.status === 'active');
 
+  const getAttendanceLabel = (att: AttendanceRecord | undefined, emp: Employee) => {
+    if (!att) return '-';
+    
+    if (emp.paymentModality === 'CLT') {
+      switch(att.status) {
+        case 'present': return att.clockIn || 'OK';
+        case 'atestado': return 'AT';
+        case 'justified': return 'FJ';
+        case 'vacation': return 'FE';
+        case 'absent': return 'F';
+        case 'partial': return 'P';
+        default: return '-';
+      }
+    } else {
+      switch(att.status) {
+        case 'present': return 'P';
+        case 'partial': return 'H';
+        case 'absent': return 'F';
+        case 'atestado': return 'AT';
+        case 'justified': return 'FJ';
+        default: return '-';
+      }
+    }
+  };
+
   return (
     <div className="space-y-6 pb-24">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -225,10 +245,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
             <button onClick={() => setCurrentCalendarDate(new Date(currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1)))} className="p-2 hover:bg-white rounded-lg border border-transparent hover:border-slate-200"><ChevronRight size={18} /></button>
           </div>
           <div className="hidden sm:flex items-center gap-4">
-             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-emerald-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Integral</span></div>
-             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-amber-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Parcial</span></div>
-             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-rose-500 rounded" /><span className="text-[8px] font-black text-slate-400 uppercase">Falta</span></div>
-             <div className="flex items-center gap-2 ml-4 border-l pl-4"><Clock size={12} className="text-blue-500" /><span className="text-[8px] font-black text-blue-500 uppercase">Regime CLT (Ponto)</span></div>
+             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500 rounded" /><span className="text-[7px] font-black text-slate-400 uppercase">Presença</span></div>
+             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-rose-500 rounded" /><span className="text-[7px] font-black text-slate-400 uppercase">Falta</span></div>
+             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-purple-500 rounded" /><span className="text-[7px] font-black text-slate-400 uppercase">Atestado</span></div>
+             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-400 rounded" /><span className="text-[7px] font-black text-slate-400 uppercase">Justificada</span></div>
+             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-amber-400 rounded" /><span className="text-[7px] font-black text-slate-400 uppercase">Férias</span></div>
           </div>
         </div>
         
@@ -264,17 +285,16 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                     const isToday = dateStr === new Date().toISOString().split('T')[0];
                     
                     let bgColor = 'text-slate-200 hover:bg-slate-100';
-                    let statusLabel = '-';
                     
-                    if (att?.status === 'present') {
-                        bgColor = emp.paymentModality === 'CLT' ? 'bg-blue-600 text-white' : 'bg-emerald-500 text-white';
-                        statusLabel = emp.paymentModality === 'CLT' ? (att.clockIn || 'OK') : 'P';
-                    } else if (att?.status === 'partial') {
-                        bgColor = 'bg-amber-500 text-white';
-                        statusLabel = 'H';
-                    } else if (att?.status === 'absent') {
-                        bgColor = 'bg-rose-500 text-white';
-                        statusLabel = 'F';
+                    if (att) {
+                        switch(att.status) {
+                          case 'present': bgColor = emp.paymentModality === 'CLT' ? 'bg-blue-600 text-white' : 'bg-emerald-500 text-white'; break;
+                          case 'absent': bgColor = 'bg-rose-500 text-white'; break;
+                          case 'partial': bgColor = 'bg-amber-500 text-white'; break;
+                          case 'atestado': bgColor = 'bg-purple-600 text-white'; break;
+                          case 'justified': bgColor = 'bg-sky-500 text-white'; break;
+                          case 'vacation': bgColor = 'bg-amber-400 text-white'; break;
+                        }
                     } else if (isToday) {
                         bgColor = 'bg-slate-100 border-x-2 border-slate-900';
                     }
@@ -283,10 +303,9 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                       <td 
                         key={day} 
                         onClick={() => handleToggleAttendance(emp.id, dateStr)}
-                        className={`p-0 border-r h-12 text-center text-[9px] font-black transition-all cursor-pointer ${bgColor}`}
-                        title={att ? `Entrada: ${att.clockIn || '--'} | Saída: ${att.clockOut || '--'}` : 'Sem registro'}
+                        className={`p-0 border-r h-12 text-center text-[8px] font-black transition-all cursor-pointer ${bgColor}`}
                       >
-                        {statusLabel}
+                        {getAttendanceLabel(att, emp)}
                       </td>
                     );
                   })}
@@ -297,7 +316,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      {/* MODAL DE CADASTRO DIFERENCIADO */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
            <form onSubmit={handleSaveEmployee} className="bg-white rounded-[40px] w-full max-w-xl p-8 md:p-10 space-y-6 shadow-2xl overflow-y-auto max-h-[90vh] border border-slate-100 animate-in zoom-in-95">
@@ -306,23 +324,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                     <h3 className="text-sm font-black uppercase text-slate-900">{editingId ? 'Editar Perfil' : 'Novo Colaborador'}</h3>
                     <div className="flex items-center gap-4 mt-2">
                        <label className="flex items-center gap-2 cursor-pointer group">
-                          <input 
-                            type="radio" 
-                            className="hidden" 
-                            name="modality" 
-                            checked={employeeForm.paymentModality === 'DIARIA'} 
-                            onChange={() => setEmployeeForm({...employeeForm, paymentModality: 'DIARIA'})}
-                          />
+                          <input type="radio" className="hidden" name="modality" checked={employeeForm.paymentModality === 'DIARIA'} onChange={() => setEmployeeForm({...employeeForm, paymentModality: 'DIARIA'})}/>
                           <div className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all ${employeeForm.paymentModality === 'DIARIA' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'}`}>DIARISTA</div>
                        </label>
                        <label className="flex items-center gap-2 cursor-pointer group">
-                          <input 
-                            type="radio" 
-                            className="hidden" 
-                            name="modality" 
-                            checked={employeeForm.paymentModality === 'CLT'} 
-                            onChange={() => setEmployeeForm({...employeeForm, paymentModality: 'CLT'})}
-                          />
+                          <input type="radio" className="hidden" name="modality" checked={employeeForm.paymentModality === 'CLT'} onChange={() => setEmployeeForm({...employeeForm, paymentModality: 'CLT'})}/>
                           <div className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all ${employeeForm.paymentModality === 'CLT' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'}`}>CONTRATADO (CLT)</div>
                        </label>
                     </div>
@@ -335,42 +341,19 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Nome Completo</label>
                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900" placeholder="NOME DO COLABORADOR" value={employeeForm.name} onChange={e => setEmployeeForm({...employeeForm, name: e.target.value})} />
                 </div>
-
                 <div className="space-y-1">
                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">CPF</label>
                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="000.000.000-00" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: e.target.value})} />
                 </div>
-                
                 <div className="space-y-1">
                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Função</label>
                    <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={employeeForm.role} onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}>
                       {state.employeeRoles.map(r => <option key={r} value={r}>{r}</option>)}
                    </select>
                 </div>
-
-                <div className="space-y-1">
-                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">{employeeForm.paymentModality === 'CLT' ? 'Salário Base (R$)' : 'Valor Diária (R$)'}</label>
-                   <input type="number" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" value={employeeForm.defaultValue} onChange={e => setEmployeeForm({...employeeForm, defaultValue: e.target.value})} />
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Chave PIX</label>
-                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="E-MAIL, CPF OU TELEFONE" value={employeeForm.pixKey} onChange={e => setEmployeeForm({...employeeForm, pixKey: e.target.value})} />
-                </div>
-
-                {/* CAMPOS ESPECÍFICOS PARA CLT */}
                 {employeeForm.paymentModality === 'CLT' && (
-                  <div className="md:col-span-2 p-6 bg-blue-50/50 rounded-[32px] border border-blue-100 space-y-6 animate-in slide-in-from-top-4 duration-300">
-                    <div className="flex items-center gap-2 border-b border-blue-100 pb-3">
-                       <Clock size={16} className="text-blue-600" />
-                       <h4 className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Definição de Jornada Contratual</h4>
-                    </div>
-                    
-                    <div className="space-y-1">
-                       <label className="text-[9px] font-black text-blue-400 uppercase ml-1 block">Carga de Trabalho (Ex: 44h Semanais)</label>
-                       <input className="w-full bg-white border border-blue-100 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-blue-500" value={employeeForm.workload} onChange={e => setEmployeeForm({...employeeForm, workload: e.target.value})} />
-                    </div>
-
+                  <div className="md:col-span-2 p-6 bg-blue-50/50 rounded-[32px] border border-blue-100 space-y-6">
+                    <div className="flex items-center gap-2 border-b border-blue-100 pb-3"><Clock size={16} className="text-blue-600" /><h4 className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Definição de Jornada Contratual</h4></div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                        <div className="space-y-1">
                           <label className="text-[8px] font-black text-blue-400 uppercase ml-1 block">Entrada</label>
@@ -392,48 +375,53 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                   </div>
                 )}
               </div>
-
-              <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl hover:bg-emerald-600 transition-all active:scale-95">
-                {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20}/>}
-                SALVAR CADASTRO
+              <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl hover:bg-emerald-600 transition-all">
+                {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20}/>} SALVAR CADASTRO
               </button>
            </form>
         </div>
       )}
 
-      {/* TERMINAL DE PONTO CLT */}
       {showTimeModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4">
-           <div className="bg-white rounded-[40px] w-full max-w-sm p-8 space-y-8 shadow-2xl animate-in zoom-in-95 border border-slate-100">
-              <div className="text-center space-y-2">
-                 <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Clock size={32} />
-                 </div>
-                 <h3 className="text-sm font-black uppercase text-slate-900">Registro de Jornada Real</h3>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{showTimeModal.emp.name}</p>
-                 <p className="text-[9px] font-black text-blue-600 bg-blue-50 py-1 px-3 rounded-full inline-block uppercase">{showTimeModal.date.split('-').reverse().join('/')}</p>
+           <div className="bg-white rounded-[40px] w-full max-w-sm p-8 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
+              <div className="text-center">
+                 <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3"><Clock size={28} /></div>
+                 <h3 className="text-[12px] font-black uppercase text-slate-900">Registro de Ocorrência</h3>
+                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{showTimeModal.emp.name} • {showTimeModal.date.split('-').reverse().join('/')}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                  <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Entrada</label>
-                    <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none focus:border-blue-500" value={pointForm.clockIn} onChange={e => setPointForm({...pointForm, clockIn: e.target.value})} />
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Tipo de Registro</label>
+                    <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-blue-500" value={pointForm.status} onChange={e => setPointForm({...pointForm, status: e.target.value as any})}>
+                       <option value="present">Presença Integral</option>
+                       <option value="partial">Atraso / Saída Antecipada</option>
+                       <option value="atestado">Atestado Médico (Justificado)</option>
+                       <option value="justified">Falta Justificada</option>
+                       <option value="absent">Falta Injustificada</option>
+                       <option value="vacation">Férias / Folga</option>
+                    </select>
                  </div>
-                 <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Início Intraj.</label>
-                    <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none focus:border-blue-500" value={pointForm.breakStart} onChange={e => setPointForm({...pointForm, breakStart: e.target.value})} />
-                 </div>
-                 <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Fim Intraj.</label>
-                    <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none focus:border-blue-500" value={pointForm.breakEnd} onChange={e => setPointForm({...pointForm, breakEnd: e.target.value})} />
-                 </div>
-                 <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Saída Final</label>
-                    <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none focus:border-blue-500" value={pointForm.clockOut} onChange={e => setPointForm({...pointForm, clockOut: e.target.value})} />
-                 </div>
-              </div>
 
-              <div className="flex flex-col gap-3">
+                 {pointForm.status === 'present' || pointForm.status === 'partial' ? (
+                   <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in-95">
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Entrada</label>
+                        <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none" value={pointForm.clockIn} onChange={e => setPointForm({...pointForm, clockIn: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Saída</label>
+                        <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none" value={pointForm.clockOut} onChange={e => setPointForm({...pointForm, clockOut: e.target.value})} />
+                      </div>
+                   </div>
+                 ) : null}
+
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Justificativa / Observação</label>
+                    <textarea rows={3} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-blue-500 resize-none" placeholder="DESCREVA O MOTIVO..." value={pointForm.observation} onChange={e => setPointForm({...pointForm, observation: e.target.value})} />
+                 </div>
+
                  <button onClick={handleSavePoint} disabled={isLoading} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-slate-900 transition-all">
                     {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR REGISTRO'}
                  </button>
