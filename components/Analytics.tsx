@@ -114,14 +114,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
   const handlePrint = () => {
     setShowPrintView(true);
+    // Pequeno atraso para garantir que o modal de impressão esteja montado no DOM
     setTimeout(() => {
       window.print();
+      // Após fechar o diálogo de impressão do navegador, verificamos se precisa abrir o modal financeiro
       if (selectedEmployee?.paymentModality !== 'CLT' && totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
       }
-    }, 1000);
+    }, 500);
   };
 
   const handleSaveValue = async (record: AttendanceRecord) => {
@@ -336,36 +338,212 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       {showPrintView && selectedEmployee && (
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
+             @media screen {
+               .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; }
+             }
              @media print { 
-               body > *:not(.print-view-container) { display: none !important; }
-               .print-view-container, .print-view-container * { visibility: visible !important; display: block !important; }
-               .print-view-container { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; background: white !important; overflow: visible !important; }
-               .sheet { margin: 0 !important; padding: 1cm !important; width: 210mm !important; box-shadow: none !important; display: block !important; }
+               /* Oculta tudo exceto a folha de impressão */
+               body * { visibility: hidden !important; }
+               .print-view-container, .print-view-container * { visibility: visible !important; }
+               .print-view-container { 
+                  position: absolute !important; 
+                  left: 0 !important; 
+                  top: 0 !important; 
+                  width: 100% !important; 
+                  height: auto !important; 
+                  margin: 0 !important; 
+                  padding: 0 !important; 
+                  background: white !important; 
+                  overflow: visible !important;
+                  display: block !important;
+                  visibility: visible !important;
+               }
+               .sheet { 
+                  margin: 0 !important; 
+                  padding: 1.5cm !important; 
+                  width: 100% !important; 
+                  min-height: auto !important;
+                  box-shadow: none !important; 
+                  display: block !important; 
+               }
                .no-print { display: none !important; }
-               @page { margin: 0.5cm; size: A4 portrait; }
+               @page { margin: 1cm; size: A4 portrait; }
                ::-webkit-scrollbar { display: none !important; }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
              }
-             .sheet { background: white; margin: 2rem auto; padding: 1cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.1); position: relative; }
+             .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.1); position: relative; }
            `}</style>
            
            <div className="sheet">
               <button onClick={() => setShowPrintView(false)} className="no-print absolute top-8 right-8 bg-rose-600 text-white px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-slate-900 transition-all z-[1100] flex items-center gap-2"><X size={18}/> FECHAR VISUALIZAÇÃO</button>
-              <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start"><div className="space-y-1"><h1 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900">{state.company?.name || "FERA SERVICE"}</h1><div className="mt-4 text-[9px] font-bold text-slate-500 uppercase">{state.company?.cnpj && <p>CNPJ: {state.company.cnpj}</p>}<p className="max-w-[300px]">{state.company?.address}</p></div></div><div className="text-right uppercase"><div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block"><h2 className="text-sm font-black tracking-widest">Ficha de Acerto de Jornada</h2></div><p className="text-[10px] font-bold text-slate-600">Período de Referência</p><p className="text-sm font-black text-slate-900">{formatDate(startDate)} a {formatDate(endDate)}</p></div></div>
-              <div className="grid grid-cols-12 gap-6 mb-8"><div className={`${selectedEmployee.paymentModality === 'CLT' ? 'col-span-12' : 'col-span-7'} bg-slate-50 p-6 rounded-3xl border border-slate-200`}><div className="mb-4"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador</p><p className="text-base font-black uppercase text-slate-900">{selectedEmployee.name}</p><p className="text-[10px] font-bold text-blue-600 uppercase mt-1">Modalidade: {selectedEmployee.paymentModality}</p></div><div className="grid grid-cols-2 gap-y-3 gap-x-6"><div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cargo</p><p className="text-[10px] font-bold text-slate-700">{selectedEmployee.role}</p></div><div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p><p className="text-[10px] font-bold text-slate-700">{selectedEmployee.cpf || '--'}</p></div>{selectedEmployee.paymentModality === 'CLT' && (<div className="col-span-2"><p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Carga Horária Contratada</p><p className="text-[10px] font-bold text-blue-700">{selectedEmployee.workload} ({selectedEmployee.startTime}h às {selectedEmployee.endTime}h)</p></div>)}</div></div>{selectedEmployee.paymentModality !== 'CLT' && (<div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4"><div className="space-y-2 border-b-2 border-slate-100 pb-4"><div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-500"><span>PROVENTOS BASE</span><span className="text-slate-900">{formatMoney(totalBaseValue)}</span></div><div className="flex justify-between items-center text-[10px] font-black uppercase text-rose-500"><span>DESCONTOS (-)</span><span className="text-rose-600">{formatMoney(totalDiscounts)}</span></div></div><div className="text-center pt-2"><p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO</p><h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2></div></div>)}</div>
+              
+              <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
+                <div className="space-y-1">
+                  <h1 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900">{state.company?.name || "FERA SERVICE"}</h1>
+                  <div className="mt-4 text-[9px] font-bold text-slate-500 uppercase">
+                    {state.company?.cnpj && <p>CNPJ: {state.company.cnpj}</p>}
+                    <p className="max-w-[300px]">{state.company?.address}</p>
+                  </div>
+                </div>
+                <div className="text-right uppercase">
+                  <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block">
+                    <h2 className="text-sm font-black tracking-widest">Ficha de Acerto de Jornada</h2>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-600">Período de Referência</p>
+                  <p className="text-sm font-black text-slate-900">{formatDate(startDate)} a {formatDate(endDate)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-12 gap-6 mb-8">
+                <div className={`${selectedEmployee.paymentModality === 'CLT' ? 'col-span-12' : 'col-span-7'} bg-slate-50 p-6 rounded-3xl border border-slate-200`}>
+                  <div className="mb-4">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador</p>
+                    <p className="text-base font-black uppercase text-slate-900">{selectedEmployee.name}</p>
+                    <p className="text-[10px] font-bold text-blue-600 uppercase mt-1">Modalidade: {selectedEmployee.paymentModality}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-6">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cargo</p>
+                      <p className="text-[10px] font-bold text-slate-700">{selectedEmployee.role}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Documento CPF</p>
+                      <p className="text-[10px] font-bold text-slate-700">{selectedEmployee.cpf || '--'}</p>
+                    </div>
+                    {selectedEmployee.paymentModality === 'CLT' && (
+                      <div className="col-span-2">
+                        <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Carga Horária Contratada</p>
+                        <p className="text-[10px] font-bold text-blue-700">{selectedEmployee.workload} ({selectedEmployee.startTime}h às {selectedEmployee.endTime}h)</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {selectedEmployee.paymentModality !== 'CLT' && (
+                  <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
+                    <div className="space-y-2 border-b-2 border-slate-100 pb-4">
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-500">
+                        <span>PROVENTOS BASE</span>
+                        <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-rose-500">
+                        <span>DESCONTOS (-)</span>
+                        <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
+                      </div>
+                    </div>
+                    <div className="text-center pt-2">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO</p>
+                      <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900">Extrato de Registros Detalhados</h4>
+              
               {selectedEmployee.paymentModality === 'CLT' ? (
-                <table className="w-full text-[9px] border-collapse uppercase border border-slate-200"><thead><tr className="bg-slate-900 text-white"><th className="p-2 text-left border-r border-slate-800">Data</th><th className="p-2 text-center border-r border-slate-800">Freq.</th><th className="p-2 text-center border-r border-slate-800">Entrada</th><th className="p-2 text-center border-r border-slate-800">S. Almoço</th><th className="p-2 text-center border-r border-slate-800">R. Almoço</th><th className="p-2 text-center border-r border-slate-800">S. Final</th><th className="p-2 text-left">Justificativa</th></tr></thead><tbody className="divide-y divide-slate-200">{attendanceHistory.map(h => (<tr key={h.id}><td className="p-2 font-bold border-r text-slate-600">{formatDate(h.date)}</td><td className="p-2 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'atestado' ? 'AT' : 'OUT'}</td><td className="p-2 text-center border-r font-black">{h.clockIn || '--'}</td><td className="p-2 text-center border-r font-black">{h.breakStart || '--'}</td><td className="p-2 text-center border-r font-black">{h.breakEnd || '--'}</td><td className="p-2 text-center border-r font-black">{h.clockOut || '--'}</td><td className="p-2 text-left text-slate-400 italic lowercase">{h.discountObservation || '--'}</td></tr>))}</tbody></table>
+                <table className="w-full text-[9px] border-collapse uppercase border border-slate-200">
+                  <thead>
+                    <tr className="bg-slate-900 text-white">
+                      <th className="p-2 text-left border-r border-slate-800">Data</th>
+                      <th className="p-2 text-center border-r border-slate-800">Freq.</th>
+                      <th className="p-2 text-center border-r border-slate-800">Entrada</th>
+                      <th className="p-2 text-center border-r border-slate-800">S. Almoço</th>
+                      <th className="p-2 text-center border-r border-slate-800">R. Almoço</th>
+                      <th className="p-2 text-center border-r border-slate-800">S. Final</th>
+                      <th className="p-2 text-left">Justificativa</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {attendanceHistory.map(h => (
+                      <tr key={h.id}>
+                        <td className="p-2 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
+                        <td className="p-2 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'atestado' ? 'AT' : 'OUT'}</td>
+                        <td className="p-2 text-center border-r font-black">{h.clockIn || '--'}</td>
+                        <td className="p-2 text-center border-r font-black">{h.breakStart || '--'}</td>
+                        <td className="p-2 text-center border-r font-black">{h.breakEnd || '--'}</td>
+                        <td className="p-2 text-center border-r font-black">{h.clockOut || '--'}</td>
+                        <td className="p-2 text-left text-slate-400 italic lowercase">{h.discountObservation || '--'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               ) : (
-                <table className="w-full text-[10px] border-collapse uppercase border border-slate-200"><thead><tr className="bg-slate-900 text-white"><th className="p-3 text-left border-r border-slate-800">Data</th><th className="p-3 text-center border-r border-slate-800">Freq.</th><th className="p-3 text-right border-r border-slate-800">Valor Base</th><th className="p-3 text-right border-r border-slate-800">Desconto</th><th className="p-3 text-left border-r border-slate-800">Observações</th><th className="p-3 text-right">Líquido</th></tr></thead><tbody className="divide-y divide-slate-200">{attendanceHistory.map(h => (<tr key={h.id}><td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td><td className="p-3 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'partial' ? 'PRC' : 'FLT'}</td><td className="p-3 text-right border-r font-bold">{formatMoney(h.value)}</td><td className="p-3 text-right border-r text-rose-600 font-bold">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td><td className="p-3 text-left border-r text-slate-400 italic lowercase">{h.discountObservation || '--'}</td><td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td></tr>))}{selectedEmployee.paymentModality !== 'CLT' && (<tr className="bg-slate-50 font-black"><td colSpan={5} className="p-4 text-right uppercase border-r">Total Líquido a Pagar:</td><td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td></tr>)}</tbody></table>
+                <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
+                  <thead>
+                    <tr className="bg-slate-900 text-white">
+                      <th className="p-3 text-left border-r border-slate-800">Data</th>
+                      <th className="p-3 text-center border-r border-slate-800">Freq.</th>
+                      <th className="p-3 text-right border-r border-slate-800">Valor Base</th>
+                      <th className="p-3 text-right border-r border-slate-800">Desconto</th>
+                      <th className="p-3 text-left border-r border-slate-800">Observações</th>
+                      <th className="p-3 text-right">Líquido</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {attendanceHistory.map(h => (
+                      <tr key={h.id}>
+                        <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
+                        <td className="p-3 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'partial' ? 'PRC' : 'FLT'}</td>
+                        <td className="p-3 text-right border-r font-bold">{formatMoney(h.value)}</td>
+                        <td className="p-3 text-right border-r text-rose-600 font-bold">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
+                        <td className="p-3 text-left border-r text-slate-400 italic lowercase">{h.discountObservation || '--'}</td>
+                        <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
+                      </tr>
+                    ))}
+                    {selectedEmployee.paymentModality !== 'CLT' && (
+                      <tr className="bg-slate-50 font-black">
+                        <td colSpan={5} className="p-4 text-right uppercase border-r">Total Líquido a Pagar:</td>
+                        <td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               )}
-              <div className="mt-20 pt-12 grid grid-cols-2 gap-24 text-center"><div className="space-y-2"><div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">{selectedEmployee.name}</div><p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p></div><div className="space-y-2"><div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Operacional</div><p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p></div></div>
+              
+              <div className="mt-20 pt-12 grid grid-cols-2 gap-24 text-center">
+                <div className="space-y-2">
+                  <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">{selectedEmployee.name}</div>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura do Colaborador</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase text-slate-900">Administração Operacional</div>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Assinatura Responsável</p>
+                </div>
+              </div>
            </div>
         </div>
       )}
 
       {showFinanceModal && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4"><div className="bg-white rounded-[40px] w-full max-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95"><div className="text-center space-y-2"><div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><CheckCircle2 size={32} /></div><h3 className="text-sm font-black uppercase text-slate-900">Gerar Saída Financeira?</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deseja registrar este acerto como uma saída no caixa?</p></div><div className="space-y-4"><div className="space-y-1"><label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Título do Lançamento</label><input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeTitle} onChange={e => setFinanceTitle(e.target.value)} /></div><div className="space-y-1"><label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Categoria Financeira</label><select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeCategory} onChange={e => setFinanceCategory(e.target.value)}>{state.financeCategories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}</select></div><div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center"><p className="text-xl font-black text-emerald-600">{formatMoney(totalToPay)}</p><p className="text-[8px] font-black text-emerald-400 uppercase mt-1">Valor Total do Período</p></div><button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600 transition-all">{isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR E QUITAR'}</button><button onClick={() => setShowFinanceModal(false)} className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">APENAS FECHAR</button></div></div></div>
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] w-full max-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><CheckCircle2 size={32} /></div>
+              <h3 className="text-sm font-black uppercase text-slate-900">Gerar Saída Financeira?</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deseja registrar este acerto como uma saída no caixa?</p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Título do Lançamento</label>
+                <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeTitle} onChange={e => setFinanceTitle(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Categoria Financeira</label>
+                <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={financeCategory} onChange={e => setFinanceCategory(e.target.value)}>
+                  {state.financeCategories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                </select>
+              </div>
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
+                <p className="text-xl font-black text-emerald-600">{formatMoney(totalToPay)}</p>
+                <p className="text-[8px] font-black text-emerald-400 uppercase mt-1">Valor Total do Período</p>
+              </div>
+              <button onClick={handleCreateFinanceExit} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600 transition-all">
+                {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR E QUITAR'}
+              </button>
+              <button onClick={() => setShowFinanceModal(false)} className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">APENAS FECHAR</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
