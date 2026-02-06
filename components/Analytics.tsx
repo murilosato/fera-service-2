@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Search, Calendar, FileText, User, Hash, Smartphone, Database, TableProperties,
@@ -19,7 +19,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const [showPrintView, setShowPrintView] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [exportingType, setExportingType] = useState<string | null>(null);
   
   const [editingValue, setEditingValue] = useState('');
   const [editingDiscount, setEditingDiscount] = useState('');
@@ -55,39 +54,32 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   };
 
   const exportInventory = () => {
-    setExportingType('inventory');
-    const headers = ["ID", "ITEM", "CATEGORIA", "QTD ATUAL", "QTD MINIMA", "QTD IDEAL", "VALOR UN", "TOTAL EM ESTOQUE"];
-    const rows = state.inventory.map(i => [i.id, i.name, i.category, i.currentQty, i.minQty, i.idealQty, i.unitValue, (i.currentQty * (i.unitValue || 0))]);
+    const headers = ["ID", "ITEM", "CATEGORIA", "QTD ATUAL", "VALOR UN", "TOTAL EM ESTOQUE"];
+    const rows = state.inventory.map(i => [i.id, i.name, i.category, i.currentQty, i.unitValue, (i.currentQty * (i.unitValue || 0))]);
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Estoque", csvContent);
-    setTimeout(() => setExportingType(null), 500);
     notify("Planilha de estoque gerada!");
   };
 
   const exportEmployees = () => {
-    setExportingType('employees');
     const headers = ["ID", "NOME", "CARGO", "STATUS", "DIARIA PADRAO", "CPF", "MODALIDADE", "CARGA HORARIA"];
     const rows = state.employees.map(e => [e.id, e.name, e.role, e.status, e.defaultValue, e.cpf || "", e.paymentModality, e.workload || ""]);
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Equipe", csvContent);
-    setTimeout(() => setExportingType(null), 500);
     notify("Planilha de equipe gerada!");
   };
 
   const exportFinance = () => {
-    setExportingType('finance');
     const headers = ["DATA", "TIPO", "REFERENCIA", "CATEGORIA", "VALOR"];
     const rowsIn = state.cashIn.map(i => [i.date, "ENTRADA", i.reference, i.category, i.value]);
     const rowsOut = state.cashOut.map(o => [o.date, "SAIDA", o.reference, o.category, o.value]);
     const allRows = [...rowsIn, ...rowsOut].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
     const csvContent = [headers, ...allRows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Financeiro", csvContent);
-    setTimeout(() => setExportingType(null), 500);
     notify("Fluxo de caixa exportado!");
   };
 
   const exportProduction = () => {
-    setExportingType('production');
     const headers = ["DATA", "O.S.", "TIPO SERVICO", "QUANTIDADE", "VALOR UN", "VALOR TOTAL"];
     const rows: any[] = [];
     state.areas.forEach(area => {
@@ -97,7 +89,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     });
     const csvContent = [headers, ...rows].sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Producao", csvContent);
-    setTimeout(() => setExportingType(null), 500);
     notify("Dados de produção exportados!");
   };
 
@@ -125,7 +116,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     setShowPrintView(true);
     setTimeout(() => {
       window.print();
-      if (totalToPay > 0) {
+      // Somente abre modal financeiro se NÃO for CLT e houver saldo
+      if (selectedEmployee?.paymentModality !== 'CLT' && totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
@@ -263,7 +255,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                >
                   <div className="min-w-0">
                      <p className="text-sm font-black uppercase truncate tracking-tight flex items-center gap-2">
-                        {emp.paymentModality === 'CLT' && <Clock size={12} className="text-blue-400" />}
+                        {emp.paymentModality === 'CLT' && <Clock size={12} className="text-blue-500" />}
                         {emp.name}
                      </p>
                      <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mt-1 ${selectedEmployeeId === emp.id ? 'text-emerald-400' : 'text-slate-400'}`}>{emp.role} • {emp.paymentModality}</p>
@@ -297,8 +289,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                          </div>
                       </div>
                       <div className="md:w-64 bg-white/5 p-6 rounded-[32px] border border-white/10 flex flex-col justify-center text-center">
-                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido</p>
-                         <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
+                         {selectedEmployee.paymentModality !== 'CLT' && (
+                           <>
+                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido</p>
+                             <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
+                           </>
+                         )}
                          <button onClick={handlePrint} className="mt-4 w-full bg-white text-slate-900 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all shadow-xl active:scale-95">
                             <Printer size={16} /> GERAR PDF / IMPRIMIR
                          </button>
@@ -312,9 +308,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                            <th className="px-8 py-4">Data</th>
                            <th className="px-8 py-4 text-center">Registro</th>
                            <th className="px-8 py-4 text-center">Horários (Ent-Sai)</th>
-                           <th className="px-8 py-4 text-right">Base</th>
-                           <th className="px-8 py-4 text-right">Desc.</th>
-                           <th className="px-8 py-4 text-center">Pagamento</th>
+                           {selectedEmployee.paymentModality !== 'CLT' && (
+                             <>
+                               <th className="px-8 py-4 text-right">Base</th>
+                               <th className="px-8 py-4 text-right">Desc.</th>
+                               <th className="px-8 py-4 text-center">Pagamento</th>
+                             </>
+                           )}
                            <th className="px-8 py-4 text-right">Ação</th>
                          </tr>
                       </thead>
@@ -336,25 +336,29 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                   <td className="px-8 py-3 text-center font-bold text-slate-400">
                                      {h.clockIn ? `${h.clockIn} - ${h.clockOut || '??'}` : '--'}
                                   </td>
-                                  <td className="px-8 py-3 text-right">
-                                     {isEditing ? (
-                                       <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" value={editingValue} onChange={e => setEditingValue(e.target.value)} />
-                                     ) : (
-                                       <span className="font-bold">{formatMoney(h.value)}</span>
-                                     )}
-                                  </td>
-                                  <td className="px-8 py-3 text-right text-rose-500">
-                                     {isEditing ? (
-                                       <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" value={editingDiscount} onChange={e => setEditingDiscount(e.target.value)} />
-                                     ) : (
-                                       `- ${formatMoney(h.discountValue || 0)}`
-                                     )}
-                                  </td>
-                                  <td className="px-8 py-3 text-center">
-                                     <button onClick={() => togglePaymentStatus(h)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black transition-all ${h.paymentStatus === 'pago' ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600'}`}>
-                                        {h.paymentStatus === 'pago' ? 'PAGO' : 'PENDENTE'}
-                                     </button>
-                                  </td>
+                                  {selectedEmployee.paymentModality !== 'CLT' && (
+                                    <>
+                                      <td className="px-8 py-3 text-right">
+                                         {isEditing ? (
+                                           <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" value={editingValue} onChange={e => setEditingValue(e.target.value)} />
+                                         ) : (
+                                           <span className="font-bold">{formatMoney(h.value)}</span>
+                                         )}
+                                      </td>
+                                      <td className="px-8 py-3 text-right text-rose-500">
+                                         {isEditing ? (
+                                           <input className="w-20 bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black text-right" value={editingDiscount} onChange={e => setEditingDiscount(e.target.value)} />
+                                         ) : (
+                                           `- ${formatMoney(h.discountValue || 0)}`
+                                         )}
+                                      </td>
+                                      <td className="px-8 py-3 text-center">
+                                         <button onClick={() => togglePaymentStatus(h)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black transition-all ${h.paymentStatus === 'pago' ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600'}`}>
+                                            {h.paymentStatus === 'pago' ? 'PAGO' : 'PENDENTE'}
+                                         </button>
+                                      </td>
+                                    </>
+                                  )}
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
                                          <button onClick={() => handleSaveValue(h)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded-lg"><Save size={14}/></button>
@@ -435,7 +439,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
               </div>
 
               <div className="grid grid-cols-12 gap-6 mb-8">
-                 <div className="col-span-7 bg-slate-50 p-6 rounded-3xl border border-slate-200">
+                 <div className={`${selectedEmployee.paymentModality === 'CLT' ? 'col-span-12' : 'col-span-7'} bg-slate-50 p-6 rounded-3xl border border-slate-200`}>
                     <div className="mb-4">
                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Colaborador</p>
                        <p className="text-base font-black uppercase text-slate-900">{selectedEmployee.name}</p>
@@ -459,28 +463,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                     </div>
                  </div>
 
-                 <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
-                    <div className="space-y-2 border-b-2 border-slate-100 pb-4">
-                       <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-500">
-                          <span>PROVENTOS BASE</span>
-                          <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
-                       </div>
-                       <div className="flex justify-between items-center text-[10px] font-black uppercase text-rose-500">
-                          <span>DESCONTOS (-)</span>
-                          <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
-                       </div>
-                    </div>
-                    <div className="text-center pt-2">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO</p>
-                       <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
-                    </div>
-                 </div>
+                 {selectedEmployee.paymentModality !== 'CLT' && (
+                   <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl flex flex-col justify-center space-y-4">
+                      <div className="space-y-2 border-b-2 border-slate-100 pb-4">
+                         <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-500">
+                            <span>PROVENTOS BASE</span>
+                            <span className="text-slate-900">{formatMoney(totalBaseValue)}</span>
+                         </div>
+                         <div className="flex justify-between items-center text-[10px] font-black uppercase text-rose-500">
+                            <span>DESCONTOS (-)</span>
+                            <span className="text-rose-600">{formatMoney(totalDiscounts)}</span>
+                         </div>
+                      </div>
+                      <div className="text-center pt-2">
+                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">VALOR LÍQUIDO</p>
+                         <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+                      </div>
+                   </div>
+                 )}
               </div>
 
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900">Extrato de Registros Detalhados</h4>
               
               {selectedEmployee.paymentModality === 'CLT' ? (
-                /* TABELA CLTISTA */
+                /* TABELA CLTISTA - SOMENTE PONTO */
                 <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
                    <thead>
                       <tr className="bg-slate-900 text-white">
@@ -489,7 +495,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                         <th className="p-3 text-center border-r border-slate-800">Entrada</th>
                         <th className="p-3 text-center border-r border-slate-800">Intrajornada</th>
                         <th className="p-3 text-center border-r border-slate-800">Saída</th>
-                        <th className="p-3 text-right">Desconto</th>
+                        <th className="p-3 text-right">Desconto / Obs</th>
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-200">
@@ -498,21 +504,18 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                             <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
                             <td className="p-3 text-center border-r">INT</td>
                             <td className="p-3 text-center border-r font-bold">{h.clockIn || '--'}</td>
-                            <td className="p-3 text-center border-r text-[8px] text-slate-400">
+                            {/* AJUSTE DE FONTE NA INTRAJORNADA PARA IGUALAR AS DEMAIS */}
+                            <td className="p-3 text-center border-r font-bold">
                                {h.breakStart ? `${h.breakStart} - ${h.breakEnd}` : '--'}
                             </td>
                             <td className="p-3 text-center border-r font-bold">{h.clockOut || '--'}</td>
-                            <td className="p-3 text-right text-rose-600">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
+                            <td className="p-3 text-right text-rose-600 font-bold">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
                          </tr>
                       ))}
-                      <tr className="bg-slate-50 font-black">
-                         <td colSpan={5} className="p-4 text-right uppercase border-r">Saldo Líquido do Mês:</td>
-                         <td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td>
-                      </tr>
                    </tbody>
                 </table>
               ) : (
-                /* TABELA DIARISTA */
+                /* TABELA DIARISTA - VALORES INCLUÍDOS */
                 <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
                    <thead>
                       <tr className="bg-slate-900 text-white">
@@ -528,8 +531,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                          <tr key={h.id}>
                             <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
                             <td className="p-3 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'partial' ? 'PRC' : 'FLT'}</td>
-                            <td className="p-3 text-right border-r">{formatMoney(h.value)}</td>
-                            <td className="p-3 text-right border-r text-rose-600">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
+                            <td className="p-3 text-right border-r font-bold">{formatMoney(h.value)}</td>
+                            <td className="p-3 text-right border-r text-rose-600 font-bold">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
                             <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
                          </tr>
                       ))}

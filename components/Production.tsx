@@ -304,7 +304,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumo Quantitativo da O.S.:</p>
                             {(() => {
                                const areaTotals: Record<string, number> = {};
-                               (area.services || []).forEach(s => areaTotals[s.type] = (areaTotals[s.type] || 0) + s.areaM2);
+                               // Fix: Explicitly ensuring areaM2 is treated as a number during accumulation to resolve 'unknown' type issue
+                               (area.services || []).forEach(s => {
+                                 const val = Number(s.areaM2);
+                                 areaTotals[s.type] = (areaTotals[s.type] || 0) + val;
+                               });
                                const entries = Object.entries(areaTotals);
                                if (entries.length === 0) return <p className="text-[8px] font-bold text-slate-600 uppercase italic">Nenhuma produção registrada</p>;
                                return entries.map(([type, total]) => (
