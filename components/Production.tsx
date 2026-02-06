@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
 import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText, DollarSign, Layers, BarChart3 } from 'lucide-react';
@@ -298,8 +297,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <div className="space-y-4">
                           <div className="flex justify-between items-center border-b border-white/5 pb-4">
                              <span className="text-[9px] font-black opacity-60 uppercase">VALOR BRUTO TOTAL</span>
-                             {/* Fix: Ensured numeric summation using Number() and explicitly typed accumulator to resolve TS unknown error */}
-                             <p className="text-xl font-black text-emerald-400">{formatMoney((area.services || []).reduce((acc: number, s: Service) => acc + (Number(s.totalValue) || 0), 0))}</p>
+                             {/* Fix: Ensured numeric summation with explicit generic return type to resolve TS unknown error */}
+                             <p className="text-xl font-black text-emerald-400">{formatMoney((area.services || []).reduce<number>((acc, s) => acc + (Number(s.totalValue) || 0), 0))}</p>
                           </div>
                           <div className="space-y-3 pt-2">
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumo Quantitativo da O.S.:</p>

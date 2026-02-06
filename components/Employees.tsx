@@ -29,8 +29,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     paymentModality: 'DIARIA' as 'DIARIA' | 'CLT',
     workload: '44h Semanais',
     startTime: '08:00',
-    breakStart: '12:00',
-    breakEnd: '13:00',
     endTime: '17:00'
   };
   
@@ -38,8 +36,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
   const [pointForm, setPointForm] = useState({
     clockIn: '',
-    breakStart: '',
-    breakEnd: '',
     clockOut: '',
     status: 'present' as AttendanceRecord['status'],
     observation: ''
@@ -62,8 +58,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     if (emp.paymentModality === 'CLT') {
       setPointForm({
         clockIn: existing?.clockIn || emp.startTime || '08:00',
-        breakStart: existing?.breakStart || emp.breakStart || '12:00',
-        breakEnd: existing?.breakEnd || emp.breakEnd || '13:00',
         clockOut: existing?.clockOut || emp.endTime || '17:00',
         status: existing?.status || 'present',
         observation: existing?.discountObservation || ''
@@ -111,10 +105,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         status: pointForm.status,
         value: (pointForm.status === 'present' || pointForm.status === 'partial') ? emp.defaultValue : 0,
         payment_status: record?.paymentStatus || 'pendente',
-        clock_in: pointForm.status === 'present' ? pointForm.clockIn : null,
-        break_start: pointForm.status === 'present' ? pointForm.breakStart : null,
-        break_end: pointForm.status === 'present' ? pointForm.breakEnd : null,
-        clock_out: pointForm.status === 'present' ? pointForm.clockOut : null,
+        clock_in: (pointForm.status === 'present' || pointForm.status === 'partial') ? pointForm.clockIn : null,
+        clock_out: (pointForm.status === 'present' || pointForm.status === 'partial') ? pointForm.clockOut : null,
         discount_observation: pointForm.observation
       });
       await refreshData();
@@ -157,8 +149,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         payment_modality: employeeForm.paymentModality,
         workload: employeeForm.workload,
         start_time: employeeForm.startTime,
-        break_start: employeeForm.breakStart,
-        break_end: employeeForm.breakEnd,
         end_time: employeeForm.endTime
       });
       await refreshData();
@@ -184,8 +174,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       paymentModality: emp.paymentModality || 'DIARIA',
       workload: emp.workload || '44h Semanais',
       startTime: emp.startTime || '08:00',
-      breakStart: emp.breakStart || '12:00',
-      breakEnd: emp.breakEnd || '13:00',
       endTime: emp.endTime || '17:00'
     });
     setShowForm(true);
@@ -354,18 +342,10 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                 {employeeForm.paymentModality === 'CLT' && (
                   <div className="md:col-span-2 p-6 bg-blue-50/50 rounded-[32px] border border-blue-100 space-y-6">
                     <div className="flex items-center gap-2 border-b border-blue-100 pb-3"><Clock size={16} className="text-blue-600" /><h4 className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Definição de Jornada Contratual</h4></div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-1">
                           <label className="text-[8px] font-black text-blue-400 uppercase ml-1 block">Entrada</label>
                           <input type="time" className="w-full bg-white border border-blue-100 p-3 rounded-xl text-[10px] font-black outline-none" value={employeeForm.startTime} onChange={e => setEmployeeForm({...employeeForm, startTime: e.target.value})} />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] font-black text-blue-400 uppercase ml-1 block">Saída Inter.</label>
-                          <input type="time" className="w-full bg-white border border-blue-100 p-3 rounded-xl text-[10px] font-black outline-none" value={employeeForm.breakStart} onChange={e => setEmployeeForm({...employeeForm, breakStart: e.target.value})} />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[8px] font-black text-blue-400 uppercase ml-1 block">Volta Inter.</label>
-                          <input type="time" className="w-full bg-white border border-blue-100 p-3 rounded-xl text-[10px] font-black outline-none" value={employeeForm.breakEnd} onChange={e => setEmployeeForm({...employeeForm, breakEnd: e.target.value})} />
                        </div>
                        <div className="space-y-1">
                           <label className="text-[8px] font-black text-blue-400 uppercase ml-1 block">Saída Final</label>
@@ -384,7 +364,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
       {showTimeModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4">
-           <div className="bg-white rounded-[40px] w-full max-w-sm p-8 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
+           <div className="bg-white rounded-[40px] w-full max-sm p-8 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
               <div className="text-center">
                  <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3"><Clock size={28} /></div>
                  <h3 className="text-[12px] font-black uppercase text-slate-900">Registro de Ocorrência</h3>
@@ -425,7 +405,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                  <button onClick={handleSavePoint} disabled={isLoading} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-slate-900 transition-all">
                     {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR REGISTRO'}
                  </button>
-                 <button onClick={() => setShowTimeModal(null)} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">CANCELAR</button>
+                 <button onClick={() => setShowTimeModal(null)} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">CANCELAR</button>
               </div>
            </div>
         </div>
