@@ -52,26 +52,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   };
 
   const getStatusShorthand = (virtualStatus: AttendanceRecord['status'], emp: Employee, record: AttendanceRecord) => {
-    if (emp.paymentModality === 'CLT') {
-      switch(virtualStatus) {
-        case 'present': return 'P'; // Troca OK por P
-        case 'partial': return 'P';
-        case 'absent': return 'F';
-        case 'atestado': return 'AT';
-        case 'justified': return 'FJ';
-        case 'vacation': return 'FE';
-        default: return '-';
-      }
-    } else {
-      switch(virtualStatus) {
-        case 'present': return 'P';
-        case 'partial': return 'H';
-        case 'absent': return 'F';
-        case 'atestado': return 'AT';
-        case 'justified': return 'FJ';
-        case 'vacation': return 'FE';
-        default: return '-';
-      }
+    switch(virtualStatus) {
+      case 'present': return 'P';
+      case 'partial': return 'H';
+      case 'absent': return 'F';
+      case 'atestado': return 'AT';
+      case 'justified': return 'FJ';
+      case 'vacation': return 'FE';
+      default: return '-';
     }
   };
 
@@ -232,18 +220,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     } catch (e: any) { notify("Falha ao registrar acerto.", "error"); } finally { setIsLoading(false); }
   };
 
-  const getStatusLabel = (status: AttendanceRecord['status']) => {
-    switch(status) {
-      case 'present': return 'PRESENÇA INTEGRAL';
-      case 'partial': return 'HORÁRIO PARCIAL';
-      case 'absent': return 'FALTA INJUSTIFICADA';
-      case 'atestado': return 'ATESTADO MÉDICO';
-      case 'justified': return 'FALTA JUSTIFICADA';
-      case 'vacation': return 'FÉRIAS / FOLGA';
-      default: return 'SEM REGISTRO';
-    }
-  };
-
   return (
     <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
@@ -319,13 +295,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                               <div><h4 className="text-xl font-black uppercase leading-tight tracking-tight">{selectedEmployee.name}</h4><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{selectedEmployee.role} • {selectedEmployee.paymentModality}</p></div>
                            </div>
                            <div className="grid grid-cols-2 gap-4">
-                              <div className="text-[10px] text-slate-400 font-bold uppercase"><Hash size={12}/> CPF: <span className="text-white ml-2">{selectedEmployee.cpf || '--'}</span></div>
-                              <div className="text-[10px] text-slate-400 font-bold uppercase"><Smartphone size={12}/> CONTATO: <span className="text-white ml-2">{selectedEmployee.phone || '--'}</span></div>
+                              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"><Hash size={12}/> CPF: <span className="text-white ml-2">{selectedEmployee.cpf || '--'}</span></div>
+                              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"><Smartphone size={12}/> CONTATO: <span className="text-white ml-2">{selectedEmployee.phone || '--'}</span></div>
                               {selectedEmployee.paymentModality === 'CLT' && (<div className="text-[10px] text-blue-400 font-black uppercase col-span-2 flex items-center gap-2"><Clock size={12}/> JORNADA: {selectedEmployee.workload} ({selectedEmployee.startTime} às {selectedEmployee.endTime})</div>)}
                            </div>
                         </div>
                         <div className="md:w-64 bg-white/5 p-6 rounded-[32px] border border-white/10 flex flex-col justify-center text-center">
-                           {selectedEmployee.paymentModality !== 'CLT' && (<><p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido</p><h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2></>)}
+                           {selectedEmployee.paymentModality !== 'CLT' ? (
+                             <>
+                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido</p>
+                                <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
+                             </>
+                           ) : (
+                             <>
+                                <p className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Ponto Mensalista</p>
+                                <h2 className="text-xl font-black text-white uppercase tracking-tighter">Ficha CLT</h2>
+                             </>
+                           )}
                            <button onClick={handlePrint} className="mt-4 w-full bg-white text-slate-900 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all shadow-xl active:scale-95"><Printer size={16} /> GERAR PDF / IMPRIMIR</button>
                         </div>
                      </div>
@@ -335,9 +321,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                         <thead className="bg-slate-50 text-[9px] uppercase text-slate-400 font-black border-b border-slate-100 sticky top-0 z-10">
                            <tr>
                              <th className="px-8 py-4">Data</th>
-                             <th className="px-8 py-4 text-center">Registro</th>
+                             <th className="px-8 py-4 text-center">Freq.</th>
                              {selectedEmployee.paymentModality === 'CLT' ? (
-                               <th className="px-8 py-4 text-center">Horários (E-S.INTRA-R.INTRA-SF)</th>
+                               <th className="px-8 py-4 text-center">Horários (E-S.INT-R.INT-SF)</th>
                              ) : (
                                <><th className="px-8 py-4 text-right">Base</th><th className="px-8 py-4 text-right">Desc.</th></>
                              )}
@@ -441,57 +427,152 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                .no-print { display: none !important; }
                .sheet { box-shadow: none !important; margin: 0 !important; width: 100% !important; padding: 1cm !important; border: none !important; }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+               table { width: 100%; border-collapse: collapse; }
+               th, td { border: 1px solid #cbd5e1; padding: 4px; font-size: 8px; }
+               thead { background-color: #f1f5f9 !important; }
              }
              @media screen {
-                .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; background: rgba(0,0,0,0.8); backdrop-blur: 10px; }
+                .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; background: rgba(0,0,0,0.85); backdrop-blur: 10px; }
                 .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.5); border-radius: 4px; }
              }
            `}</style>
            <div className="sheet">
               <button onClick={() => setShowPrintView(false)} className="no-print absolute top-8 right-8 bg-rose-600 text-white px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-slate-900 transition-all z-[1100] flex items-center gap-2"><X size={18}/> FECHAR</button>
-              <div className="border-b-4 border-slate-900 pb-8 mb-8 flex justify-between items-start">
+              
+              {/* Header Empresa */}
+              <div className="border-b-4 border-slate-900 pb-6 mb-6 flex justify-between items-start">
                 <div className="space-y-1">
-                  <h1 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900">{state.company?.name || "FERA SERVICE"}</h1>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase">{state.company?.address}</p>
+                  <h1 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900">{state.company?.name || "FERA SERVICE"}</h1>
+                  <p className="text-[8px] font-bold text-slate-500 uppercase leading-relaxed max-w-xs">{state.company?.address}</p>
                 </div>
                 <div className="text-right uppercase">
-                  <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block"><h2 className="text-sm font-black tracking-widest">Ficha de Acerto de Jornada</h2></div>
-                  <p className="text-[10px] font-bold text-slate-600">Referência: {formatDate(startDate)} a {formatDate(endDate)}</p>
+                  <div className="bg-slate-900 text-white px-4 py-2 mb-2 inline-block"><h2 className="text-[11px] font-black tracking-widest">Ficha de Acerto de Jornada</h2></div>
+                  <p className="text-[9px] font-bold text-slate-600">Referência: {formatDate(startDate)} a {formatDate(endDate)}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-12 gap-6 mb-8">
-                <div className={`${selectedEmployee.paymentModality === 'CLT' ? 'col-span-12' : 'col-span-7'} bg-slate-50 p-6 rounded-3xl border border-slate-200`}>
-                  <p className="text-[8px] font-black text-slate-400 uppercase">Colaborador</p>
-                  <p className="text-base font-black uppercase text-slate-900">{selectedEmployee.name}</p>
-                  <p className="text-[10px] font-bold text-blue-600 uppercase mt-1">Modalidade: {selectedEmployee.paymentModality}</p>
-                </div>
-                {selectedEmployee.paymentModality !== 'CLT' && (
-                  <div className="col-span-5 bg-white border-2 border-slate-900 p-6 rounded-3xl text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">VALOR LÍQUIDO</p>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+
+              {/* Dados do Colaborador - Cabeçalho Detalhado */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Dados Profissionais</p>
+                  <div className="grid grid-cols-2 gap-y-2">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-900 leading-none">{selectedEmployee.name}</p>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">{selectedEmployee.role}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase"><span className="font-black text-slate-900">CPF:</span> {selectedEmployee.cpf || '--'}</p>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase mt-1"><span className="font-black text-slate-900">TEL:</span> {selectedEmployee.phone || '--'}</p>
+                    </div>
                   </div>
-                )}
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <p className="text-[8px] font-bold text-slate-500 uppercase"><span className="font-black text-slate-900">Endereço:</span> {selectedEmployee.address || 'Não informado'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-center">
+                  <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Regime de Contratação</p>
+                  <p className="text-[10px] font-black uppercase text-blue-600 leading-none">{selectedEmployee.paymentModality}</p>
+                  {selectedEmployee.paymentModality === 'CLT' && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[7px] font-bold text-slate-500 uppercase">Jornada: {selectedEmployee.workload}</p>
+                      <p className="text-[7px] font-bold text-slate-500 uppercase">Turno: {selectedEmployee.startTime} às {selectedEmployee.endTime}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <table className="w-full text-[9px] border-collapse uppercase border border-slate-200">
-                <thead><tr className="bg-slate-900 text-white"><th className="p-2 text-left">Data</th><th className="p-2 text-center">Freq.</th><th className="p-2 text-center">Registro</th><th className="p-2 text-right">Líquido</th></tr></thead>
-                <tbody className="divide-y divide-slate-200">
+
+              {/* Tabela de Lançamentos Detalhada */}
+              <table className="w-full text-left uppercase">
+                <thead>
+                  <tr className="bg-slate-100 text-[8px] font-black text-slate-900">
+                    <th className="p-2 border-slate-300">Data</th>
+                    <th className="p-2 border-slate-300 text-center">FREQUÊNCIA</th>
+                    {selectedEmployee.paymentModality === 'CLT' ? (
+                      <>
+                        <th className="p-2 border-slate-300 text-center">Entrada</th>
+                        <th className="p-2 border-slate-300 text-center">S. Intervalo</th>
+                        <th className="p-2 border-slate-300 text-center">R. Intervalo</th>
+                        <th className="p-2 border-slate-300 text-center">Saída Final</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="p-2 border-slate-300 text-right">V. Base</th>
+                        <th className="p-2 border-slate-300 text-right">Desconto</th>
+                        <th className="p-2 border-slate-300 text-right">Líquido</th>
+                      </>
+                    )}
+                    <th className="p-2 border-slate-300">Observação</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[8px] font-bold text-slate-700">
                   {attendanceHistory.map(h => {
                     const virtualStatus = getVirtualStatus(h);
                     const shorthand = getStatusShorthand(virtualStatus, selectedEmployee, h);
                     return (
                       <tr key={h.id}>
-                        <td className="p-2 font-bold border-r">{formatDate(h.date)}</td>
-                        <td className="p-2 text-center border-r">{shorthand}</td>
-                        <td className="p-2 text-center border-r font-black">{h.clockIn || '--'} às {h.clockOut || '--'}</td>
-                        <td className="p-2 text-right font-black">{formatMoney(h.value - (h.discountValue || 0))}</td>
+                        <td className="p-2 border-slate-200 bg-slate-50/30">{formatDate(h.date)}</td>
+                        <td className="p-2 text-center font-black">{shorthand}</td>
+                        {selectedEmployee.paymentModality === 'CLT' ? (
+                          <>
+                            <td className="p-2 border-slate-200 text-center">{h.clockIn || '--'}</td>
+                            <td className="p-2 border-slate-200 text-center">{h.breakStart || '--'}</td>
+                            <td className="p-2 border-slate-200 text-center">{h.breakEnd || '--'}</td>
+                            <td className="p-2 border-slate-200 text-center">{h.clockOut || '--'}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="p-2 border-slate-200 text-right">{formatMoney(h.value)}</td>
+                            <td className="p-2 border-slate-200 text-right text-rose-600">{formatMoney(h.discountValue || 0)}</td>
+                            <td className="p-2 border-slate-200 text-right font-black">{formatMoney(h.value - (h.discountValue || 0))}</td>
+                          </>
+                        )}
+                        <td className="p-2 italic lowercase text-[7px] text-slate-500 truncate max-w-[150px]">{h.discountObservation || '--'}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+
+              {/* Resumo Financeiro no Rodapé - Conforme Screenshot (Oculto para CLT) */}
+              {selectedEmployee.paymentModality !== 'CLT' && (
+                <div className="mt-8 flex justify-end">
+                  <div className="w-full max-w-sm">
+                     <div className="bg-[#0f172a] p-6 rounded-[32px] text-white shadow-2xl grid grid-cols-2 gap-6 items-center border border-white/5">
+                        <div className="space-y-4">
+                           <div>
+                              <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Proventos</p>
+                              <p className="text-sm font-black tracking-tight">{formatMoney(totalBaseValue)}</p>
+                           </div>
+                           <div className="pt-4 border-t border-white/10">
+                              <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1">Total Descontos (-)</p>
+                              <p className="text-sm font-black text-rose-400 tracking-tight">{formatMoney(totalDiscounts)}</p>
+                           </div>
+                        </div>
+                        <div className="bg-white/5 p-6 rounded-2xl flex flex-col justify-center text-center border border-white/5">
+                           <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2">Valor Líquido a Pagar</p>
+                           <h2 className="text-2xl font-black text-emerald-400 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Assinaturas */}
               <div className="mt-20 pt-12 grid grid-cols-2 gap-24 text-center">
-                <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee.name}</div>
-                <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Administração</div>
+                <div className="space-y-2">
+                  <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee.name}</div>
+                  <p className="text-[6px] font-bold text-slate-400">Assinatura do Colaborador</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Administração Unidade</div>
+                  <p className="text-[6px] font-bold text-slate-400">Fera Service Operações Urbanas</p>
+                </div>
+              </div>
+
+              {/* Rodapé Administrativo */}
+              <div className="mt-12 text-center text-[6px] text-slate-300 font-bold uppercase tracking-widest border-t pt-4">
+                Documento emitido via Sistema Central Fera Service Cloud v3.5 • {new Date().toLocaleString('pt-BR')}
               </div>
            </div>
         </div>
@@ -503,7 +584,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
             <h3 className="text-sm font-black uppercase text-slate-900 text-center">Gerar Saída Financeira?</h3>
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
               <p className="text-xl font-black text-emerald-600">{formatMoney(totalToPay)}</p>
-              <p className="text-[8px] font-black text-emerald-400 uppercase mt-1">Valor Total</p>
+              <p className="text-[8px] font-black text-emerald-400 uppercase mt-1">Valor Total Líquido</p>
             </div>
             <button onClick={handleCreateFinanceExit} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600">CONFIRMAR E QUITAR</button>
             <button onClick={() => setShowFinanceModal(false)} className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase">CANCELAR</button>
