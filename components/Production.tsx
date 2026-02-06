@@ -300,8 +300,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <div className="space-y-4">
                           <div className="flex justify-between items-center border-b border-white/5 pb-4">
                              <span className="text-[9px] font-black opacity-60 uppercase">VALOR BRUTO TOTAL</span>
-                             {/* Fix: Removed explicit generic type argument from reduce to resolve untyped function call error and explicitly typed arguments */}
-                             <p className="text-xl font-black text-emerald-400">{formatMoney((area.services || []).reduce((acc: number, s: any) => acc + (Number(s.totalValue) || 0), 0))}</p>
+                             {/* Fix: Explicitly typing the generic to number and using Service interface to avoid unknown type inference */}
+                             <p className="text-xl font-black text-emerald-400">{formatMoney((area.services || []).reduce<number>((acc, s) => acc + (s.totalValue || 0), 0))}</p>
                           </div>
                           <div className="space-y-3 pt-2">
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumo Quantitativo da O.S.:</p>
@@ -421,65 +421,4 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                    <label className="text-[10px] font-black text-[#2e3545] uppercase ml-1 block">Ponto Referencial Alvo (Fim)</label>
                    <input 
                     required 
-                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
-                    placeholder="EX: KM 15" 
-                    value={newArea.endReference} 
-                    onChange={e => setNewArea({...newArea, endReference: e.target.value.toUpperCase()})} 
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                 <button 
-                  type="button" 
-                  onClick={() => setIsAddingArea(false)} 
-                  className="flex-1 bg-slate-100 text-[#2e3545] py-5 rounded-[24px] font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
-                >
-                  Cancelar
-                </button>
-                 <button 
-                  type="submit" 
-                  disabled={isLoading} 
-                  className="flex-1 bg-[#010a1b] text-white py-5 rounded-[24px] font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3 active:scale-95"
-                >
-                  {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>ABRIR ORDEM <ArrowRight size={18}/></>}
-                </button>
-              </div>
-           </form>
-        </div>
-      )}
-
-      <ConfirmationModal 
-        isOpen={!!confirmDelete?.isOpen} 
-        onClose={() => setConfirmDelete(null)} 
-        onConfirm={performDelete} 
-        title="Remover Registro" 
-        message={confirmDelete?.serviceId ? "Deseja excluir este lançamento?" : "Deseja excluir esta O.S. completa?"} 
-      />
-
-      {confirmFinish && (
-        <div className="fixed inset-0 bg-[#010a1b]/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-           <div className="bg-white rounded-[40px] w-full max-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
-              <div className="text-center space-y-2">
-                 <CheckCircle2 size={40} className="mx-auto text-emerald-600" />
-                 <h3 className="text-sm font-black uppercase text-[#010a1b]">Encerrar Ordem de Serviço</h3>
-                 <p className="text-[10px] font-bold text-[#2e3545] uppercase tracking-widest opacity-70">A produção será contabilizada nesta data</p>
-              </div>
-              <div className="space-y-4">
-                 <div className="space-y-1">
-                    <label className="text-[9px] font-black text-[#2e3545] uppercase ml-1 block">Data de Finalização (Contábil)</label>
-                    <input type="date" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs font-black outline-none focus:border-[#010a1b]" value={confirmFinish.date} onChange={e => setConfirmFinish({...confirmFinish, date: e.target.value})} />
-                 </div>
-                 <button onClick={handleFinishArea} disabled={isLoading} className="w-full bg-[#010a1b] text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600 transition-all">
-                    {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR E CONTABILIZAR'}
-                 </button>
-                 <button onClick={() => setConfirmFinish(null)} className="w-full bg-slate-100 text-[#2e3545] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">CANCELAR</button>
-              </div>
-           </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Production;
+                    className="w-full bg-slate-50 border-2 border-slate-10

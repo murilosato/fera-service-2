@@ -41,6 +41,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'endTime') newKey = 'end_time';
     else if (k === 'clockIn') newKey = 'clock_in';
     else if (k === 'clockOut') newKey = 'clock_out';
+    else if (k === 'pixKey') newKey = 'pix_key';
     else if (k === 'financeCategories') newKey = 'finance_categories';
     else if (k === 'inventoryCategories') newKey = 'inventory_categories';
     else if (k === 'employeeRoles') newKey = 'employee_roles';

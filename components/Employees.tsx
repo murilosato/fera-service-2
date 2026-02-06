@@ -20,13 +20,13 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
   const initialFormState = { 
     name: '', 
-    role: 'Ajudante Geral', 
-    defaultValue: '80', 
+    role: 'AJUDANTE GERAL', 
+    defaultValue: '1600', 
     cpf: '', 
     phone: '', 
     pixKey: '', 
     address: '',
-    paymentModality: 'DIARIA' as 'DIARIA' | 'CLT',
+    paymentModality: 'CLT' as 'DIARIA' | 'CLT',
     workload: '44h Semanais',
     startTime: '08:00',
     breakStart: '12:00',
@@ -154,12 +154,12 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         pixKey: employeeForm.pixKey,
         address: employeeForm.address.toUpperCase(),
         status: editingId ? (state.employees.find(e => e.id === editingId)?.status || 'active') : 'active',
-        payment_modality: employeeForm.paymentModality,
+        paymentModality: employeeForm.paymentModality,
         workload: employeeForm.workload,
-        start_time: employeeForm.startTime,
-        break_start: employeeForm.breakStart,
-        break_end: employeeForm.breakEnd,
-        end_time: employeeForm.endTime
+        startTime: employeeForm.startTime,
+        breakStart: employeeForm.breakStart,
+        breakEnd: employeeForm.breakEnd,
+        endTime: employeeForm.endTime
       });
       await refreshData();
       setShowForm(false);
@@ -343,14 +343,35 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                 </div>
                 <div className="space-y-1">
                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">CPF</label>
-                   <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white" placeholder="000.000.000-00" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: e.target.value})} />
+                   <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-slate-900" placeholder="000.000.000-00" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: e.target.value})} />
                 </div>
                 <div className="space-y-1">
                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Função</label>
-                   <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase" value={employeeForm.role} onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}>
+                   <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" value={employeeForm.role} onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}>
                       {state.employeeRoles.map(r => <option key={r} value={r}>{r}</option>)}
                    </select>
                 </div>
+                <div className="space-y-1">
+                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Telefone</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-slate-900" placeholder="(00) 00000-0000" value={employeeForm.phone} onChange={e => setEmployeeForm({...employeeForm, phone: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Chave PIX</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-slate-900" placeholder="CPF, E-mail ou Telefone" value={employeeForm.pixKey} onChange={e => setEmployeeForm({...employeeForm, pixKey: e.target.value})} />
+                </div>
+                <div className="md:col-span-2 space-y-1">
+                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Endereço</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900" placeholder="RUA, NÚMERO, BAIRRO, CIDADE" value={employeeForm.address} onChange={e => setEmployeeForm({...employeeForm, address: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Valor Base (R$)</label>
+                   <input type="number" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black outline-none focus:bg-white focus:border-slate-900" value={employeeForm.defaultValue} onChange={e => setEmployeeForm({...employeeForm, defaultValue: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Carga Horária</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900" value={employeeForm.workload} onChange={e => setEmployeeForm({...employeeForm, workload: e.target.value})} />
+                </div>
+
                 {employeeForm.paymentModality === 'CLT' && (
                   <div className="md:col-span-2 p-6 bg-blue-50/50 rounded-[32px] border border-blue-100 space-y-6">
                     <div className="flex items-center gap-2 border-b border-blue-100 pb-3"><Clock size={16} className="text-blue-600" /><h4 className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Definição de Jornada Contratual</h4></div>
@@ -419,7 +440,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-[8px] font-black text-slate-400 uppercase ml-1">R. Almoço</label>
-                          <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none" value={pointForm.breakEnd} onChange={e => setPointForm({...pointForm, breakEnd: e.target.value})} />
+                          <input type="time" className="w-full bg-white border border-blue-100 p-3 rounded-xl text-[10px] font-black outline-none" value={pointForm.breakEnd} onChange={e => setPointForm({...pointForm, breakEnd: e.target.value})} />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Saída Final</label>
@@ -437,7 +458,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                  <button onClick={handleSavePoint} disabled={isLoading} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-slate-900 transition-all">
                     {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR REGISTRO'}
                  </button>
-                 <button onClick={() => setShowTimeModal(null)} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">CANCELAR</button>
+                 <button onClick={() => setShowTimeModal(null)} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">CANCELAR</button>
               </div>
            </div>
         </div>
