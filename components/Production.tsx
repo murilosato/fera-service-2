@@ -166,7 +166,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         </div>
       </header>
 
-      {/* Filtros */}
+      {/* Barra de Filtros Atualizada */}
       <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
@@ -191,20 +191,52 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
           </div>
         </div>
 
-        <div className="pt-2 flex flex-wrap gap-2">
-           <div className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-2">
-              <BarChart3 size={14} className="text-blue-500" />
-              <span className="text-[9px] font-black text-slate-400 uppercase">Resumo Filtrado:</span>
-              <div className="flex gap-4">
+        {/* Filtros de Data Reintroduzidos */}
+        <div className="flex flex-col md:flex-row gap-4">
+           <div className="flex-1 flex items-center gap-3 bg-slate-50 border border-slate-100 px-5 py-3 rounded-2xl">
+              <Calendar size={16} className="text-slate-400" />
+              <div className="flex-1 flex items-center gap-4">
+                 <div className="flex flex-col">
+                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Início</span>
+                    <input 
+                      type="date" 
+                      className="bg-transparent text-[10px] font-black uppercase outline-none"
+                      value={filterDateStart}
+                      onChange={e => setFilterDateStart(e.target.value)}
+                    />
+                 </div>
+                 <div className="h-6 w-px bg-slate-200" />
+                 <div className="flex flex-col">
+                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Fim</span>
+                    <input 
+                      type="date" 
+                      className="bg-transparent text-[10px] font-black uppercase outline-none"
+                      value={filterDateEnd}
+                      onChange={e => setFilterDateEnd(e.target.value)}
+                    />
+                 </div>
+              </div>
+              {(filterDateStart || filterDateEnd) && (
+                <button 
+                  onClick={() => { setFilterDateStart(''); setFilterDateEnd(''); }}
+                  className="text-slate-300 hover:text-rose-500 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+           </div>
+           
+           <div className="md:w-auto flex items-center gap-2 px-5 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl overflow-x-auto scrollbar-hide">
+              <BarChart3 size={14} className="text-emerald-500 shrink-0" />
+              <div className="flex gap-4 whitespace-nowrap">
                 {Object.entries(productionTotals).length > 0 ? (
-                  // Fix: Added explicit type cast to total to ensure it's treated as a number during formatting
                   Object.entries(productionTotals).map(([type, total]) => (
-                    <span key={type} className="text-[9px] font-black text-[#010a1b] uppercase">
-                      {type}: <span className="text-emerald-600">{formatNumber(total as number)} {type.includes('KM') ? 'KM' : 'm²'}</span>
+                    <span key={type} className="text-[9px] font-black text-emerald-700 uppercase">
+                      {type}: <span className="text-[#010a1b]">{formatNumber(total as number)}</span>
                     </span>
                   ))
                 ) : (
-                  <span className="text-[9px] font-black text-slate-300 uppercase italic">Nenhuma produção acumulada</span>
+                  <span className="text-[9px] font-black text-emerald-400 uppercase italic">Nenhum acumulado no período</span>
                 )}
               </div>
            </div>
@@ -218,7 +250,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
           </div>
         ) : (
           filteredAreas.map(area => {
-            // Fix: Explicitly type the accumulator in reduce to avoid 'unknown' type inference issues
             const areaTotalM2 = (area.services || []).reduce((acc: number, s) => acc + (Number(s.areaM2) || 0), 0);
             const areaTotalValue = (area.services || []).reduce((acc: number, s) => acc + (Number(s.totalValue) || 0), 0);
             const isExpanded = expandedAreaId === area.id;
