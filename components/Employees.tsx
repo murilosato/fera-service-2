@@ -52,6 +52,15 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     }
   };
 
+  const getVirtualStatus = (record: AttendanceRecord): AttendanceRecord['status'] => {
+    if (record.status !== 'absent') return record.status;
+    const obs = record.discountObservation || '';
+    if (obs.startsWith('[AT]')) return 'atestado';
+    if (obs.startsWith('[FJ]')) return 'justified';
+    if (obs.startsWith('[FE]')) return 'vacation';
+    return 'absent';
+  };
+
   const handleToggleAttendance = async (empId: string, date: string) => {
     const emp = state.employees.find(e => e.id === empId);
     if (!emp) return;
@@ -59,21 +68,22 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
     const existing = state.attendanceRecords.find(r => r.employeeId === empId && r.date === date);
 
-    // Lógica para CLT (Abre o Modal)
     if (emp.paymentModality === 'CLT') {
+      const virtualStatus = existing ? getVirtualStatus(existing) : 'present';
+      const cleanObs = (existing?.discountObservation || '').replace(/^\[(AT|FJ|FE)\]\s*/, '');
+
       setPointForm({
         clockIn: existing?.clockIn || emp.startTime || '08:00',
         breakStart: existing?.breakStart || emp.breakStart || '12:00',
         breakEnd: existing?.breakEnd || emp.breakEnd || '13:00',
         clockOut: existing?.clockOut || emp.endTime || '17:00',
-        status: existing?.status || 'present',
-        observation: existing?.discountObservation || ''
+        status: virtualStatus,
+        observation: cleanObs
       });
       setShowTimeModal({ emp, date, record: existing });
       return;
     }
 
-    // Lógica para Diaristas (Ciclo de Clique)
     try {
       if (!existing) {
         await dbSave('attendance_records', {
@@ -81,33 +91,18 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
           employeeId: empId,
           date,
           status: 'present',
-          value: emp.defaultValue,
+          value: Number(emp.defaultValue) || 0,
           paymentStatus: 'pendente'
         });
+      } else if (existing.status === 'present') {
+        await dbSave('attendance_records', { ...existing, status: 'partial', value: (Number(emp.defaultValue) || 0) / 2 });
+      } else if (existing.status === 'partial') {
+        await dbSave('attendance_records', { ...existing, status: 'absent', value: 0 });
       } else {
-        // Ciclo: Presente -> Parcial -> Falta -> Atestado -> Justificada -> Folga -> REMOVER
-        const cycle: AttendanceRecord['status'][] = ['present', 'partial', 'absent', 'atestado', 'justified', 'vacation'];
-        const currentIndex = cycle.indexOf(existing.status);
-        
-        if (currentIndex < cycle.length - 1) {
-          const nextStatus = cycle[currentIndex + 1];
-          let nextValue = 0;
-          if (nextStatus === 'present') nextValue = emp.defaultValue;
-          else if (nextStatus === 'partial') nextValue = emp.defaultValue / 2;
-          
-          await dbSave('attendance_records', { 
-            ...existing, 
-            status: nextStatus, 
-            value: nextValue 
-          });
-        } else {
-          // Último passo do ciclo: Remove o registro do banco
-          await dbDelete('attendance_records', existing.id);
-        }
+        await dbDelete('attendance_records', existing.id);
       }
       await refreshData();
     } catch (e) { 
-      console.error("Erro toggle diarista:", e);
       notify("Erro ao sincronizar presença", "error"); 
     }
   };
@@ -118,12 +113,28 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
     setIsLoading(true);
     try {
-      const isWorking = pointForm.status === 'present' || pointForm.status === 'partial';
+      let dbStatus: AttendanceRecord['status'] = 'absent';
+      let prefix = '';
+
+      if (pointForm.status === 'present' || pointForm.status === 'partial') {
+        dbStatus = pointForm.status;
+      } else if (pointForm.status === 'atestado') {
+        dbStatus = 'absent';
+        prefix = '[AT] ';
+      } else if (pointForm.status === 'justified') {
+        dbStatus = 'absent';
+        prefix = '[FJ] ';
+      } else if (pointForm.status === 'vacation') {
+        dbStatus = 'absent';
+        prefix = '[FE] ';
+      }
+
+      const finalObservation = prefix + (pointForm.observation || '');
+      const isWorking = dbStatus === 'present' || dbStatus === 'partial';
       
-      // Para CLT, atestado/justificada/férias mantém o valor base do dia para não gerar desconto indevido
       let finalValue = 0;
       if (emp.paymentModality === 'CLT') {
-        if (['present', 'atestado', 'justified', 'vacation', 'partial'].includes(pointForm.status)) {
+        if (['present', 'partial', 'atestado', 'justified', 'vacation'].includes(pointForm.status)) {
           finalValue = Number(emp.defaultValue) || 0;
         }
       }
@@ -133,23 +144,22 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         companyId: state.currentUser?.companyId,
         employeeId: emp.id,
         date,
-        status: pointForm.status,
+        status: dbStatus,
         value: finalValue,
         paymentStatus: record?.paymentStatus || 'pendente',
-        // Se não for presença real, enviamos null explicitamente para evitar erro no banco
         clockIn: isWorking ? (pointForm.clockIn || null) : null,
         breakStart: isWorking ? (pointForm.breakStart || null) : null,
         breakEnd: isWorking ? (pointForm.breakEnd || null) : null,
         clockOut: isWorking ? (pointForm.clockOut || null) : null,
-        discountObservation: pointForm.observation || null
+        discountObservation: finalObservation || null
       });
       
       await refreshData();
       setShowTimeModal(null);
-      notify("Registro atualizado");
+      notify("Registro salvo com sucesso");
     } catch (e) { 
-      console.error("Erro ao salvar ponto:", e);
-      notify("Erro ao salvar registro no banco", "error"); 
+      console.error(e);
+      notify("Erro de compatibilidade com o banco de dados", "error"); 
     } finally { 
       setIsLoading(false); 
     }
@@ -223,11 +233,13 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const filteredEmployees = state.employees.filter(e => showInactive || e.status === 'active');
 
-  const getAttendanceLabel = (att: AttendanceRecord | undefined, emp: Employee) => {
-    if (!att) return '-';
+  const getAttendanceLabel = (record: AttendanceRecord | undefined, emp: Employee) => {
+    if (!record) return '-';
+    const virtualStatus = getVirtualStatus(record);
+
     if (emp.paymentModality === 'CLT') {
-      switch(att.status) {
-        case 'present': return att.clockIn || 'OK';
+      switch(virtualStatus) {
+        case 'present': return record.clockIn || 'P';
         case 'atestado': return 'AT';
         case 'justified': return 'FJ';
         case 'vacation': return 'FE';
@@ -236,7 +248,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         default: return '-';
       }
     } else {
-      switch(att.status) {
+      switch(virtualStatus) {
         case 'present': return 'P';
         case 'partial': return 'H';
         case 'absent': return 'F';
@@ -273,7 +285,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
             <button onClick={() => setCurrentCalendarDate(new Date(currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1)))} className="p-2 hover:bg-white rounded-lg border border-transparent hover:border-slate-200"><ChevronRight size={18} /></button>
           </div>
           <div className="hidden sm:flex items-center gap-4 text-slate-400 font-black text-[8px] uppercase tracking-widest">
-             Legenda: <span className="text-emerald-500">P/OK=Presença</span> • <span className="text-rose-500">F=Falta</span> • <span className="text-purple-500">AT=Atestado</span> • <span className="text-blue-500">FJ=Justificada</span> • <span className="text-amber-500">FE=Férias</span>
+             Legenda: <span className="text-emerald-500">P=Presença</span> • <span className="text-rose-500">F=Falta</span> • <span className="text-purple-500">AT=Atestado</span> • <span className="text-blue-500">FJ=Justificada</span> • <span className="text-amber-500">FE=Férias</span>
           </div>
         </div>
         
@@ -282,7 +294,17 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
             <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase border-b">
               <tr>
                 <th className="sticky left-0 z-20 bg-slate-50 p-4 text-left border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] min-w-[200px]">Colaborador</th>
-                {calendarDays.map(day => <th key={day} className="p-2 text-center border-r min-w-[34px]">{day}</th>)}
+                {calendarDays.map(day => {
+                   const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                   const isToday = dateStr === new Date().toISOString().split('T')[0];
+                   return (
+                     <th key={day} className="p-2 text-center border-r min-w-[34px]">
+                       <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-all ${isToday ? 'bg-blue-600 text-white shadow-md' : ''}`}>
+                        {day}
+                       </span>
+                     </th>
+                   );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -307,19 +329,21 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                     const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     const att = state.attendanceRecords.find(r => r.employeeId === emp.id && r.date === dateStr);
                     const isToday = dateStr === new Date().toISOString().split('T')[0];
+                    const virtualStatus = att ? getVirtualStatus(att) : null;
                     
                     let bgColor = 'text-slate-200 hover:bg-slate-100';
+
                     if (att) {
-                        switch(att.status) {
-                          case 'present': bgColor = emp.paymentModality === 'CLT' ? 'bg-blue-600 text-white' : 'bg-emerald-500 text-white'; break;
-                          case 'absent': bgColor = 'bg-rose-500 text-white'; break;
-                          case 'partial': bgColor = 'bg-amber-500 text-white'; break;
-                          case 'atestado': bgColor = 'bg-purple-600 text-white'; break;
-                          case 'justified': bgColor = 'bg-sky-500 text-white'; break;
-                          case 'vacation': bgColor = 'bg-amber-400 text-white'; break;
+                        switch(virtualStatus) {
+                          case 'present': bgColor = emp.paymentModality === 'CLT' ? 'bg-blue-600 text-white shadow-inner' : 'bg-emerald-500 text-white shadow-inner'; break;
+                          case 'absent': bgColor = 'bg-rose-500 text-white shadow-inner'; break;
+                          case 'partial': bgColor = 'bg-amber-500 text-white shadow-inner'; break;
+                          case 'atestado': bgColor = 'bg-purple-600 text-white shadow-inner'; break;
+                          case 'justified': bgColor = 'bg-sky-500 text-white shadow-inner'; break;
+                          case 'vacation': bgColor = 'bg-amber-400 text-white shadow-inner'; break;
                         }
                     } else if (isToday) {
-                        bgColor = 'bg-slate-100 border-x-2 border-slate-900';
+                        bgColor = 'bg-blue-50/30 text-blue-400';
                     }
 
                     return (
@@ -371,13 +395,15 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                    </select>
                 </div>
 
-                <div className="space-y-1">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{employeeForm.paymentModality === 'CLT' ? 'Salário Base (R$)' : 'Valor da Diária (R$)'}</label>
-                   <div className="relative">
-                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
-                      <input type="number" step="0.01" className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" value={employeeForm.defaultValue} onChange={e => setEmployeeForm({...employeeForm, defaultValue: e.target.value})} />
-                   </div>
-                </div>
+                {employeeForm.paymentModality === 'DIARIA' && (
+                  <div className="space-y-1">
+                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Valor da Diária (R$)</label>
+                     <div className="relative">
+                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
+                        <input type="number" step="0.01" className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" value={employeeForm.defaultValue} onChange={e => setEmployeeForm({...employeeForm, defaultValue: e.target.value})} />
+                     </div>
+                  </div>
+                )}
 
                 <div className="space-y-1">
                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">CPF</label>
@@ -408,11 +434,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                            <input type="time" className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black" value={employeeForm.startTime} onChange={e => setEmployeeForm({...employeeForm, startTime: e.target.value})}/>
                         </div>
                         <div className="space-y-1">
-                           <label className="text-[8px] font-black text-blue-400 uppercase">S. ALMOÇO</label>
+                           <label className="text-[8px] font-black text-blue-400 uppercase">S. INTRA-JORNADA</label>
                            <input type="time" className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black" value={employeeForm.breakStart} onChange={e => setEmployeeForm({...employeeForm, breakStart: e.target.value})}/>
                         </div>
                         <div className="space-y-1">
-                           <label className="text-[8px] font-black text-blue-400 uppercase">R. ALMOÇO</label>
+                           <label className="text-[8px] font-black text-blue-400 uppercase">R. INTRA-JORNADA</label>
                            <input type="time" className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black" value={employeeForm.breakEnd} onChange={e => setEmployeeForm({...employeeForm, breakEnd: e.target.value})}/>
                         </div>
                         <div className="space-y-1">
@@ -455,11 +481,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                        <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-xs" value={pointForm.clockIn} onChange={e => setPointForm({...pointForm, clockIn: e.target.value})}/>
                     </div>
                     <div className="space-y-1">
-                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">S. ALMOÇO</label>
+                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">S. INTRA-JORNADA</label>
                        <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-xs" value={pointForm.breakStart} onChange={e => setPointForm({...pointForm, breakStart: e.target.value})}/>
                     </div>
                     <div className="space-y-1">
-                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">R. ALMOÇO</label>
+                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">R. INTRA-JORNADA</label>
                        <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-xs" value={pointForm.breakEnd} onChange={e => setPointForm({...pointForm, breakEnd: e.target.value})}/>
                     </div>
                     <div className="space-y-1">

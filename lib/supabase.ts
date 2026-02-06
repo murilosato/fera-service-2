@@ -59,8 +59,8 @@ const camelToSnake = (obj: any) => {
     }
     
     let val = obj[k];
-    // Sanitização agressiva: qualquer string vazia vira NULL para evitar erros em colunas tipadas
-    if (val === '') {
+    // Sanitização rigorosa para tipos TIME/NUMERIC/ENUM no Postgres
+    if (val === '' || val === undefined) {
       val = null;
     }
     
@@ -77,10 +77,7 @@ export const fetchUserProfile = async (userId: string) => {
       .eq('id', userId)
       .maybeSingle();
       
-    if (error) {
-      console.error("Erro fetchUserProfile:", error);
-      return null;
-    }
+    if (error) return null;
     return data;
   } catch (e) {
     return null;
@@ -240,6 +237,7 @@ export const dbSave = async (table: string, data: any) => {
   
   const { data: saved, error } = await query.select();
   if (error) {
+    console.error(`Erro ao salvar na tabela ${table}:`, error);
     throw error;
   }
   return saved;
@@ -247,7 +245,10 @@ export const dbSave = async (table: string, data: any) => {
 
 export const dbDelete = async (table: string, id: string) => {
   const { error } = await supabase.from(table).delete().eq('id', id);
-  if (error) throw error;
+  if (error) {
+    console.error(`Erro ao excluir da tabela ${table}:`, error);
+    throw error;
+  }
 };
 
 export const signOut = async () => {
