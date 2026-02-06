@@ -207,9 +207,10 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
               <span className="text-[9px] font-black text-slate-400 uppercase">Consolidado do Filtro:</span>
               <div className="flex gap-4">
                 {Object.entries(productionTotals).length > 0 ? (
+                  /* Fix: Explicitly cast total as number to satisfy type requirements on line 212/214 */
                   Object.entries(productionTotals).map(([type, total]) => (
                     <span key={type} className="text-[9px] font-black text-[#010a1b] uppercase">
-                      {type}: <span className="text-emerald-600">{formatNumber(total)} {type.includes('KM') ? 'KM' : 'm²'}</span>
+                      {type}: <span className="text-emerald-600">{formatNumber(total as number)} {type.includes('KM') ? 'KM' : 'm²'}</span>
                     </span>
                   ))
                 ) : (
@@ -234,4 +235,16 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       {area.status === 'finished' ? <CheckCircle2 size={24}/> : <Clock size={24} />}
                     </div>
                     <div>
-                      <h3 className="text-sm font
+                      <h3 className="text-sm font-black uppercase">{area.name}</h3>
+                    </div>
+                 </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Production;

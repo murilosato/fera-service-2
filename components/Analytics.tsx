@@ -1,9 +1,8 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Search, Calendar, FileText, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Clock, CheckCircle2, MapPin, X, ArrowRight
+  Users, DollarSign, Edit2, Save, Loader2, Clock, CheckCircle2, MapPin, X
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -114,16 +113,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
   const handlePrint = () => {
     setShowPrintView(true);
-    // Pequeno atraso para garantir que o modal de impressão esteja montado no DOM
+    // Garantir que a renderização do modal ocorra antes da chamada de impressão
     setTimeout(() => {
       window.print();
-      // Após fechar o diálogo de impressão do navegador, verificamos se precisa abrir o modal financeiro
+      // Verificação para abrir o modal de lançamento financeiro caso não seja CLT e tenha saldo
       if (selectedEmployee?.paymentModality !== 'CLT' && totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
       }
-    }, 500);
+    }, 800);
   };
 
   const handleSaveValue = async (record: AttendanceRecord) => {
@@ -180,7 +179,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       setShowFinanceModal(false);
       notify("Saída financeira registrada e registros quitados!");
     } catch (e: any) {
-      console.error("Erro ao registrar acerto:", e);
       notify("Falha ao registrar acerto financeiro.", "error");
     } finally {
       setIsLoading(false);
@@ -338,40 +336,38 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       {showPrintView && selectedEmployee && (
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
-             @media screen {
-               .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; }
-             }
              @media print { 
-               /* Oculta tudo exceto a folha de impressão */
-               body * { visibility: hidden !important; }
-               .print-view-container, .print-view-container * { visibility: visible !important; }
+               @page { margin: 0; size: A4 portrait; }
+               body { margin: 0; padding: 0; visibility: hidden !important; background: white !important; }
+               #root { display: none !important; }
                .print-view-container { 
-                  position: absolute !important; 
-                  left: 0 !important; 
-                  top: 0 !important; 
+                  position: static !important; 
+                  visibility: visible !important; 
+                  display: block !important; 
                   width: 100% !important; 
                   height: auto !important; 
                   margin: 0 !important; 
                   padding: 0 !important; 
-                  background: white !important; 
+                  background: white !important;
                   overflow: visible !important;
-                  display: block !important;
-                  visibility: visible !important;
                }
+               .print-view-container * { visibility: visible !important; }
                .sheet { 
                   margin: 0 !important; 
                   padding: 1.5cm !important; 
                   width: 100% !important; 
-                  min-height: auto !important;
+                  min-height: 0 !important;
                   box-shadow: none !important; 
                   display: block !important; 
+                  visibility: visible !important;
                }
                .no-print { display: none !important; }
-               @page { margin: 1cm; size: A4 portrait; }
-               ::-webkit-scrollbar { display: none !important; }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
              }
-             .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.1); position: relative; }
+             @media screen {
+                .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; }
+                .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.1); position: relative; }
+             }
            `}</style>
            
            <div className="sheet">
