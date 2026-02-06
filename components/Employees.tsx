@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
-import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail } from 'lucide-react';
+import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface EmployeesProps {
@@ -15,12 +15,12 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
-  const [showInactive, setShowInactive] = useState(true);
+  const [showInactive, setShowInactive] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState<{ emp: Employee, date: string, record?: AttendanceRecord } | null>(null);
 
   const initialFormState = { 
     name: '', 
-    role: 'AJUDANTE GERAL', 
+    role: '', 
     defaultValue: '0', 
     cpf: '', 
     phone: '', 
@@ -59,6 +59,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
     const existing = state.attendanceRecords.find(r => r.employeeId === empId && r.date === date);
 
+    // Lógica para CLT (Abre o Modal)
     if (emp.paymentModality === 'CLT') {
       setPointForm({
         clockIn: existing?.clockIn || emp.startTime || '08:00',
@@ -72,6 +73,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       return;
     }
 
+    // Lógica para Diaristas (Ciclo de Clique)
     try {
       if (!existing) {
         await dbSave('attendance_records', {
@@ -82,19 +84,32 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
           value: emp.defaultValue,
           paymentStatus: 'pendente'
         });
-      } else if (existing.status === 'present') {
-        await dbSave('attendance_records', { ...existing, status: 'partial', value: emp.defaultValue / 2 });
-      } else if (existing.status === 'partial') {
-        await dbSave('attendance_records', { ...existing, status: 'absent', value: 0 });
-      } else if (existing.status === 'absent') {
-        await dbSave('attendance_records', { ...existing, status: 'atestado', value: 0 });
-      } else if (existing.status === 'atestado') {
-        await dbSave('attendance_records', { ...existing, status: 'justified', value: 0 });
       } else {
-        await dbDelete('attendance_records', existing.id);
+        // Ciclo: Presente -> Parcial -> Falta -> Atestado -> Justificada -> Folga -> REMOVER
+        const cycle: AttendanceRecord['status'][] = ['present', 'partial', 'absent', 'atestado', 'justified', 'vacation'];
+        const currentIndex = cycle.indexOf(existing.status);
+        
+        if (currentIndex < cycle.length - 1) {
+          const nextStatus = cycle[currentIndex + 1];
+          let nextValue = 0;
+          if (nextStatus === 'present') nextValue = emp.defaultValue;
+          else if (nextStatus === 'partial') nextValue = emp.defaultValue / 2;
+          
+          await dbSave('attendance_records', { 
+            ...existing, 
+            status: nextStatus, 
+            value: nextValue 
+          });
+        } else {
+          // Último passo do ciclo: Remove o registro do banco
+          await dbDelete('attendance_records', existing.id);
+        }
       }
       await refreshData();
-    } catch (e) { notify("Erro ao sincronizar presença", "error"); }
+    } catch (e) { 
+      console.error("Erro toggle diarista:", e);
+      notify("Erro ao sincronizar presença", "error"); 
+    }
   };
 
   const handleSavePoint = async () => {
@@ -103,24 +118,41 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
     setIsLoading(true);
     try {
+      const isWorking = pointForm.status === 'present' || pointForm.status === 'partial';
+      
+      // Para CLT, atestado/justificada/férias mantém o valor base do dia para não gerar desconto indevido
+      let finalValue = 0;
+      if (emp.paymentModality === 'CLT') {
+        if (['present', 'atestado', 'justified', 'vacation', 'partial'].includes(pointForm.status)) {
+          finalValue = Number(emp.defaultValue) || 0;
+        }
+      }
+
       await dbSave('attendance_records', {
         id: record?.id || undefined,
         companyId: state.currentUser?.companyId,
         employeeId: emp.id,
         date,
         status: pointForm.status,
-        value: (pointForm.status === 'present' || pointForm.status === 'partial') ? emp.defaultValue : 0,
+        value: finalValue,
         paymentStatus: record?.paymentStatus || 'pendente',
-        clockIn: (pointForm.status === 'present' || pointForm.status === 'partial') ? pointForm.clockIn : null,
-        breakStart: (pointForm.status === 'present' || pointForm.status === 'partial') ? pointForm.breakStart : null,
-        breakEnd: (pointForm.status === 'present' || pointForm.status === 'partial') ? pointForm.breakEnd : null,
-        clockOut: (pointForm.status === 'present' || pointForm.status === 'partial') ? pointForm.clockOut : null,
-        discountObservation: pointForm.observation
+        // Se não for presença real, enviamos null explicitamente para evitar erro no banco
+        clockIn: isWorking ? (pointForm.clockIn || null) : null,
+        breakStart: isWorking ? (pointForm.breakStart || null) : null,
+        breakEnd: isWorking ? (pointForm.breakEnd || null) : null,
+        clockOut: isWorking ? (pointForm.clockOut || null) : null,
+        discountObservation: pointForm.observation || null
       });
+      
       await refreshData();
       setShowTimeModal(null);
       notify("Registro atualizado");
-    } catch (e) { notify("Erro ao salvar registro", "error"); } finally { setIsLoading(false); }
+    } catch (e) { 
+      console.error("Erro ao salvar ponto:", e);
+      notify("Erro ao salvar registro no banco", "error"); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const handleToggleStatus = async (emp: Employee) => {
@@ -139,14 +171,13 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     
     setIsLoading(true);
     try {
-      // Para CLT não há cadastro de valor, salvamos como 0 ou mantemos o que está no banco se for edição
-      const finalValue = employeeForm.paymentModality === 'CLT' ? 0 : parseFloat(employeeForm.defaultValue);
+      const finalValue = parseFloat(employeeForm.defaultValue) || 0;
 
       await dbSave('employees', {
         id: editingId || undefined,
         companyId: state.currentUser?.companyId,
         name: employeeForm.name.toUpperCase(),
-        role: employeeForm.role.toUpperCase(),
+        role: (employeeForm.role || 'AJUDANTE GERAL').toUpperCase(),
         defaultValue: finalValue,
         cpf: employeeForm.cpf,
         phone: employeeForm.phone,
@@ -211,6 +242,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         case 'absent': return 'F';
         case 'atestado': return 'AT';
         case 'justified': return 'FJ';
+        case 'vacation': return 'FE';
         default: return '-';
       }
     }
@@ -309,23 +341,155 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-           <form onSubmit={handleSaveEmployee} className="bg-white rounded-[40px] w-full max-w-2xl p-8 md:p-10 space-y-6 shadow-2xl overflow-y-auto max-h-[90vh] border border-slate-100 animate-in zoom-in-95">
+           <form onSubmit={handleSaveEmployee} className="bg-white rounded-[40px] w-full max-w-2xl p-8 md:p-10 space-y-6 shadow-2xl overflow-y-auto max-h-[95vh] border border-slate-100 animate-in zoom-in-95">
               <div className="flex justify-between items-center border-b pb-6">
                  <div>
-                    <h3 className="text-sm font-black uppercase text-slate-900">{editingId ? 'Editar Perfil' : 'Novo Cadastro Operacional'}</h3>
+                    <h3 className="text-sm font-black uppercase text-slate-900">{editingId ? 'Editar Perfil Operacional' : 'Novo Cadastro Operacional'}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Sincronização Cloud Fera Service</p>
                  </div>
                  <button type="button" onClick={() => setShowForm(false)} className="text-slate-300 hover:text-slate-900 p-2"><X size={24}/></button>
               </div>
-              <div className="space-y-4">
-                <div className="md:col-span-2 p-6 bg-slate-50 rounded-[32px] border border-slate-100">
-                   {/* Restored from truncation point */}
-                   <p className="text-[10px] font-black uppercase text-slate-400">Campos adicionais do formulário em carregamento...</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 p-6 bg-slate-50 rounded-[32px] border border-slate-100 space-y-4">
+                  <div className="flex gap-2 p-1 bg-slate-200 rounded-2xl">
+                    <button type="button" onClick={() => setEmployeeForm({...employeeForm, paymentModality: 'DIARIA'})} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${employeeForm.paymentModality === 'DIARIA' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500'}`}>DIARISTA / AUTÔNOMO</button>
+                    <button type="button" onClick={() => setEmployeeForm({...employeeForm, paymentModality: 'CLT'})} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${employeeForm.paymentModality === 'CLT' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500'}`}>REGIME CLT (MENSALISTA)</button>
+                  </div>
                 </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Nome Completo</label>
+                   <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-slate-900" placeholder="EX: JOÃO DA SILVA" value={employeeForm.name} onChange={e => setEmployeeForm({...employeeForm, name: e.target.value})} />
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Cargo / Função</label>
+                   <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none" value={employeeForm.role} onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}>
+                     <option value="">SELECIONE UM CARGO...</option>
+                     {state.employeeRoles.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
+                   </select>
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{employeeForm.paymentModality === 'CLT' ? 'Salário Base (R$)' : 'Valor da Diária (R$)'}</label>
+                   <div className="relative">
+                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
+                      <input type="number" step="0.01" className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" value={employeeForm.defaultValue} onChange={e => setEmployeeForm({...employeeForm, defaultValue: e.target.value})} />
+                   </div>
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">CPF</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="000.000.000-00" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: e.target.value})} />
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Telefone / WhatsApp</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="(00) 00000-0000" value={employeeForm.phone} onChange={e => setEmployeeForm({...employeeForm, phone: e.target.value})} />
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Chave PIX (Acertos)</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="E-MAIL, CPF OU ALEATÓRIA" value={employeeForm.pixKey} onChange={e => setEmployeeForm({...employeeForm, pixKey: e.target.value})} />
+                </div>
+
+                <div className="md:col-span-2 space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Endereço de Residência</label>
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-slate-900" placeholder="RUA, NÚMERO, BAIRRO, CIDADE" value={employeeForm.address} onChange={e => setEmployeeForm({...employeeForm, address: e.target.value})} />
+                </div>
+
+                {employeeForm.paymentModality === 'CLT' && (
+                  <div className="md:col-span-2 p-6 bg-blue-50 rounded-[32px] border border-blue-100 space-y-4">
+                     <h4 className="text-[10px] font-black text-blue-600 uppercase flex items-center gap-2"><Clock size={16}/> Configuração de Jornada de Trabalho</h4>
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="space-y-1">
+                           <label className="text-[8px] font-black text-blue-400 uppercase">ENTRADA</label>
+                           <input type="time" className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black" value={employeeForm.startTime} onChange={e => setEmployeeForm({...employeeForm, startTime: e.target.value})}/>
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[8px] font-black text-blue-400 uppercase">S. ALMOÇO</label>
+                           <input type="time" className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black" value={employeeForm.breakStart} onChange={e => setEmployeeForm({...employeeForm, breakStart: e.target.value})}/>
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[8px] font-black text-blue-400 uppercase">R. ALMOÇO</label>
+                           <input type="time" className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black" value={employeeForm.breakEnd} onChange={e => setEmployeeForm({...employeeForm, breakEnd: e.target.value})}/>
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[8px] font-black text-blue-400 uppercase">SAÍDA FINAL</label>
+                           <input type="time" className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black" value={employeeForm.endTime} onChange={e => setEmployeeForm({...employeeForm, endTime: e.target.value})}/>
+                        </div>
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-[8px] font-black text-blue-400 uppercase">CARGA HORÁRIA TOTAL</label>
+                        <input className="w-full bg-white border border-blue-200 p-3 rounded-xl text-[10px] font-black uppercase" placeholder="EX: 44H SEMANAIS" value={employeeForm.workload} onChange={e => setEmployeeForm({...employeeForm, workload: e.target.value})}/>
+                     </div>
+                  </div>
+                )}
               </div>
-              <button disabled={isLoading} type="submit" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-emerald-600">
-                 {isLoading ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'SALVAR CADASTRO'}
-              </button>
+
+              <div className="pt-4">
+                <button disabled={isLoading} type="submit" className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black uppercase text-[11px] tracking-[0.2em] shadow-xl transition-all hover:bg-emerald-600 active:scale-95 flex items-center justify-center gap-3">
+                   {isLoading ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> SALVAR CADASTRO</>}
+                </button>
+              </div>
            </form>
+        </div>
+      )}
+
+      {showTimeModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[40px] w-full max-w-md p-10 space-y-6 shadow-2xl border border-slate-100 animate-in zoom-in-95">
+              <div className="flex justify-between items-center border-b pb-4">
+                 <div>
+                    <h3 className="text-sm font-black uppercase text-slate-900">Registro de Ponto: {showTimeModal.emp.name.split(' ')[0]}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{showTimeModal.date.split('-').reverse().join('/')}</p>
+                 </div>
+                 <button onClick={() => setShowTimeModal(null)} className="p-2"><X size={20}/></button>
+              </div>
+              
+              <div className="space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">ENTRADA</label>
+                       <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-xs" value={pointForm.clockIn} onChange={e => setPointForm({...pointForm, clockIn: e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">S. ALMOÇO</label>
+                       <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-xs" value={pointForm.breakStart} onChange={e => setPointForm({...pointForm, breakStart: e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">R. ALMOÇO</label>
+                       <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-xs" value={pointForm.breakEnd} onChange={e => setPointForm({...pointForm, breakEnd: e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[8px] font-black text-slate-400 uppercase ml-1">SAÍDA FINAL</label>
+                       <input type="time" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-xs" value={pointForm.clockOut} onChange={e => setPointForm({...pointForm, clockOut: e.target.value})}/>
+                    </div>
+                 </div>
+
+                 <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">STATUS DO DIA</label>
+                    <select className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-[10px] uppercase" value={pointForm.status} onChange={e => setPointForm({...pointForm, status: e.target.value as any})}>
+                       <option value="present">PRESENÇA NORMAL (P)</option>
+                       <option value="partial">HORÁRIO REDUZIDO (H)</option>
+                       <option value="absent">FALTA INJUSTIFICADA (F)</option>
+                       <option value="atestado">ATESTADO MÉDICO (AT)</option>
+                       <option value="justified">FALTA JUSTIFICADA (FJ)</option>
+                       <option value="vacation">FÉRIAS / FOLGA (FE)</option>
+                    </select>
+                 </div>
+
+                 <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">OBSERVAÇÕES / JUSTIFICATIVA</label>
+                    <textarea className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-black text-[10px] uppercase h-20 outline-none focus:bg-white" placeholder="DESCREVA O MOTIVO DA AUSÊNCIA OU ALTERAÇÃO..." value={pointForm.observation} onChange={e => setPointForm({...pointForm, observation: e.target.value})}/>
+                 </div>
+              </div>
+
+              <button onClick={handleSavePoint} disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-emerald-600 transition-all">
+                 {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR REGISTRO'}
+              </button>
+           </div>
         </div>
       )}
     </div>

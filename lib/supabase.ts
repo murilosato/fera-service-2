@@ -59,7 +59,8 @@ const camelToSnake = (obj: any) => {
     }
     
     let val = obj[k];
-    if (val === '' && (newKey.includes('date') || newKey.includes('_at') || newKey === 'end_date')) {
+    // Sanitização agressiva: qualquer string vazia vira NULL para evitar erros em colunas tipadas
+    if (val === '') {
       val = null;
     }
     

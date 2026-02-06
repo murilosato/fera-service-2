@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
@@ -113,16 +114,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
   const handlePrint = () => {
     setShowPrintView(true);
-    // Garantir que a renderização do modal ocorra antes da chamada de impressão
+    // Timeout para garantir que o DOM renderizou o conteúdo da impressão
     setTimeout(() => {
       window.print();
-      // Verificação para abrir o modal de lançamento financeiro caso não seja CLT e tenha saldo
       if (selectedEmployee?.paymentModality !== 'CLT' && totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
         setShowFinanceModal(true);
       }
-    }, 800);
+    }, 1000);
   };
 
   const handleSaveValue = async (record: AttendanceRecord) => {
@@ -338,35 +338,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
            <style>{`
              @media print { 
                @page { margin: 0; size: A4 portrait; }
-               body { margin: 0; padding: 0; visibility: hidden !important; background: white !important; }
-               #root { display: none !important; }
+               body * { visibility: hidden; }
+               .print-view-container, .print-view-container * { visibility: visible; }
                .print-view-container { 
-                  position: static !important; 
-                  visibility: visible !important; 
-                  display: block !important; 
+                  position: absolute !important; 
+                  left: 0 !important; 
+                  top: 0 !important; 
                   width: 100% !important; 
-                  height: auto !important; 
                   margin: 0 !important; 
                   padding: 0 !important; 
                   background: white !important;
-                  overflow: visible !important;
-               }
-               .print-view-container * { visibility: visible !important; }
-               .sheet { 
-                  margin: 0 !important; 
-                  padding: 1.5cm !important; 
-                  width: 100% !important; 
-                  min-height: 0 !important;
-                  box-shadow: none !important; 
-                  display: block !important; 
-                  visibility: visible !important;
                }
                .no-print { display: none !important; }
+               .sheet { 
+                  box-shadow: none !important; 
+                  margin: 0 !important; 
+                  width: 100% !important; 
+                  padding: 1cm !important;
+                  border: none !important;
+               }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
              }
              @media screen {
-                .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; }
-                .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.1); position: relative; }
+                .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; background: rgba(0,0,0,0.8); backdrop-blur: 10px; }
+                .sheet { background: white; margin: 0 auto; padding: 1.5cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.5); position: relative; border-radius: 4px; }
              }
            `}</style>
            
