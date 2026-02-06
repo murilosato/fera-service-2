@@ -36,6 +36,8 @@ const camelToSnake = (obj: any) => {
     else if (k === 'paymentStatus') newKey = 'payment_status';
     else if (k === 'paymentModality') newKey = 'payment_modality';
     else if (k === 'startTime') newKey = 'start_time';
+    else if (k === 'breakStart') newKey = 'break_start';
+    else if (k === 'breakEnd') newKey = 'break_end';
     else if (k === 'endTime') newKey = 'end_time';
     else if (k === 'clockIn') newKey = 'clock_in';
     else if (k === 'clockOut') newKey = 'clock_out';
@@ -182,6 +184,8 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address,
       workload: e.workload,
       startTime: e.start_time,
+      breakStart: e.break_start,
+      breakEnd: e.break_end,
       endTime: e.end_time
     })),
     inventory: inv.map((i: any) => ({
@@ -204,6 +208,8 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       discountValue: Number(r.discount_value || 0), 
       discountObservation: r.discount_observation,
       clockIn: r.clock_in,
+      breakStart: r.break_start,
+      breakEnd: r.break_end,
       clockOut: r.clock_out
     })),
     monthlyGoals: goalsMap,

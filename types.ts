@@ -87,6 +87,8 @@ export interface Employee {
   address?: string;
   workload?: string;
   startTime?: string;
+  breakStart?: string;
+  breakEnd?: string;
   endTime?: string;
 }
 
@@ -102,6 +104,8 @@ export interface AttendanceRecord {
   discountObservation?: string;
   clockIn?: string;
   clockOut?: string;
+  breakStart?: string;
+  breakEnd?: string;
 }
 
 export interface CashIn {

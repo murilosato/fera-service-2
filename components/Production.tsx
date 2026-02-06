@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
 import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText, DollarSign, Layers, BarChart3 } from 'lucide-react';
@@ -132,7 +133,9 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     filteredAreas.forEach(area => {
       (area.services || []).forEach(s => {
         if (filterServiceType === 'ALL' || s.type === filterServiceType) {
-          totals[s.type] = (totals[s.type] || 0) + s.areaM2;
+          // Fix: Explicitly ensuring numeric summation with Number() conversion to handle possible 'unknown' types
+          const currentTotal = Number(totals[s.type as string]) || 0;
+          totals[s.type as string] = currentTotal + (Number(s.areaM2) || 0);
         }
       });
     });
@@ -297,14 +300,13 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <div className="space-y-4">
                           <div className="flex justify-between items-center border-b border-white/5 pb-4">
                              <span className="text-[9px] font-black opacity-60 uppercase">VALOR BRUTO TOTAL</span>
-                             {/* Fix: Ensured numeric summation with explicit generic return type to resolve TS unknown error */}
-                             <p className="text-xl font-black text-emerald-400">{formatMoney((area.services || []).reduce<number>((acc, s) => acc + (Number(s.totalValue) || 0), 0))}</p>
+                             {/* Fix: Removed explicit generic type argument from reduce to resolve untyped function call error and explicitly typed arguments */}
+                             <p className="text-xl font-black text-emerald-400">{formatMoney((area.services || []).reduce((acc: number, s: any) => acc + (Number(s.totalValue) || 0), 0))}</p>
                           </div>
                           <div className="space-y-3 pt-2">
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumo Quantitativo da O.S.:</p>
                             {(() => {
                                const areaTotals: Record<string, number> = {};
-                               // Fix: Explicitly ensuring areaM2 is treated as a number during accumulation to resolve 'unknown' type issue
                                (area.services || []).forEach((s: Service) => {
                                  const val: number = Number(s.areaM2) || 0;
                                  const typeKey: string = s.type as string;
