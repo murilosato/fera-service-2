@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { AppState, AttendanceRecord } from '../types';
 import { 
   Printer, Search, Calendar, FileText, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Clock, CheckCircle2, MapPin, X
+  Users, DollarSign, Edit2, Save, Loader2, Clock, CheckCircle2, MapPin, X, ArrowRight
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -123,7 +123,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
   const handlePrint = () => {
     setShowPrintView(true);
-    // Pequeno delay para garantir que o DOM renderizou antes da captura do navegador
     setTimeout(() => {
       window.print();
       if (totalToPay > 0) {
@@ -387,56 +386,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
              @media print { 
-               /* Oculta tudo que está no root do aplicativo */
                body > *:not(.print-view-container) { display: none !important; }
-               
-               /* Força a exibição do container de impressão e seus filhos */
                .print-view-container, .print-view-container * { 
                  visibility: visible !important; 
                  display: block !important;
                }
-
-               /* Ajustes de layout para a folha A4 */
                .print-view-container { 
-                 position: absolute !important; 
-                 left: 0 !important; 
-                 top: 0 !important; 
-                 width: 100% !important; 
-                 height: auto !important;
-                 background: white !important;
-                 overflow: visible !important;
+                 position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important;
+                 background: white !important; overflow: visible !important;
                }
-
                .sheet { 
-                 margin: 0 !important; 
-                 padding: 1.5cm !important; 
-                 width: 210mm !important; 
-                 box-shadow: none !important;
-                 display: block !important;
+                 margin: 0 !important; padding: 1.5cm !important; width: 210mm !important; 
+                 box-shadow: none !important; display: block !important;
                }
-
-               /* Oculta o botão de fechar e outros elementos indesejados no PDF */
                .no-print { display: none !important; }
-               
-               /* Remove cabeçalhos/rodapés automáticos do navegador e barras de rolagem */
                @page { margin: 1cm; size: A4 portrait; }
                ::-webkit-scrollbar { display: none !important; }
+               * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
              }
-
-             /* Estilo visual na tela (preview) */
-             .sheet { 
-               background: white; 
-               margin: 2rem auto; 
-               padding: 1.5cm; 
-               width: 210mm; 
-               min-height: 297mm; 
-               box-shadow: 0 0 50px rgba(0,0,0,0.1);
-               position: relative;
-             }
+             .sheet { background: white; margin: 2rem auto; padding: 1.5cm; width: 210mm; min-height: 297mm; box-shadow: 0 0 50px rgba(0,0,0,0.1); position: relative; }
            `}</style>
            
            <div className="sheet">
-              {/* Botão de Fechar Visualização - Visível apenas na tela */}
               <button 
                 onClick={() => setShowPrintView(false)} 
                 className="no-print absolute top-8 right-8 bg-rose-600 text-white px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-slate-900 transition-all z-[1100] flex items-center gap-2"
@@ -507,43 +478,68 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
               </div>
 
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900">Extrato de Registros Detalhados</h4>
-              <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
-                 <thead>
-                    <tr className="bg-slate-900 text-white">
-                      <th className="p-3 text-left border-r border-slate-800">Data</th>
-                      <th className="p-3 text-center border-r border-slate-800">Freq.</th>
-                      <th className="p-3 text-center border-r border-slate-800">Entrada</th>
-                      <th className="p-3 text-center border-r border-slate-800">Intrajornada</th>
-                      <th className="p-3 text-center border-r border-slate-800">Saída</th>
-                      {/* OCULTA COLUNA LÍQUIDO SE FOR CLT */}
-                      {selectedEmployee.paymentModality !== 'CLT' && (
+              
+              {selectedEmployee.paymentModality === 'CLT' ? (
+                /* TABELA CLTISTA */
+                <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
+                   <thead>
+                      <tr className="bg-slate-900 text-white">
+                        <th className="p-3 text-left border-r border-slate-800">Data</th>
+                        <th className="p-3 text-center border-r border-slate-800">Freq.</th>
+                        <th className="p-3 text-center border-r border-slate-800">Entrada</th>
+                        <th className="p-3 text-center border-r border-slate-800">Intrajornada</th>
+                        <th className="p-3 text-center border-r border-slate-800">Saída</th>
+                        <th className="p-3 text-right">Desconto</th>
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-200">
+                      {attendanceHistory.map(h => (
+                         <tr key={h.id}>
+                            <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
+                            <td className="p-3 text-center border-r">INT</td>
+                            <td className="p-3 text-center border-r font-bold">{h.clockIn || '--'}</td>
+                            <td className="p-3 text-center border-r text-[8px] text-slate-400">
+                               {h.breakStart ? `${h.breakStart} - ${h.breakEnd}` : '--'}
+                            </td>
+                            <td className="p-3 text-center border-r font-bold">{h.clockOut || '--'}</td>
+                            <td className="p-3 text-right text-rose-600">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
+                         </tr>
+                      ))}
+                      <tr className="bg-slate-50 font-black">
+                         <td colSpan={5} className="p-4 text-right uppercase border-r">Saldo Líquido do Mês:</td>
+                         <td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td>
+                      </tr>
+                   </tbody>
+                </table>
+              ) : (
+                /* TABELA DIARISTA */
+                <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
+                   <thead>
+                      <tr className="bg-slate-900 text-white">
+                        <th className="p-3 text-left border-r border-slate-800">Data</th>
+                        <th className="p-3 text-center border-r border-slate-800">Freq.</th>
+                        <th className="p-3 text-right border-r border-slate-800">Valor Base</th>
+                        <th className="p-3 text-right border-r border-slate-800">Desconto</th>
                         <th className="p-3 text-right">Líquido</th>
-                      )}
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-200">
-                    {attendanceHistory.map(h => (
-                       <tr key={h.id}>
-                          <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
-                          <td className="p-3 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'partial' ? 'PRC' : 'FLT'}</td>
-                          <td className="p-3 text-center border-r font-bold">{h.clockIn || '--'}</td>
-                          <td className="p-3 text-center border-r text-[8px] text-slate-400">
-                             {h.breakStart ? `${h.breakStart} - ${h.breakEnd}` : '--'}
-                          </td>
-                          <td className="p-3 text-center border-r font-bold">{h.clockOut || '--'}</td>
-                          {/* OCULTA VALOR LÍQUIDO DIÁRIO SE FOR CLT */}
-                          {selectedEmployee.paymentModality !== 'CLT' && (
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-200">
+                      {attendanceHistory.map(h => (
+                         <tr key={h.id}>
+                            <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
+                            <td className="p-3 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'partial' ? 'PRC' : 'FLT'}</td>
+                            <td className="p-3 text-right border-r">{formatMoney(h.value)}</td>
+                            <td className="p-3 text-right border-r text-rose-600">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
                             <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
-                          )}
-                       </tr>
-                    ))}
-                    <tr className="bg-slate-50 font-black">
-                       {/* AJUSTE DO COLSPAN NO RODAPÉ */}
-                       <td colSpan={5} className="p-4 text-right uppercase border-r">Saldo Final do Período:</td>
-                       <td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td>
-                    </tr>
-                 </tbody>
-              </table>
+                         </tr>
+                      ))}
+                      <tr className="bg-slate-50 font-black">
+                         <td colSpan={4} className="p-4 text-right uppercase border-r">Total Líquido a Pagar:</td>
+                         <td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td>
+                      </tr>
+                   </tbody>
+                </table>
+              )}
 
               <div className="mt-20 pt-12 grid grid-cols-2 gap-24 text-center">
                  <div className="space-y-2">
@@ -559,7 +555,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO FINANCEIRA PÓS-IMPRESSÃO */}
       {showFinanceModal && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
            <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95">
