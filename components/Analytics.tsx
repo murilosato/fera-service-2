@@ -116,7 +116,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     setShowPrintView(true);
     setTimeout(() => {
       window.print();
-      // Somente abre modal financeiro se NÃO for CLT e houver saldo
       if (selectedEmployee?.paymentModality !== 'CLT' && totalToPay > 0) {
         setFinanceTitle(`ACERTO: ${selectedEmployee?.name} - ${formatDate(startDate)} a ${formatDate(endDate)}`);
         setFinanceCategory('Salários');
@@ -128,13 +127,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const handleSaveValue = async (record: AttendanceRecord) => {
     const newVal = parseFloat(editingValue.replace(',', '.'));
     const newDiscount = parseFloat(editingDiscount.replace(',', '.'));
-    if (isNaN(newVal)) return notify("Valor base inválido", "error");
     
     setIsLoading(true);
     try {
       await dbSave('attendance_records', { 
         ...record, 
-        value: newVal,
+        value: isNaN(newVal) ? record.value : newVal,
         discountValue: isNaN(newDiscount) ? 0 : newDiscount,
         discountObservation: editingObservation
       });
@@ -307,13 +305,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                          <tr>
                            <th className="px-8 py-4">Data</th>
                            <th className="px-8 py-4 text-center">Registro</th>
-                           <th className="px-8 py-4 text-center">Horários (Ent-Sai)</th>
-                           {selectedEmployee.paymentModality !== 'CLT' && (
+                           {selectedEmployee.paymentModality === 'CLT' ? (
+                             <th className="px-8 py-4 text-center">Horários (Ent-Sai)</th>
+                           ) : (
                              <>
                                <th className="px-8 py-4 text-right">Base</th>
                                <th className="px-8 py-4 text-right">Desc.</th>
-                               <th className="px-8 py-4 text-center">Pagamento</th>
                              </>
+                           )}
+                           <th className="px-8 py-4 text-left">Observação</th>
+                           {selectedEmployee.paymentModality !== 'CLT' && (
+                             <th className="px-8 py-4 text-center">Pagamento</th>
                            )}
                            <th className="px-8 py-4 text-right">Ação</th>
                          </tr>
@@ -333,10 +335,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                         {h.status === 'present' ? 'INTEGRAL' : h.status === 'partial' ? 'PARCIAL' : 'FALTA'}
                                      </span>
                                   </td>
-                                  <td className="px-8 py-3 text-center font-bold text-slate-400">
-                                     {h.clockIn ? `${h.clockIn} - ${h.clockOut || '??'}` : '--'}
-                                  </td>
-                                  {selectedEmployee.paymentModality !== 'CLT' && (
+                                  
+                                  {selectedEmployee.paymentModality === 'CLT' ? (
+                                    <td className="px-8 py-3 text-center font-bold text-slate-400">
+                                       {h.clockIn ? `${h.clockIn} - ${h.clockOut || '??'}` : '--'}
+                                    </td>
+                                  ) : (
                                     <>
                                       <td className="px-8 py-3 text-right">
                                          {isEditing ? (
@@ -352,13 +356,25 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                                            `- ${formatMoney(h.discountValue || 0)}`
                                          )}
                                       </td>
-                                      <td className="px-8 py-3 text-center">
-                                         <button onClick={() => togglePaymentStatus(h)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black transition-all ${h.paymentStatus === 'pago' ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600'}`}>
-                                            {h.paymentStatus === 'pago' ? 'PAGO' : 'PENDENTE'}
-                                         </button>
-                                      </td>
                                     </>
                                   )}
+
+                                  <td className="px-8 py-3 text-left">
+                                     {isEditing ? (
+                                       <input className="w-full min-w-[150px] bg-white border border-slate-200 p-2 rounded-lg text-[10px] font-black uppercase" placeholder="OBSERVAÇÃO..." value={editingObservation} onChange={e => setEditingObservation(e.target.value)} />
+                                     ) : (
+                                       <span className="text-[9px] text-slate-400 italic lowercase">{h.discountObservation || '--'}</span>
+                                     )}
+                                  </td>
+
+                                  {selectedEmployee.paymentModality !== 'CLT' && (
+                                    <td className="px-8 py-3 text-center">
+                                       <button onClick={() => togglePaymentStatus(h)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black transition-all ${h.paymentStatus === 'pago' ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-600'}`}>
+                                          {h.paymentStatus === 'pago' ? 'PAGO' : 'PENDENTE'}
+                                       </button>
+                                    </td>
+                                  )}
+
                                   <td className="px-8 py-3 text-right">
                                      {isEditing ? (
                                          <button onClick={() => handleSaveValue(h)} className="p-1.5 text-emerald-600 bg-emerald-50 rounded-lg"><Save size={14}/></button>
@@ -486,7 +502,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-900">Extrato de Registros Detalhados</h4>
               
               {selectedEmployee.paymentModality === 'CLT' ? (
-                /* TABELA CLTISTA - SOMENTE PONTO */
+                /* TABELA CLTISTA - SEM VALORES */
                 <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
                    <thead>
                       <tr className="bg-slate-900 text-white">
@@ -495,7 +511,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                         <th className="p-3 text-center border-r border-slate-800">Entrada</th>
                         <th className="p-3 text-center border-r border-slate-800">Intrajornada</th>
                         <th className="p-3 text-center border-r border-slate-800">Saída</th>
-                        <th className="p-3 text-right">Desconto / Obs</th>
+                        <th className="p-3 text-left">Observações / Justificativas</th>
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-200">
@@ -503,19 +519,18 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                          <tr key={h.id}>
                             <td className="p-3 font-bold border-r text-slate-600">{formatDate(h.date)}</td>
                             <td className="p-3 text-center border-r">INT</td>
-                            <td className="p-3 text-center border-r font-bold">{h.clockIn || '--'}</td>
-                            {/* AJUSTE DE FONTE NA INTRAJORNADA PARA IGUALAR AS DEMAIS */}
-                            <td className="p-3 text-center border-r font-bold">
+                            <td className="p-3 text-center border-r font-black">{h.clockIn || '--'}</td>
+                            <td className="p-3 text-center border-r font-black">
                                {h.breakStart ? `${h.breakStart} - ${h.breakEnd}` : '--'}
                             </td>
-                            <td className="p-3 text-center border-r font-bold">{h.clockOut || '--'}</td>
-                            <td className="p-3 text-right text-rose-600 font-bold">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
+                            <td className="p-3 text-center border-r font-black">{h.clockOut || '--'}</td>
+                            <td className="p-3 text-left text-slate-400 italic lowercase">{h.discountObservation || '--'}</td>
                          </tr>
                       ))}
                    </tbody>
                 </table>
               ) : (
-                /* TABELA DIARISTA - VALORES INCLUÍDOS */
+                /* TABELA DIARISTA - SEM HORÁRIOS, COM OBSERVAÇÕES */
                 <table className="w-full text-[10px] border-collapse uppercase border border-slate-200">
                    <thead>
                       <tr className="bg-slate-900 text-white">
@@ -523,6 +538,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                         <th className="p-3 text-center border-r border-slate-800">Freq.</th>
                         <th className="p-3 text-right border-r border-slate-800">Valor Base</th>
                         <th className="p-3 text-right border-r border-slate-800">Desconto</th>
+                        <th className="p-3 text-left border-r border-slate-800">Observações</th>
                         <th className="p-3 text-right">Líquido</th>
                       </tr>
                    </thead>
@@ -533,11 +549,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                             <td className="p-3 text-center border-r">{h.status === 'present' ? 'INT' : h.status === 'partial' ? 'PRC' : 'FLT'}</td>
                             <td className="p-3 text-right border-r font-bold">{formatMoney(h.value)}</td>
                             <td className="p-3 text-right border-r text-rose-600 font-bold">{h.discountValue ? formatMoney(h.discountValue) : '--'}</td>
+                            <td className="p-3 text-left border-r text-slate-400 italic lowercase">{h.discountObservation || '--'}</td>
                             <td className="p-3 text-right font-black text-slate-900">{formatMoney(h.value - (h.discountValue || 0))}</td>
                          </tr>
                       ))}
                       <tr className="bg-slate-50 font-black">
-                         <td colSpan={4} className="p-4 text-right uppercase border-r">Total Líquido a Pagar:</td>
+                         <td colSpan={5} className="p-4 text-right uppercase border-r">Total Líquido a Pagar:</td>
                          <td className="p-4 text-right text-xs bg-white">{formatMoney(totalToPay)}</td>
                       </tr>
                    </tbody>

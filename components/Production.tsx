@@ -298,16 +298,18 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                         <div className="space-y-4">
                           <div className="flex justify-between items-center border-b border-white/5 pb-4">
                              <span className="text-[9px] font-black opacity-60 uppercase">VALOR BRUTO TOTAL</span>
-                             <p className="text-xl font-black text-emerald-400">{(area.services || []).reduce((acc, s) => acc + (s.totalValue || 0), 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                             {/* Added explicit type casting for reduce accumulator and current value to resolve TS errors */}
+                             <p className="text-xl font-black text-emerald-400">{(area.services || []).reduce((acc: number, s: Service) => acc + (s.totalValue || 0), 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
                           </div>
                           <div className="space-y-3 pt-2">
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resumo Quantitativo da O.S.:</p>
                             {(() => {
                                const areaTotals: Record<string, number> = {};
                                // Fix: Explicitly ensuring areaM2 is treated as a number during accumulation to resolve 'unknown' type issue
-                               (area.services || []).forEach(s => {
-                                 const val = Number(s.areaM2);
-                                 areaTotals[s.type] = (areaTotals[s.type] || 0) + val;
+                               (area.services || []).forEach((s: Service) => {
+                                 const val: number = Number(s.areaM2) || 0;
+                                 const typeKey: string = s.type as string;
+                                 areaTotals[typeKey] = (areaTotals[typeKey] || 0) + val;
                                });
                                const entries = Object.entries(areaTotals);
                                if (entries.length === 0) return <p className="text-[8px] font-bold text-slate-600 uppercase italic">Nenhuma produção registrada</p>;
