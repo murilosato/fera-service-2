@@ -18,6 +18,7 @@ const camelToSnake = (obj: any) => {
   const n: any = {};
   Object.keys(obj).forEach(k => {
     let newKey = k;
+    // Mapeamentos explícitos para garantir compatibilidade com o schema do Banco
     if (k === 'companyId') newKey = 'company_id';
     else if (k === 'itemId') newKey = 'item_id';
     else if (k === 'areaId') newKey = 'area_id';
@@ -35,6 +36,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'idealQty') newKey = 'ideal_qty';
     else if (k === 'paymentStatus') newKey = 'payment_status';
     else if (k === 'paymentModality') newKey = 'payment_modality';
+    else if (k === 'defaultValue') newKey = 'default_value'; // Mapeamento crucial para funcionários
     else if (k === 'startTime') newKey = 'start_time';
     else if (k === 'breakStart') newKey = 'break_start';
     else if (k === 'breakEnd') newKey = 'break_end';
@@ -59,7 +61,8 @@ const camelToSnake = (obj: any) => {
     }
     
     let val = obj[k];
-    // Sanitização rigorosa para tipos TIME/NUMERIC/ENUM no Postgres
+    
+    // Tratamento para evitar falhas em colunas numéricas ou de tempo
     if (val === '' || val === undefined) {
       val = null;
     }
@@ -237,7 +240,7 @@ export const dbSave = async (table: string, data: any) => {
   
   const { data: saved, error } = await query.select();
   if (error) {
-    console.error(`Erro ao salvar na tabela ${table}:`, error);
+    console.error(`Erro ao salvar na tabela ${table}:`, error.message, error.details);
     throw error;
   }
   return saved;

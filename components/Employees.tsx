@@ -159,7 +159,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       notify("Registro salvo com sucesso");
     } catch (e) { 
       console.error(e);
-      notify("Erro de compatibilidade com o banco de dados", "error"); 
+      notify("Erro ao salvar registro de ponto", "error"); 
     } finally { 
       setIsLoading(false); 
     }
@@ -178,35 +178,41 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeForm.name) return notify("Nome completo é obrigatório", "error");
+    if (!employeeForm.role) return notify("Selecione um Cargo / Função", "error");
     
     setIsLoading(true);
     try {
-      const finalValue = parseFloat(employeeForm.defaultValue) || 0;
+      const finalValue = parseFloat(employeeForm.defaultValue.replace(',', '.')) || 0;
 
       await dbSave('employees', {
         id: editingId || undefined,
         companyId: state.currentUser?.companyId,
         name: employeeForm.name.toUpperCase(),
-        role: (employeeForm.role || 'AJUDANTE GERAL').toUpperCase(),
+        role: employeeForm.role.toUpperCase(),
         defaultValue: finalValue,
-        cpf: employeeForm.cpf,
-        phone: employeeForm.phone,
-        pixKey: employeeForm.pixKey,
-        address: employeeForm.address.toUpperCase(),
+        cpf: employeeForm.cpf || null,
+        phone: employeeForm.phone || null,
+        pixKey: employeeForm.pixKey || null,
+        address: employeeForm.address.toUpperCase() || null,
         status: editingId ? (state.employees.find(e => e.id === editingId)?.status || 'active') : 'active',
         paymentModality: employeeForm.paymentModality,
-        workload: employeeForm.workload.toUpperCase(),
-        startTime: employeeForm.startTime,
-        breakStart: employeeForm.breakStart,
-        breakEnd: employeeForm.breakEnd,
-        endTime: employeeForm.endTime
+        workload: employeeForm.workload.toUpperCase() || null,
+        startTime: employeeForm.startTime || null,
+        breakStart: employeeForm.breakStart || null,
+        breakEnd: employeeForm.breakEnd || null,
+        endTime: employeeForm.endTime || null
       });
       await refreshData();
       setShowForm(false);
       setEditingId(null);
       setEmployeeForm(initialFormState);
       notify(editingId ? "Cadastro atualizado" : "Novo colaborador integrado");
-    } catch (e: any) { notify("Falha na sincronização", "error"); } finally { setIsLoading(false); }
+    } catch (e: any) { 
+      console.error(e);
+      notify("Falha na sincronização. Verifique os dados ou conexão.", "error"); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const handleEdit = (emp: Employee) => {
@@ -389,7 +395,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
                 <div className="space-y-1">
                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Cargo / Função</label>
-                   <select className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none" value={employeeForm.role} onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}>
+                   <select required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none" value={employeeForm.role} onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}>
                      <option value="">SELECIONE UM CARGO...</option>
                      {state.employeeRoles.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                    </select>
