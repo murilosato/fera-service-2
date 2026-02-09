@@ -37,21 +37,6 @@
         color: white;
         text-align: center;
       }
-      .loader-logo {
-        width: 140px;
-        height: 140px;
-        margin-bottom: 2rem;
-        border-radius: 50%;
-        border: 4px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 0 50px rgba(59, 130, 246, 0.4);
-        animation: pulse 2s infinite ease-in-out;
-        object-fit: cover;
-      }
-      @keyframes pulse {
-        0% { transform: scale(1); opacity: 0.9; }
-        50% { transform: scale(1.05); opacity: 1; }
-        100% { transform: scale(1); opacity: 0.9; }
-      }
       .loader-spinner {
         width: 30px;
         height: 30px;
@@ -59,7 +44,13 @@
         border-top: 3px solid #3b82f6;
         border-radius: 50%;
         animation: spin 1s linear infinite;
-        margin-bottom: 1rem;
+        margin-bottom: 2rem;
+      }
+      .loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -80,10 +71,13 @@
   <body class="bg-slate-50">
     <div id="root">
       <div class="initial-loader">
-        <img src="https://img.freepik.com/premium-vector/tiger-logo-design-vector-template-dark-blue-background_645658-410.jpg" alt="Fera Logo" class="loader-logo">
         <div class="loader-spinner"></div>
-        <h2 style="font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; font-size: 1.25rem;">Fera Service</h2>
-        <p style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Unidade de Operações Urbanas</p>
+        <div class="loader-content">
+          <div style="text-align: center;">
+            <h2 style="font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; font-size: 1.5rem; margin: 0; line-height: 1;">Fera Service</h2>
+            <p style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Unidade de Operações Urbanas</p>
+          </div>
+        </div>
       </div>
     </div>
     <script type="module" src="./index.js"></script>

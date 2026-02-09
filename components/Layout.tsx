@@ -27,8 +27,6 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, userRole, onLogout, user }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
-  const TIGER_LOGO_URL = "https://img.freepik.com/premium-vector/tiger-logo-design-vector-template-dark-blue-background_645658-410.jpg";
-
   const menuItems = [
     { id: 'dashboard', label: 'Painel Inicial', icon: LayoutDashboard, permission: true },
     { id: 'production', label: 'Produção', icon: MapPin, permission: user?.permissions.production },
@@ -58,15 +56,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
 
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-[#010a1b] text-slate-400 w-64 fixed left-0 top-0 z-50 border-r border-white/5">
-      <div className="p-8 flex items-center gap-4 border-b border-white/5">
-        <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/10 shrink-0 bg-[#010a1b]">
-           <img src={TIGER_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-lg font-black text-white uppercase tracking-tighter leading-none">
-            FERA SERVICE
-          </h1>
-        </div>
+      <div className="p-8 border-b border-white/5">
+        <h1 className="text-xl font-black text-white uppercase tracking-tighter leading-none">
+          FERA SERVICE
+        </h1>
       </div>
       
       <div className="p-6 border-b border-white/5 bg-[#010a1b]">
@@ -111,10 +104,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans antialiased">
       <div className="lg:hidden flex items-center justify-between px-6 py-4 bg-white border-b-4 border-[#010a1b] sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-           <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#010a1b]">
-              <img src={TIGER_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
-           </div>
+        <div className="flex items-center">
            <span className="font-black text-[#010a1b] text-sm uppercase tracking-tighter">
              {translateTab(activeTab)}
            </span>

@@ -27,8 +27,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [showInstallModal, setShowInstallModal] = useState(false);
 
-  const TIGER_LOGO_URL = "https://img.freepik.com/premium-vector/tiger-logo-design-vector-template-dark-blue-background_645658-410.jpg";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
@@ -64,16 +62,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       </button>
 
       <div className="w-full max-w-[440px] relative z-10">
-        <div className="text-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
-           <div className="flex justify-center mb-6">
-              <div className="w-36 h-36 rounded-[40px] overflow-hidden border-4 border-white/10 shadow-[0_0_60px_rgba(59,130,246,0.3)] bg-[#010a1b]">
-                 <img src={TIGER_LOGO_URL} alt="Fera Logo" className="w-full h-full object-cover" />
-              </div>
+        <div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+           <div className="flex flex-col items-center gap-2 mb-2">
+             <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">
+               FERA SERVICE
+             </h1>
            </div>
-           <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">
-             FERA SERVICE
-           </h1>
-           <p className="text-blue-400/80 text-[10px] font-black uppercase tracking-[0.4em] mt-4">
+           <p className="text-blue-400/80 text-[10px] font-black uppercase tracking-[0.4em] mt-2">
              Unidade de Operações Urbanas
            </p>
         </div>
@@ -147,10 +142,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="fixed inset-0 z-[100] bg-[#010a1b]/90 backdrop-blur-md flex items-center justify-center p-4">
            <div className="bg-white rounded-[48px] w-full max-w-sm p-12 text-center relative overflow-hidden shadow-2xl">
               <button onClick={() => setShowInstallModal(false)} className="absolute top-8 right-8 text-slate-300 hover:text-slate-900"><X size={24}/></button>
-              <div className="w-24 h-24 bg-[#010a1b] rounded-[24px] flex items-center justify-center mx-auto mb-8 shadow-xl border-4 border-slate-100 overflow-hidden">
-                 <img src={TIGER_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
-              </div>
-              <h3 className="text-sm font-black uppercase text-slate-900 mb-4 tracking-widest">Instalação</h3>
+              <h3 className="text-sm font-black uppercase text-slate-900 mb-4 tracking-widest pt-4">Instalação</h3>
               <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed mb-10">
                  Para Android: No menu do navegador, selecione "Instalar aplicativo".
                  <br/><br/>
