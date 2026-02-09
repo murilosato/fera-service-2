@@ -14,8 +14,8 @@
     <link rel="manifest" href="manifest.json" />
     
     <!-- Favicons / Icons -->
-    <link rel="icon" type="image/jpeg" href="https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.17.44.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE3LjQ0LmpwZWciLCJpYXQiOjE3NzAyMjY3NTksImV4cCI6MTgwMTc2Mjc1OX0.4WifHdXiNMvCv21vQX4QN-VLFmEhI7fcf4498YYzx6A" />
-    <link rel="apple-touch-icon" href="https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.17.44.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE3LjQ0LmpwZWciLCJpYXQiOjE3NzAyMjY3NTksImV4cCI6MTgwMTc2Mjc1OX0.4WifHdXiNMvCv21vQX4QN-VLFmEhI7fcf4498YYzx6A" />
+    <link rel="icon" type="image/png" href="https://img.freepik.com/premium-vector/tiger-logo-design-vector-template-dark-blue-background_645658-410.jpg" />
+    <link rel="apple-touch-icon" href="https://img.freepik.com/premium-vector/tiger-logo-design-vector-template-dark-blue-background_645658-410.jpg" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
@@ -32,26 +32,36 @@
         align-items: center;
         justify-content: center;
         height: 100vh;
-        background-image: url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.17.44.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE3LjQ0LmpwZWciLCJpYXQiOjE3NzAyMjY3NTksImV4cCI6MTgwMTc2Mjc1OX0.4WifHdXiNMvCv21vQX4QN-VLFmEhI7fcf4498YYzx6A");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        color: var(--title-color);
+        background-color: #010a1b;
+        background-image: radial-gradient(circle at center, #0a1f44 0%, #010a1b 100%);
+        color: white;
         text-align: center;
       }
+      .loader-logo {
+        width: 140px;
+        height: 140px;
+        margin-bottom: 2rem;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 50px rgba(59, 130, 246, 0.4);
+        animation: pulse 2s infinite ease-in-out;
+        object-fit: cover;
+      }
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.05); opacity: 1; }
+        100% { transform: scale(1); opacity: 0.9; }
+      }
       .loader-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(255, 255, 255, 0.2);
-        border-top: 4px solid #fff;
+        width: 30px;
+        height: 30px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top: 3px solid #3b82f6;
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-bottom: 1rem;
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      .text-title { color: var(--title-color) !important; }
-      .text-subtitle { color: var(--subtitle-color) !important; }
-      .border-title { border-color: var(--title-color) !important; }
     </style>
     <script type="importmap">
     {
@@ -70,9 +80,10 @@
   <body class="bg-slate-50">
     <div id="root">
       <div class="initial-loader">
+        <img src="https://img.freepik.com/premium-vector/tiger-logo-design-vector-template-dark-blue-background_645658-410.jpg" alt="Fera Logo" class="loader-logo">
         <div class="loader-spinner"></div>
-        <h2 style="font-weight: 900; letter-spacing: -0.025em; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">Fera Service</h2>
-        <p style="font-size: 0.875rem; color: rgba(255,255,255,0.8); margin-top: 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; text-shadow: 0 1px 5px rgba(0,0,0,0.5);">Iniciando sistema de gestão...</p>
+        <h2 style="font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; font-size: 1.25rem;">Fera Service</h2>
+        <p style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Unidade de Operações Urbanas</p>
       </div>
     </div>
     <script type="module" src="./index.js"></script>
