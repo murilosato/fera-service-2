@@ -23,7 +23,8 @@ import {
   X, 
   Package,
   Layers,
-  Target
+  Target,
+  Activity
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -59,13 +60,12 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
 
   const displayTitle = useMemo(() => {
     if (selectedService === 'TOTAL') return 'PRODUÇÃO GERAL ACUMULADA (m²)';
-    // Se o serviço já tem a unidade no nome, não repetimos
     const hasUnit = selectedService.includes('(m²)') || selectedService.includes('(KM)') || selectedService.includes('m²') || selectedService.includes('KM');
     return `PRODUÇÃO REALIZADA: ${selectedService}${hasUnit ? '' : ` (${currentUnit})`}`;
   }, [selectedService, currentUnit]);
 
-  const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatNumber = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const monthlySeries = useMemo(() => {
     const months = [];
@@ -145,6 +145,17 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       }
     });
 
+    // Cálculo de Dias Trabalhados (Dias únicos com presença no mês selecionado)
+    const activeDays = new Set();
+    state.attendanceRecords.forEach(record => {
+      if (record.date.startsWith(filterKey) && (record.status === 'present' || record.status === 'partial')) {
+        activeDays.add(record.date);
+      }
+    });
+    
+    const workedDaysCount = activeDays.size || 0;
+    const avgDailyProduction = workedDaysCount > 0 ? prodMonth / workedDaysCount : 0;
+
     const goalProd = selectedService === 'TOTAL' 
       ? currentMonthGoal.production 
       : (state.serviceGoals[selectedService as ServiceType] || 0);
@@ -152,6 +163,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     return {
       production: prodMonth,
       revenue: revMonth,
+      avgDailyProduction,
+      workedDaysCount,
       balance: state.cashIn.filter(c => c.date?.startsWith(filterKey)).reduce((acc, c) => acc + c.value, 0) - state.cashOut.filter(c => c.date?.startsWith(filterKey)).reduce((acc, c) => acc + c.value, 0),
       inventoryValue: state.inventory.reduce((acc, item) => acc + ((item.currentQty || 0) * (item.unitValue || 0)), 0),
       goalProd: goalProd,
@@ -159,21 +172,29 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       prodPercentage: goalProd > 0 ? (prodMonth / goalProd) * 100 : 0,
       revPercentage: currentMonthGoal.revenue > 0 ? (revMonth / currentMonthGoal.revenue) * 100 : 0
     };
-  }, [state.areas, state.cashIn, state.cashOut, state.monthlyGoals, state.serviceGoals, state.inventory, endPeriod, selectedService]);
+  }, [state.areas, state.cashIn, state.cashOut, state.attendanceRecords, state.monthlyGoals, state.serviceGoals, state.inventory, endPeriod, selectedService]);
 
   const stats = [
     { 
       id: 'production', 
-      label: selectedService === 'TOTAL' ? `PRODUÇÃO REALIZADA (${currentUnit})` : `PRODUÇÃO: ${selectedService.split(' (')[0]}`, 
+      label: selectedService === 'TOTAL' ? `PRODUÇÃO MENSAL (${currentUnit})` : `PRODUÇÃO: ${selectedService.split(' (')[0]}`, 
       value: `${formatNumber(periodTotals.production)} ${currentUnit}`, 
       progress: periodTotals.prodPercentage, 
       icon: Map, 
       color: 'text-blue-600', 
       bg: 'bg-blue-50' 
     },
+    { 
+      id: 'daily_avg', 
+      label: 'MÉDIA PROD. DIÁRIA', 
+      value: `${formatNumber(periodTotals.avgDailyProduction)} ${currentUnit}`, 
+      subValue: `Base: ${periodTotals.workedDaysCount} dias úteis`,
+      icon: Activity, 
+      color: 'text-indigo-600', 
+      bg: 'bg-indigo-50' 
+    },
     { id: 'revenue', label: 'FATURAMENTO MÊS', value: formatMoney(periodTotals.revenue), progress: periodTotals.revPercentage, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { id: 'inventoryValue', label: 'VALOR EM ESTOQUE', value: formatMoney(periodTotals.inventoryValue), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { id: 'stock', label: 'ESTOQUE CRÍTICO', value: `${state.inventory.filter(i => i.currentQty <= i.minQty).length} itens`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-orange-50' },
+    { id: 'stock', label: 'ESTOQUE CRÍTICO', value: `${state.inventory.filter(i => i.currentQty <= i.minQty).length} itens`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
   ];
 
   return (
@@ -181,7 +202,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-[#010a1b] tracking-tight uppercase">Monitoramento Estratégico</h2>
-          <p className="text-[10px] text-[#2e3545] font-bold uppercase tracking-widest opacity-70">Cálculo baseado em O.S. Finalizadas</p>
+          <p className="text-[10px] text-[#2e3545] font-bold uppercase tracking-widest opacity-70">Cálculo baseado em O.S. Finalizadas e Frequência</p>
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
@@ -247,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
           <button 
             key={stat.id} 
             onClick={() => {
-              if (stat.id === 'inventoryValue' || stat.id === 'stock') setActiveTab('inventory');
+              if (stat.id === 'stock') setActiveTab('inventory');
               else if (stat.id === 'revenue') setActiveMetric('revenue');
               else setActiveMetric('production');
             }}
@@ -263,6 +284,9 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
             </div>
             <p className="text-[9px] font-black text-[#2e3545] uppercase tracking-widest mb-1 truncate">{stat.label}</p>
             <p className="text-xl font-black text-[#010a1b] truncate">{stat.value}</p>
+            {(stat as any).subValue && (
+              <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">{(stat as any).subValue}</p>
+            )}
             {stat.progress !== undefined && (
               <div className="mt-4 w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div className={`h-full transition-all duration-1000 ${stat.progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(stat.progress, 100)}%` }} />
