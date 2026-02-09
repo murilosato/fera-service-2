@@ -36,7 +36,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'idealQty') newKey = 'ideal_qty';
     else if (k === 'paymentStatus') newKey = 'payment_status';
     else if (k === 'paymentModality') newKey = 'payment_modality';
-    else if (k === 'defaultValue') newKey = 'default_value'; // Mapeamento crucial para funcionários
+    else if (k === 'defaultValue') newKey = 'default_value'; 
     else if (k === 'startTime') newKey = 'start_time';
     else if (k === 'breakStart') newKey = 'break_start';
     else if (k === 'breakEnd') newKey = 'break_end';
@@ -62,7 +62,7 @@ const camelToSnake = (obj: any) => {
     
     let val = obj[k];
     
-    // Tratamento para evitar falhas em colunas numéricas ou de tempo
+    // Converte strings vazias ou indefinidas para null para o banco
     if (val === '' || val === undefined) {
       val = null;
     }
@@ -224,23 +224,27 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
 };
 
 export const dbSave = async (table: string, data: any) => {
-  const payload = camelToSnake(data);
-  let query;
+  const fullPayload = camelToSnake(data);
   
-  if (payload.id) {
-    const { id, ...updateData } = payload;
-    query = supabase.from(table).update(updateData).eq('id', id);
+  // CRUCIAL: Se o ID for nulo ou indefinido, removemos a chave do payload 
+  // para que o PostgreSQL use a geração automática (Identity/Serial)
+  const { id, ...payloadWithoutId } = fullPayload;
+  
+  let query;
+  if (id) {
+    query = supabase.from(table).update(payloadWithoutId).eq('id', id);
   } else {
     if (table === 'monthly_goals') {
-       query = supabase.from(table).upsert(payload, { onConflict: 'company_id, month_key' });
+       query = supabase.from(table).upsert(fullPayload, { onConflict: 'company_id, month_key' });
     } else {
-       query = supabase.from(table).insert(payload);
+       // Em inserções novas, não enviamos a coluna ID se ela for nula
+       query = supabase.from(table).insert(payloadWithoutId);
     }
   }
   
   const { data: saved, error } = await query.select();
   if (error) {
-    console.error(`Erro ao salvar na tabela ${table}:`, error.message, error.details);
+    console.error(`Erro crítico no Supabase (${table}):`, error.message, error.details);
     throw error;
   }
   return saved;
