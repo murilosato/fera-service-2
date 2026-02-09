@@ -81,7 +81,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                FERA SERVICE
              </h1>
            </div>
-           <p className="text-blue-400 font-black uppercase tracking-[0.4em] mt-2 drop-shadow-md">
+           {/* Ajuste aqui: whitespace-nowrap e tracking reduzido para caber em uma linha */}
+           <p className="text-blue-400 font-black uppercase tracking-[0.2em] mt-2 drop-shadow-md whitespace-nowrap text-[10px] sm:text-xs">
              Unidade de Operações Urbanas
            </p>
         </div>
