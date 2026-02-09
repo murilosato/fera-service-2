@@ -14,8 +14,8 @@
     <link rel="manifest" href="manifest.json" />
     
     <!-- Favicons / Icons -->
-    <link rel="icon" type="image/png" href="https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.18.15.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE4LjE1LmpwZWciLCJpYXQiOjE3NzA2NjI1NTcsImV4cCI6MTgwMjE5ODU1N30.TlqPX1cXybgXvUYWPPDxoFeD7_R1h3TpI1iYGYC47J4" />
-    <link rel="apple-touch-icon" href="https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.18.15.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE4LjE1LmpwZWciLCJpYXQiOjE3NzA2NjI1NTcsImV4cCI6MTgwMjE5ODU1N30.TlqPX1cXybgXvUYWPPDxoFeD7_R1h3TpI1iYGYC47J4" />
+    <link rel="icon" type="image/png" href="https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.18.15.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE4LjE1LmpwZWciLCJpYXQiOjE3NzA2NjUxMTEsImV4cCI6MTgwMjIwMTExMX0.iLZMB-n2cIkQkwJ7rIF-OqO_NFWf68LUhG0chFmHHU4" />
+    <link rel="apple-touch-icon" href="https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.18.15.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE4LjE1LmpwZWciLCJpYXQiOjE3NzA2NjUxMTEsImV4cCI6MTgwMjIwMTExMX0.iLZMB-n2cIkQkwJ7rIF-OqO_NFWf68LUhG0chFmHHU4" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
@@ -24,81 +24,35 @@
         --title-color: #010a1b;
         --subtitle-color: #2e3545;
       }
-
-      body {
-        font-family: 'Inter', sans-serif;
-        margin: 0;
-        padding: 0;
-        color: var(--subtitle-color);
-        background-color: #010a1b;
-      }
-
-      #root:empty {
-        display: none;
-      }
-
+      body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; color: var(--subtitle-color); }
+      #root:empty { display: none; }
       .initial-loader {
-        position: fixed;
-        inset: 0;
-        min-height: 100svh;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        height: 100vh;
         background-color: #010a1b;
-        color: #fff;
+        background-image: radial-gradient(circle at center, #0a1f44 0%, #010a1b 100%);
+        color: white;
         text-align: center;
-        z-index: 9999;
-        overflow: hidden;
       }
-
-      /* Camada de imagem com 40% de opacidade */
-      .loader-bg {
-        position: absolute;
-        inset: 0;
-        background-image: url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzA2NjMyNDksImV4cCI6MTgwMjE5OTI0OX0.bMeiDFYFfctubyZBsN2uCLh1WItf9qCYRl1hfUygMBA");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        opacity: 0.4;
-        z-index: 1;
-      }
-
-      /* Overlay de gradiente para suavizar */
-      .loader-overlay {
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at center, transparent 0%, #010a1b 100%);
-        z-index: 2;
-      }
-
-      .loader-content {
-        position: relative;
-        z-index: 3;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
       .loader-spinner {
-        width: 40px;
-        height: 40px;
+        width: 30px;
+        height: 30px;
         border: 3px solid rgba(255, 255, 255, 0.1);
-        border-top-color: #3b82f6;
+        border-top: 3px solid #3b82f6;
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-bottom: 2rem;
       }
-
-      @keyframes spin {
-        to { transform: rotate(360deg); }
+      .loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
       }
-
-      .initial-loader.fade-out {
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.5s ease-in-out;
-      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
     <script type="importmap">
     {
@@ -114,16 +68,14 @@
     }
     </script>
   </head>
-  <body class="bg-[#010a1b]">
+  <body class="bg-slate-50">
     <div id="root">
       <div class="initial-loader">
-        <div class="loader-bg"></div>
-        <div class="loader-overlay"></div>
+        <div class="loader-spinner"></div>
         <div class="loader-content">
-          <div class="loader-spinner"></div>
           <div style="text-align: center;">
-            <h2 style="font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; font-size: 1.8rem; margin: 0; line-height: 1;">Fera Service</h2>
-            <p style="font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3em;">Unidade de Operações Urbanas</p>
+            <h2 style="font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; font-size: 1.5rem; margin: 0; line-height: 1;">Fera Service</h2>
+            <p style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Unidade de Operações Urbanas</p>
           </div>
         </div>
       </div>
