@@ -1,4 +1,3 @@
-
 // Fix: Added missing React import to resolve UMD global reference error
 import React from 'react';
 import { 
@@ -27,6 +26,8 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, userRole, onLogout, user }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  const TIGER_LOGO_URL = "https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.17.44.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE3LjQ0LmpwZWciLCJpYXQiOjE3NzAyMjY3NTksImV4cCI6MTgwMTc2Mjc1OX0.4WifHdXiNMvCv21vQX4QN-VLFmEhI7fcf4498YYzx6A";
 
   const menuItems = [
     { id: 'dashboard', label: 'Painel Inicial', icon: LayoutDashboard, permission: true },
@@ -57,7 +58,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
 
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-[#010a1b] text-slate-400 w-64 fixed left-0 top-0 z-50 border-r border-white/5">
-      <div className="p-8 flex items-center border-b border-white/5">
+      <div className="p-8 flex items-center gap-3 border-b border-white/5">
+        <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 shrink-0">
+           <img src={TIGER_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
+        </div>
         <h1 className="text-xl font-black text-white uppercase tracking-tighter">
           FERA SERVICE
         </h1>
@@ -106,6 +110,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans antialiased">
       <div className="lg:hidden flex items-center justify-between px-6 py-4 bg-white border-b-4 border-[#010a1b] sticky top-0 z-40">
         <div className="flex items-center gap-3">
+           <div className="w-8 h-8 rounded-lg overflow-hidden">
+              <img src={TIGER_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
+           </div>
            <span className="font-black text-[#010a1b] text-sm uppercase tracking-tighter">
              {translateTab(activeTab)}
            </span>
