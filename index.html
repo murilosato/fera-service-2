@@ -30,77 +30,75 @@
         margin: 0;
         padding: 0;
         color: var(--subtitle-color);
+        background-color: #010a1b;
       }
 
-      /* Esconde root vazio (React ainda não montou) */
       #root:empty {
         display: none;
       }
 
-      /* Loader fullscreen */
       .initial-loader {
         position: fixed;
         inset: 0;
-        min-height: 100svh; /* melhor que 100vh em mobile */
+        min-height: 100svh;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-
-        background-image: url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzA2NjMyNDksImV4cCI6MTgwMjE5OTI0OX0.bMeiDFYFfctubyZBsN2uCLh1WItf9qCYRl1hfUygMBA");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-
+        background-color: #010a1b;
         color: #fff;
         text-align: center;
         z-index: 9999;
         overflow: hidden;
       }
 
-      /* Overlay / fade (0.4 real) */
-      .initial-loader::after {
-        content: "";
+      /* Camada de imagem com 40% de opacidade */
+      .loader-bg {
         position: absolute;
         inset: 0;
-        background: rgba(1, 10, 27, 0.4);
+        background-image: url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzA2NjMyNDksImV4cCI6MTgwMjE5OTI0OX0.bMeiDFYFfctubyZBsN2uCLh1WItf9qCYRl1hfUygMBA");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        opacity: 0.4;
         z-index: 1;
       }
 
-      /* Conteúdo acima do overlay */
-      .initial-loader > * {
-        position: relative;
+      /* Overlay de gradiente para suavizar */
+      .loader-overlay {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, transparent 0%, #010a1b 100%);
         z-index: 2;
       }
 
-      /* Spinner */
+      .loader-content {
+        position: relative;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
       .loader-spinner {
-        width: 30px;
-        height: 30px;
-        border: 3px solid rgba(255, 255, 255, 0.15);
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
         border-top-color: #3b82f6;
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-bottom: 2rem;
       }
 
-      .loader-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-      }
-
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
 
-      /* Fade-out ao carregar o app */
-    .initial-loader.fade-out {
-      visibility: hidden;
-      pointer-events: none;
-      transition: visibility 0s linear 0.6s;
-    }
+      .initial-loader.fade-out {
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.5s ease-in-out;
+      }
     </style>
     <script type="importmap">
     {
@@ -116,14 +114,16 @@
     }
     </script>
   </head>
-  <body class="bg-slate-50">
+  <body class="bg-[#010a1b]">
     <div id="root">
       <div class="initial-loader">
-        <div class="loader-spinner"></div>
+        <div class="loader-bg"></div>
+        <div class="loader-overlay"></div>
         <div class="loader-content">
+          <div class="loader-spinner"></div>
           <div style="text-align: center;">
-            <h2 style="font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; font-size: 1.5rem; margin: 0; line-height: 1;">Fera Service</h2>
-            <p style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Unidade de Operações Urbanas</p>
+            <h2 style="font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; font-size: 1.8rem; margin: 0; line-height: 1;">Fera Service</h2>
+            <p style="font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3em;">Unidade de Operações Urbanas</p>
           </div>
         </div>
       </div>

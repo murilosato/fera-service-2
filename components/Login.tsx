@@ -27,6 +27,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [showInstallModal, setShowInstallModal] = useState(false);
 
+  // URL da imagem de fundo atualizada conforme fornecido
   const backgroundImage = "https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzA2NjMyNDksImV4cCI6MTgwMjE5OTI0OX0.bMeiDFYFfctubyZBsN2uCLh1WItf9qCYRl1hfUygMBA";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,15 +56,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-[#010a1b] flex items-center justify-center p-4 font-sans antialiased relative overflow-hidden">
       {/* Camada de Imagem de Fundo com Transparência de 40% */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
         style={{ 
           backgroundImage: `url("${backgroundImage}")`,
           opacity: 0.4
         }} 
       />
       
-      {/* Overlay de Gradiente para profundidade */}
-      <div className="absolute inset-0 z-1 bg-radial-gradient from-[#0a1f44]/60 to-[#010a1b]/90" />
+      {/* Overlay de Gradiente para profundidade e contraste */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[#010a1b]/10 via-[#010a1b]/60 to-[#010a1b]" />
       
       <button 
         onClick={() => setShowInstallModal(true)}
@@ -75,14 +76,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       <div className="w-full max-w-[440px] relative z-10">
         <div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
-           <div className="flex flex-col items-center gap-2 mb-2">
+           <div className="flex flex-col items-center gap-2 mb-2 text-center">
              <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none drop-shadow-2xl">
                FERA SERVICE
              </h1>
+             <p className="text-blue-400 font-black uppercase tracking-[0.4em] mt-3 text-[10px] drop-shadow-md">
+               Unidade de Operações Urbanas
+             </p>
            </div>
-           <p className="text-blue-400 font-black uppercase tracking-[0.4em] mt-2 drop-shadow-md">
-             Unidade de Operações Urbanas
-           </p>
         </div>
 
         <div className="bg-white/10 backdrop-blur-2xl rounded-[48px] shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-500">
