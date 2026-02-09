@@ -28,6 +28,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [showInstallModal, setShowInstallModal] = useState(false);
 
   const appIcon = "https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/WhatsApp%20Image%202026-02-04%20at%2008.18.15.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9XaGF0c0FwcCBJbWFnZSAyMDI2LTAyLTA0IGF0IDA4LjE4LjE1LmpwZWciLCJpYXQiOjE3NzA2NjUxMTEsImV4cCI6MTgwMjIwMTExMX0.iLZMB-n2cIkQkwJ7rIF-OqO_NFWf68LUhG0chFmHHU4";
+  const backgroundImage = "https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzA2NjUyMzEsImV4cCI6MTgwMjIwMTIzMX0.9ncjUcIm5Xz2IfCtPqvuHGLcMGdUB-KOBzZppw23T5k";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,11 +54,21 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-[#010a1b] flex items-center justify-center p-4 font-sans antialiased relative overflow-hidden">
-      <div className="absolute inset-0 z-0 bg-radial-gradient from-[#0a1f44] to-[#010a1b]" />
+      {/* Imagem de Fundo com Transparência */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
+        style={{ 
+          backgroundImage: `url("${backgroundImage}")`,
+          opacity: 0.4
+        }} 
+      />
+      
+      {/* Overlay de Gradiente */}
+      <div className="absolute inset-0 z-[1] bg-radial-gradient from-[#0a1f44]/40 to-[#010a1b]" />
       
       <button 
         onClick={() => setShowInstallModal(true)}
-        className="fixed top-8 right-8 flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-6 py-3 rounded-2xl shadow-sm hover:bg-white/10 text-white transition-all active:scale-95 z-10"
+        className="fixed top-8 right-8 flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-6 py-3 rounded-2xl shadow-sm hover:bg-white/10 text-white transition-all active:scale-95 z-20"
       >
         <Download size={18} className="text-blue-400" />
         <span className="text-[10px] font-black uppercase tracking-widest">Instalar App</span>
@@ -66,25 +77,25 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="w-full max-w-[440px] relative z-10">
         <div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
            <div className="flex flex-col items-center gap-2 mb-2">
-             <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">
+             <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none drop-shadow-lg">
                FERA SERVICE
              </h1>
            </div>
-           <p className="text-blue-400/80 text-[10px] font-black uppercase tracking-[0.4em] mt-2">
+           <p className="text-blue-400 font-black uppercase tracking-[0.4em] mt-2 drop-shadow-md">
              Unidade de Operações Urbanas
            </p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/10 animate-in zoom-in-95 duration-500">
+        <div className="bg-white/10 backdrop-blur-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-500">
           <form onSubmit={handleSubmit} className="p-10 space-y-6">
             <div className="text-center mb-4">
-               <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">
+               <h2 className="text-[11px] font-black text-white/50 uppercase tracking-[0.2em]">
                   Acesso Restrito ao Terminal
                </h2>
             </div>
 
             {error && (
-              <div className="bg-rose-500/10 border border-rose-500/20 text-rose-200 p-5 rounded-3xl text-[10px] font-black uppercase tracking-widest text-center">
+              <div className="bg-rose-500/20 border border-rose-500/30 text-rose-100 p-5 rounded-3xl text-[10px] font-black uppercase tracking-widest text-center">
                 {error}
               </div>
             )}
@@ -133,7 +144,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </button>
           </form>
 
-          <div className="bg-black/20 p-6 flex items-center justify-center gap-3 border-t border-white/10">
+          <div className="bg-black/40 p-6 flex items-center justify-center gap-3 border-t border-white/10">
              <Smartphone size={16} className="text-white/20" />
              <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.1em]">Cloud Terminal v3.5 Secure</span>
           </div>

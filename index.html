@@ -33,9 +33,25 @@
         justify-content: center;
         height: 100vh;
         background-color: #010a1b;
-        background-image: radial-gradient(circle at center, #0a1f44 0%, #010a1b 100%);
         color: white;
         text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .loader-bg {
+        position: absolute;
+        inset: 0;
+        background-image: url("https://zbntnglatvuijefqfjhx.supabase.co/storage/v1/object/sign/TESTE/ChatGPT%20Image%204%20de%20fev.%20de%202026,%2013_44_06.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV80ODRmMGU5Zi04NWE1LTQ4YzYtYjgwMS1lZGE0ZGNmODU1MWQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJURVNURS9DaGF0R1BUIEltYWdlIDQgZGUgZmV2LiBkZSAyMDI2LCAxM180NF8wNi5wbmciLCJpYXQiOjE3NzA2NjUyMzEsImV4cCI6MTgwMjIwMTIzMX0.9ncjUcIm5Xz2IfCtPqvuHGLcMGdUB-KOBzZppw23T5k");
+        background-size: cover;
+        background-position: center;
+        opacity: 0.4;
+        z-index: 0;
+      }
+      .loader-overlay {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, rgba(10, 31, 68, 0.4) 0%, #010a1b 100%);
+        z-index: 1;
       }
       .loader-spinner {
         width: 30px;
@@ -51,6 +67,8 @@
         flex-direction: column;
         align-items: center;
         gap: 8px;
+        position: relative;
+        z-index: 2;
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -68,9 +86,11 @@
     }
     </script>
   </head>
-  <body class="bg-slate-50">
+  <body class="bg-[#010a1b]">
     <div id="root">
       <div class="initial-loader">
+        <div class="loader-bg"></div>
+        <div class="loader-overlay"></div>
         <div class="loader-spinner"></div>
         <div class="loader-content">
           <div style="text-align: center;">
