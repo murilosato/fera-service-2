@@ -42,6 +42,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const formatDate = (dateStr: string) => dateStr.split('-').reverse().join('/');
   const isWithinRange = (dateStr: string) => dateStr >= startDate && dateStr <= endDate;
 
+  // Função para formatar números para o CSV (Sem milhar, vírgula decimal)
+  const formatNumberForCSV = (value: number, decimals: number = 2) => {
+    return value.toLocaleString('pt-BR', {
+      useGrouping: false,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: decimals
+    });
+  };
+
   const getVirtualStatus = (record: AttendanceRecord): AttendanceRecord['status'] => {
     if (record.status !== 'absent') return record.status;
     const obs = record.discountObservation || '';
@@ -89,22 +98,38 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
   const exportInventory = () => {
     const headers = ["ID", "ITEM", "CATEGORIA", "QTD ATUAL", "VALOR UN", "TOTAL EM ESTOQUE"];
-    const rows = state.inventory.map(i => [i.id, i.name, i.category, i.currentQty, i.unitValue, (i.currentQty * (i.unitValue || 0))]);
+    const rows = state.inventory.map(i => [
+      i.id, 
+      i.name, 
+      i.category, 
+      formatNumberForCSV(i.currentQty, 2), 
+      formatNumberForCSV(i.unitValue || 0, 2), 
+      formatNumberForCSV((i.currentQty * (i.unitValue || 0)), 2)
+    ]);
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Estoque", csvContent);
   };
 
   const exportEmployees = () => {
     const headers = ["ID", "NOME", "CARGO", "STATUS", "DIARIA PADRAO", "CPF", "MODALIDADE", "CARGA HORARIA"];
-    const rows = state.employees.map(e => [e.id, e.name, e.role, e.status, e.defaultValue, e.cpf || "", e.paymentModality, e.workload || ""]);
+    const rows = state.employees.map(e => [
+      e.id, 
+      e.name, 
+      e.role, 
+      e.status, 
+      formatNumberForCSV(e.defaultValue || 0, 2), 
+      e.cpf || "", 
+      e.paymentModality, 
+      e.workload || ""
+    ]);
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Equipe", csvContent);
   };
 
   const exportFinance = () => {
     const headers = ["DATA", "TIPO", "REFERENCIA", "CATEGORIA", "VALOR"];
-    const rowsIn = state.cashIn.map(i => [i.date, "ENTRADA", i.reference, i.category, i.value]);
-    const rowsOut = state.cashOut.map(o => [o.date, "SAIDA", o.reference, o.category, o.value]);
+    const rowsIn = state.cashIn.map(i => [i.date, "ENTRADA", i.reference, i.category, formatNumberForCSV(i.value, 2)]);
+    const rowsOut = state.cashOut.map(o => [o.date, "SAIDA", o.reference, o.category, formatNumberForCSV(o.value, 2)]);
     const allRows = [...rowsIn, ...rowsOut].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
     const csvContent = [headers, ...allRows].map(e => e.join(";")).join("\n");
     downloadCSV("Relatorio_Financeiro", csvContent);
@@ -115,7 +140,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     const rows: any[] = [];
     state.areas.forEach(area => {
       (area.services || []).forEach(s => {
-        rows.push([s.serviceDate, area.name, s.type, s.areaM2, s.unitValue, s.totalValue]);
+        rows.push([
+          s.serviceDate, 
+          area.name, 
+          s.type, 
+          formatNumberForCSV(s.areaM2, 2), 
+          formatNumberForCSV(s.unitValue || 0, 2), 
+          formatNumberForCSV(s.totalValue || 0, 2)
+        ]);
       });
     });
     const csvContent = [headers, ...rows].sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(e => e.join(";")).join("\n");
@@ -157,9 +189,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     return data.sort((a, b) => a.date.localeCompare(b.date));
   }, [state.areas, startDate, endDate]);
 
-  const totalBaseValue = attendanceHistory.reduce((acc, r) => acc + r.value, 0);
-  const totalDiscounts = attendanceHistory.reduce((acc, r) => acc + (r.discountValue || 0), 0);
-  const totalToPay = totalBaseValue - totalDiscounts;
+  // Cálculos de Totais - Filtrando para remover os já pagos conforme solicitado
+  const { totalBaseValue, totalDiscounts, totalToPay } = useMemo(() => {
+    const pendingRecords = attendanceHistory.filter(r => r.paymentStatus !== 'pago');
+    const base = pendingRecords.reduce((acc, r) => acc + r.value, 0);
+    const discounts = pendingRecords.reduce((acc, r) => acc + (r.discountValue || 0), 0);
+    return {
+      totalBaseValue: base,
+      totalDiscounts: discounts,
+      totalToPay: base - discounts
+    };
+  }, [attendanceHistory]);
 
   const handlePrint = () => {
     setShowPrintView(true);
@@ -212,7 +252,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         reference: financeTitle || `ACERTO: ${selectedEmployee.name}`,
         category: financeCategory || 'Salários'
       });
-      const updates = attendanceHistory.map(record => dbSave('attendance_records', { ...record, paymentStatus: 'pago' }));
+      
+      // Marca como pago apenas os que estavam pendentes
+      const updates = attendanceHistory
+        .filter(r => r.paymentStatus !== 'pago')
+        .map(record => dbSave('attendance_records', { ...record, paymentStatus: 'pago' }));
+      
       await Promise.all(updates);
       await refreshData();
       setShowFinanceModal(false);
@@ -266,10 +311,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
       {viewMode === 'employees' ? (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print:hidden">
           <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm lg:col-span-1 h-[calc(100vh-320px)] min-h-[500px] flex flex-col transition-all">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/30">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/30">
                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input className="w-full bg-white border-2 border-slate-100 pl-11 pr-4 py-4 rounded-[20px] text-[11px] font-black uppercase outline-none focus:border-slate-900 focus:bg-white transition-all shadow-sm" placeholder="BUSCAR NOME..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+                  <input className="w-full bg-white border-2 border-slate-100 pl-14 pr-4 py-5 rounded-[24px] text-[13px] font-black uppercase outline-none focus:border-slate-900 focus:bg-white transition-all shadow-sm" placeholder="BUSCAR NOME..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
@@ -303,7 +348,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                         <div className="md:w-64 bg-white/5 p-6 rounded-[32px] border border-white/10 flex flex-col justify-center text-center">
                            {selectedEmployee.paymentModality !== 'CLT' ? (
                              <>
-                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido</p>
+                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Total Líquido Pendente</p>
                                 <h2 className="text-3xl font-black text-emerald-400 tracking-tighter">{formatMoney(totalToPay)}</h2>
                              </>
                            ) : (
@@ -509,9 +554,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                   {attendanceHistory.map(h => {
                     const virtualStatus = getVirtualStatus(h);
                     const shorthand = getStatusShorthand(virtualStatus, selectedEmployee, h);
+                    const isPaid = h.paymentStatus === 'pago';
                     return (
-                      <tr key={h.id}>
-                        <td className="p-2 border-slate-200 bg-slate-50/30">{formatDate(h.date)}</td>
+                      <tr key={h.id} className={isPaid ? 'opacity-50 grayscale' : ''}>
+                        <td className="p-2 border-slate-200 bg-slate-50/30">{formatDate(h.date)} {isPaid && '(PAGO)'}</td>
                         <td className="p-2 text-center font-black">{shorthand}</td>
                         {selectedEmployee.paymentModality === 'CLT' ? (
                           <>
@@ -534,23 +580,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 </tbody>
               </table>
 
-              {/* Resumo Financeiro no Rodapé - Conforme Screenshot (Oculto para CLT) */}
+              {/* Resumo Financeiro no Rodapé - Apenas Pendentes */}
               {selectedEmployee.paymentModality !== 'CLT' && (
                 <div className="mt-8 flex justify-end">
                   <div className="w-full max-w-sm">
                      <div className="bg-[#0f172a] p-6 rounded-[32px] text-white shadow-2xl grid grid-cols-2 gap-6 items-center border border-white/5">
                         <div className="space-y-4">
                            <div>
-                              <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Proventos</p>
+                              <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1">Proventos Pendentes</p>
                               <p className="text-sm font-black tracking-tight">{formatMoney(totalBaseValue)}</p>
                            </div>
                            <div className="pt-4 border-t border-white/10">
-                              <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1">Total Descontos (-)</p>
+                              <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1">Descontos Pendentes (-)</p>
                               <p className="text-sm font-black text-rose-400 tracking-tight">{formatMoney(totalDiscounts)}</p>
                            </div>
                         </div>
                         <div className="bg-white/5 p-6 rounded-2xl flex flex-col justify-center text-center border border-white/5">
-                           <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2">Valor Líquido a Pagar</p>
+                           <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2">Total Líquido a Pagar</p>
                            <h2 className="text-2xl font-black text-emerald-400 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
                         </div>
                      </div>
@@ -584,7 +630,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
             <h3 className="text-sm font-black uppercase text-slate-900 text-center">Gerar Saída Financeira?</h3>
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
               <p className="text-xl font-black text-emerald-600">{formatMoney(totalToPay)}</p>
-              <p className="text-[8px] font-black text-emerald-400 uppercase mt-1">Valor Total Líquido</p>
+              <p className="text-[8px] font-black text-emerald-400 uppercase mt-1">Valor Total Líquido Pendente</p>
             </div>
             <button onClick={handleCreateFinanceExit} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-600">CONFIRMAR E QUITAR</button>
             <button onClick={() => setShowFinanceModal(false)} className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase">CANCELAR</button>
