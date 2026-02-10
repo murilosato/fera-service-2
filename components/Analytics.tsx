@@ -516,7 +516,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 </div>
 
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-center">
-                  <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Regime de Contratação</p>
+                  <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Regime de : </p>
                   <p className="text-[10px] font-black uppercase text-blue-600 leading-none">{selectedEmployee.paymentModality}</p>
                   {selectedEmployee.paymentModality === 'CLT' && (
                     <div className="mt-2 space-y-1">
