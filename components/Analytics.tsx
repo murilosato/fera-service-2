@@ -265,19 +265,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
 
       {viewMode === 'employees' ? (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print:hidden">
-          <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm lg:col-span-1 h-[calc(100vh-420px)] flex flex-col transition-all">
-            <div className="p-6 border-b border-slate-100 bg-slate-50/30">
+          <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm lg:col-span-1 h-[calc(100vh-320px)] min-h-[500px] flex flex-col transition-all">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/30">
                <div className="relative">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-                  <input className="w-full bg-white border-2 border-slate-100 pl-14 pr-4 py-5 rounded-[24px] text-[12px] font-black uppercase outline-none focus:border-slate-900 focus:bg-white transition-all shadow-sm" placeholder="BUSCAR NOME..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input className="w-full bg-white border-2 border-slate-100 pl-11 pr-4 py-4 rounded-[20px] text-[11px] font-black uppercase outline-none focus:border-slate-900 focus:bg-white transition-all shadow-sm" placeholder="BUSCAR NOME..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
                {filteredEmployees.map(emp => (
-                 <button key={emp.id} onClick={() => setSelectedEmployeeId(emp.id)} className={`w-full flex items-center p-7 rounded-[28px] text-left transition-all border-l-[6px] ${selectedEmployeeId === emp.id ? 'bg-slate-900 text-white shadow-2xl border-emerald-500 translate-x-1 scale-[1.02]' : 'hover:bg-slate-50 text-slate-600 border-transparent'}`}>
+                 <button key={emp.id} onClick={() => setSelectedEmployeeId(emp.id)} className={`w-full flex items-center p-5 rounded-[22px] text-left transition-all border-l-[4px] ${selectedEmployeeId === emp.id ? 'bg-slate-900 text-white shadow-xl border-emerald-500 translate-x-1' : 'hover:bg-slate-50 text-slate-600 border-transparent'}`}>
                     <div className="min-w-0">
-                       <p className="text-sm font-black uppercase truncate tracking-tight flex items-center gap-2">{emp.paymentModality === 'CLT' && <Clock size={12} className="text-blue-500" />}{emp.name}</p>
-                       <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mt-1 ${selectedEmployeeId === emp.id ? 'text-emerald-400' : 'text-slate-400'}`}>{emp.role} • {emp.paymentModality}</p>
+                       <p className="text-[11px] font-black uppercase truncate tracking-tight flex items-center gap-2">{emp.paymentModality === 'CLT' && <Clock size={10} className="text-blue-500" />}{emp.name}</p>
+                       <p className={`text-[9px] font-bold uppercase tracking-[0.1em] mt-0.5 ${selectedEmployeeId === emp.id ? 'text-emerald-400' : 'text-slate-400'}`}>{emp.role} • {emp.paymentModality}</p>
                     </div>
                  </button>
                ))}
