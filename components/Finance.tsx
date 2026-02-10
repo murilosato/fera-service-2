@@ -24,6 +24,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
   const [formData, setFormData] = useState({
+    type: 'in' as 'in' | 'out',
     value: '',
     date: new Date().toISOString().split('T')[0],
     reference: '',
@@ -39,6 +40,17 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
     }
   };
 
+  const handleOpenForm = () => {
+    setFormData({
+      ...formData,
+      type: activeTab, // Inicia com o tipo da aba que o usuário está vendo
+      value: '',
+      reference: '',
+      category: 'Geral'
+    });
+    setShowForm(true);
+  };
+
   const handleSaveMove = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(formData.value.replace(',', '.'));
@@ -48,15 +60,14 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
     try {
       await dbSave('cash_flow', {
         companyId: state.currentUser?.companyId,
-        type: activeTab,
+        type: formData.type,
         value: val,
         date: formData.date,
-        reference: formData.reference || (activeTab === 'in' ? 'Receita Diversa' : 'Despesa Diversa'),
+        reference: formData.reference || (formData.type === 'in' ? 'Receita Diversa' : 'Despesa Diversa'),
         category: formData.category
       });
       await refreshData();
       setShowForm(false);
-      setFormData({ value: '', date: new Date().toISOString().split('T')[0], reference: '', category: 'Geral' });
       notify("Lançamento efetivado");
     } catch (e: any) {
       console.error(e);
@@ -88,7 +99,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
           <h2 className="text-xl font-black text-slate-900 uppercase">Fluxo de Caixa</h2>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Saldos Unificados Cloud</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-xl">
+        <button onClick={handleOpenForm} className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-xl">
           <Plus size={18} /> Novo Registro
         </button>
       </header>
@@ -193,13 +204,45 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
            <form onSubmit={handleSaveMove} className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
               <div className="flex justify-between items-center border-b border-slate-50 pb-5">
-                <div><h3 className="font-black uppercase text-xs text-slate-900">Novo Lançamento</h3><p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{activeTab === 'in' ? 'Entrada de Receita' : 'Saída de Despesa'}</p></div>
-                <button type="button" onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-50 rounded-full"><X size={20}/></button>
+                <div>
+                   <h3 className="font-black uppercase text-xs text-slate-900">Novo Lançamento</h3>
+                   <p className={`text-[9px] font-bold uppercase mt-1 ${formData.type === 'in' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                     {formData.type === 'in' ? 'Entrada de Receita' : 'Saída de Despesa'}
+                   </p>
+                </div>
+                <button type="button" onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-50 rounded-full transition-all"><X size={20}/></button>
               </div>
+
+              {/* Seletor de Tipo dentro do Form */}
+              <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                 <button 
+                  type="button" 
+                  onClick={() => setFormData({...formData, type: 'in'})}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase transition-all ${formData.type === 'in' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}
+                 >
+                   <ArrowUpCircle size={14}/> Entrada
+                 </button>
+                 <button 
+                  type="button" 
+                  onClick={() => setFormData({...formData, type: 'out'})}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase transition-all ${formData.type === 'out' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}
+                 >
+                   <ArrowDownCircle size={14}/> Saída
+                 </button>
+              </div>
+
               <div className="space-y-4">
                  <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">VALOR DO LANÇAMENTO</label>
-                    <input type="number" step="0.01" required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:bg-white focus:border-slate-900" placeholder="0.00" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} />
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      required 
+                      className={`w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:bg-white transition-all ${formData.type === 'in' ? 'focus:border-emerald-500' : 'focus:border-rose-500'}`} 
+                      placeholder="0.00" 
+                      value={formData.value} 
+                      onChange={e => setFormData({...formData, value: e.target.value})} 
+                    />
                  </div>
                  <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">DATA DE COMPETÊNCIA</label>
@@ -215,8 +258,11 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
                        {state.financeCategories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
                     </select>
                  </div>
-                 <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-all flex items-center justify-center gap-3">
-                   {isLoading ? <Loader2 className="animate-spin" size={16} /> : 'EFETIVAR LANÇAMENTO'}
+                 <button 
+                  disabled={isLoading} 
+                  className={`w-full text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl ${formData.type === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
+                 >
+                   {isLoading ? <Loader2 className="animate-spin" size={16} /> : `EFETIVAR ${formData.type === 'in' ? 'RECEITA' : 'DESPESA'}`}
                  </button>
               </div>
            </form>
