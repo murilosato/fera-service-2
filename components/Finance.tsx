@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AppState } from '../types';
-import { Plus, ArrowDownCircle, ArrowUpCircle, X, Wallet, Trash2, Loader2, DollarSign, Calendar, Tag, Search, Filter, CheckSquare, Square, ChevronDown } from 'lucide-react';
+import { Plus, ArrowDownCircle, ArrowUpCircle, X, Wallet, Trash2, Edit2, Loader2, DollarSign, Calendar, Tag, Search, Filter, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -15,6 +15,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
   const [activeTab, setActiveTab] = useState<'in' | 'out'>('in');
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string } | null>(null);
   
   // Estados para Filtros
@@ -54,12 +55,25 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
   };
 
   const handleOpenForm = () => {
+    setEditingId(null);
     setFormData({
-      ...formData,
       type: activeTab,
       value: '',
+      date: new Date().toISOString().split('T')[0],
       reference: '',
       category: state.financeCategories[0] || 'Geral'
+    });
+    setShowForm(true);
+  };
+
+  const handleEdit = (item: any) => {
+    setEditingId(item.id);
+    setFormData({
+      type: item.type as 'in' | 'out',
+      value: String(item.value).replace('.', ','),
+      date: item.date,
+      reference: item.reference,
+      category: item.category
     });
     setShowForm(true);
   };
@@ -72,6 +86,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
     setIsLoading(true);
     try {
       await dbSave('cash_flow', {
+        id: editingId || undefined,
         companyId: state.currentUser?.companyId,
         type: formData.type,
         value: val,
@@ -81,7 +96,8 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
       });
       await refreshData();
       setShowForm(false);
-      notify("Lançamento efetivado");
+      setEditingId(null);
+      notify(editingId ? "Lançamento atualizado" : "Lançamento efetivado");
     } catch (e: any) {
       console.error(e);
       notify("Erro na gravação.", "error");
@@ -232,19 +248,34 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-                <tr className="text-[9px] font-black uppercase text-slate-400 bg-slate-50/50 border-b border-slate-100"><th className="px-8 py-5">Data</th><th className="px-8 py-5">Referência</th><th className="px-8 py-5">Categoria</th><th className="px-8 py-5 text-right">Valor</th><th className="px-8 py-5 text-center">Ações</th></tr>
+                <tr className="text-[9px] font-black uppercase text-slate-400 bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-8 py-5">Data</th>
+                  <th className="px-8 py-5">Referência</th>
+                  <th className="px-8 py-5">Categoria</th>
+                  <th className="px-8 py-5 text-right">Valor</th>
+                  <th className="px-8 py-5 text-center">Ações</th>
+                </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
                 {filteredData.length === 0 ? (
                   <tr><td colSpan={5} className="px-8 py-20 text-center italic text-slate-300 uppercase text-[10px] font-black">Nenhum lançamento encontrado para os critérios de busca</td></tr>
                 ) : (
                   filteredData.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50/30 transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50/30 transition-colors group">
                       <td className="px-8 py-4 text-[10px] font-bold text-slate-500">{item.date.split('-').reverse().join('/')}</td>
                       <td className="px-8 py-4 text-[10px] font-black uppercase text-slate-800">{item.reference}</td>
                       <td className="px-8 py-4"><span className="text-[8px] font-black uppercase bg-slate-100 px-3 py-1 rounded-lg text-slate-500">{item.category}</span></td>
                       <td className={`px-8 py-4 text-right font-black text-sm ${activeTab === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(item.value)}</td>
-                      <td className="px-8 py-4 text-center"><button onClick={() => setConfirmDelete({ isOpen: true, id: item.id })} className="p-2 text-slate-300 hover:text-rose-600 transition-colors"><Trash2 size={16} /></button></td>
+                      <td className="px-8 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleEdit(item)} className="p-2 text-slate-300 hover:text-blue-600 transition-colors">
+                            <Edit2 size={16} />
+                          </button>
+                          <button onClick={() => setConfirmDelete({ isOpen: true, id: item.id })} className="p-2 text-slate-300 hover:text-rose-600 transition-colors">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -267,12 +298,12 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
            <form onSubmit={handleSaveMove} className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
               <div className="flex justify-between items-center border-b border-slate-50 pb-5">
                 <div>
-                   <h3 className="font-black uppercase text-xs text-slate-900">Novo Lançamento</h3>
+                   <h3 className="font-black uppercase text-xs text-slate-900">{editingId ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
                    <p className={`text-[9px] font-bold uppercase mt-1 ${formData.type === 'in' ? 'text-emerald-500' : 'text-rose-500'}`}>
                      {formData.type === 'in' ? 'Entrada de Receita' : 'Saída de Despesa'}
                    </p>
                 </div>
-                <button type="button" onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-50 rounded-full transition-all"><X size={20}/></button>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-2 hover:bg-slate-50 rounded-full transition-all"><X size={20}/></button>
               </div>
 
               <div className="flex bg-slate-100 p-1.5 rounded-2xl">
@@ -322,7 +353,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
                   disabled={isLoading} 
                   className={`w-full text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl ${formData.type === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
                  >
-                   {isLoading ? <Loader2 className="animate-spin" size={16} /> : `EFETIVAR ${formData.type === 'in' ? 'RECEITA' : 'DESPESA'}`}
+                   {isLoading ? <Loader2 className="animate-spin" size={16} /> : (editingId ? 'SALVAR ALTERAÇÕES' : `EFETIVAR ${formData.type === 'in' ? 'RECEITA' : 'DESPESA'}`)}
                  </button>
               </div>
            </form>
