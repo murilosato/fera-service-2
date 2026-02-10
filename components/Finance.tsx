@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AppState } from '../types';
-import { Plus, ArrowDownCircle, ArrowUpCircle, X, Wallet, Trash2, Loader2, DollarSign, Calendar, Tag, Search, Filter } from 'lucide-react';
+import { Plus, ArrowDownCircle, ArrowUpCircle, X, Wallet, Trash2, Loader2, DollarSign, Calendar, Tag, Search, Filter, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -21,7 +21,9 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     type: 'in' as 'in' | 'out',
@@ -30,6 +32,17 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
     reference: '',
     category: 'Geral'
   });
+
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -43,10 +56,10 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
   const handleOpenForm = () => {
     setFormData({
       ...formData,
-      type: activeTab, // Inicia com o tipo da aba que o usuário está vendo
+      type: activeTab,
       value: '',
       reference: '',
-      category: 'Geral'
+      category: state.financeCategories[0] || 'Geral'
     });
     setShowForm(true);
   };
@@ -77,12 +90,20 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
     }
   };
 
+  const toggleCategory = (category: string) => {
+    setCategoryFilter(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category) 
+        : [...prev, category]
+    );
+  };
+
   // Lógica de Filtragem
   const filteredData = useMemo(() => {
     const list = activeTab === 'in' ? state.cashIn : state.cashOut;
     return list.filter(item => {
       const matchesSearch = item.reference.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = categoryFilter === 'ALL' || item.category === categoryFilter;
+      const matchesCategory = categoryFilter.length === 0 || categoryFilter.includes(item.category);
       const matchesDate = (!startDate || item.date >= startDate) && (!endDate || item.date <= endDate);
       return matchesSearch && matchesCategory && matchesDate;
     });
@@ -119,7 +140,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      {/* Barra de Filtros */}
+      {/* Barra de Filtros Atualizada com Multi-Checkbox */}
       <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
           <Filter size={14}/> Filtragem e Busca Avançada
@@ -134,27 +155,68 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
-          <select 
-            className="w-full bg-slate-50 border border-slate-100 p-3 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-slate-900 transition-all"
-            value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
-          >
-            <option value="ALL">TODAS AS CATEGORIAS</option>
-            {state.financeCategories.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
-          </select>
+
+          {/* Multi-Select Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+              className="w-full bg-slate-50 border border-slate-100 p-3 rounded-2xl text-[10px] font-black uppercase flex items-center justify-between hover:bg-white hover:border-slate-900 transition-all text-left"
+            >
+              <span className="truncate">
+                {categoryFilter.length === 0 ? 'TODAS AS CATEGORIAS' : `${categoryFilter.length} SELECIONADAS`}
+              </span>
+              <ChevronDown size={14} className={`transition-transform ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isCategoryDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-3 space-y-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                <button 
+                  onClick={() => setCategoryFilter([])}
+                  className="w-full text-left p-2 rounded-xl text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-colors mb-1"
+                >
+                  LIMPAR SELEÇÃO
+                </button>
+                {state.financeCategories.map(cat => (
+                  <label 
+                    key={cat} 
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                  >
+                    <input 
+                      type="checkbox" 
+                      className="hidden" 
+                      checked={categoryFilter.includes(cat)} 
+                      onChange={() => toggleCategory(cat)} 
+                    />
+                    <div className={`transition-all ${categoryFilter.includes(cat) ? 'text-emerald-600 scale-110' : 'text-slate-300 group-hover:text-slate-400'}`}>
+                      {categoryFilter.includes(cat) ? <CheckSquare size={18} /> : <Square size={18} />}
+                    </div>
+                    <span className={`text-[10px] font-black uppercase transition-colors ${categoryFilter.includes(cat) ? 'text-slate-900' : 'text-slate-500'}`}>
+                      {cat}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
              <Calendar size={14} className="text-slate-400" />
-             <label className="text-[8px] font-black text-slate-400 uppercase">DE:</label>
-             <input type="date" className="bg-transparent text-[10px] font-black outline-none flex-1" value={startDate} onChange={e => setStartDate(e.target.value)} />
+             <div className="flex flex-col">
+               <label className="text-[7px] font-black text-slate-400 uppercase">DE:</label>
+               <input type="date" className="bg-transparent text-[10px] font-black outline-none" value={startDate} onChange={e => setStartDate(e.target.value)} />
+             </div>
           </div>
           <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
-             <label className="text-[8px] font-black text-slate-400 uppercase">ATÉ:</label>
-             <input type="date" className="bg-transparent text-[10px] font-black outline-none flex-1" value={endDate} onChange={e => setEndDate(e.target.value)} />
+             <Calendar size={14} className="text-slate-400" />
+             <div className="flex flex-col">
+               <label className="text-[7px] font-black text-slate-400 uppercase">ATÉ:</label>
+               <input type="date" className="bg-transparent text-[10px] font-black outline-none" value={endDate} onChange={e => setEndDate(e.target.value)} />
+             </div>
           </div>
         </div>
-        {(searchQuery || categoryFilter !== 'ALL' || startDate || endDate) && (
+        {(searchQuery || categoryFilter.length > 0 || startDate || endDate) && (
           <button 
-            onClick={() => { setSearchQuery(''); setCategoryFilter('ALL'); setStartDate(''); setEndDate(''); }}
+            onClick={() => { setSearchQuery(''); setCategoryFilter([]); setStartDate(''); setEndDate(''); }}
             className="text-[9px] font-black text-rose-500 uppercase flex items-center gap-2 hover:opacity-70"
           >
             <X size={14}/> Limpar filtros selecionados
@@ -213,7 +275,6 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
                 <button type="button" onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-50 rounded-full transition-all"><X size={20}/></button>
               </div>
 
-              {/* Seletor de Tipo dentro do Form */}
               <div className="flex bg-slate-100 p-1.5 rounded-2xl">
                  <button 
                   type="button" 
@@ -235,11 +296,10 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
                  <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">VALOR DO LANÇAMENTO</label>
                     <input 
-                      type="number" 
-                      step="0.01" 
+                      type="text"
                       required 
                       className={`w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:bg-white transition-all ${formData.type === 'in' ? 'focus:border-emerald-500' : 'focus:border-rose-500'}`} 
-                      placeholder="0.00" 
+                      placeholder="0,00" 
                       value={formData.value} 
                       onChange={e => setFormData({...formData, value: e.target.value})} 
                     />
@@ -250,7 +310,7 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
                  </div>
                  <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">REFERÊNCIA DO TÍTULO</label>
-                    <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs uppercase outline-none focus:bg-white" placeholder="EX: PAGAMENTO DE COMBUSTÍVEL" value={formData.reference} onChange={e => setFormData({...formData, reference: e.target.value})} />
+                    <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs uppercase outline-none focus:bg-white" placeholder="EX: PAGAMENTO DE COMBUSTÍVEL" value={formData.reference} onChange={e => setFormData({...formData, reference: e.target.value.toUpperCase()})} />
                  </div>
                  <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">CATEGORIA</label>
