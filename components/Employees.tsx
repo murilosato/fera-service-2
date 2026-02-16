@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
-import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar } from 'lucide-react';
+import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2 } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface EmployeesProps {
@@ -21,6 +21,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const initialFormState = { 
     name: '', 
     role: '', 
+    team: '',
     defaultValue: '0', 
     cpf: '', 
     phone: '', 
@@ -158,7 +159,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       setShowTimeModal(null);
       notify("Registro salvo com sucesso");
     } catch (e) { 
-      console.error(e);
       notify("Erro ao salvar registro de ponto", "error"); 
     } finally { 
       setIsLoading(false); 
@@ -189,6 +189,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         companyId: state.currentUser?.companyId,
         name: employeeForm.name.toUpperCase(),
         role: employeeForm.role.toUpperCase(),
+        team: employeeForm.team.toUpperCase(),
         defaultValue: finalValue,
         cpf: employeeForm.cpf || null,
         phone: employeeForm.phone || null,
@@ -208,8 +209,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       setEmployeeForm(initialFormState);
       notify(editingId ? "Cadastro atualizado" : "Novo colaborador integrado");
     } catch (e: any) { 
-      console.error(e);
-      notify("Falha na sincronização. Verifique os dados ou conexão.", "error"); 
+      notify("Falha na sincronização.", "error"); 
     } finally { 
       setIsLoading(false); 
     }
@@ -220,6 +220,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     setEmployeeForm({
       name: emp.name,
       role: emp.role,
+      team: emp.team || '',
       defaultValue: String(emp.defaultValue || 0),
       cpf: emp.cpf || '',
       phone: emp.phone || '',
@@ -242,7 +243,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const getAttendanceLabel = (record: AttendanceRecord | undefined, emp: Employee) => {
     if (!record) return '-';
     const virtualStatus = getVirtualStatus(record);
-
     if (emp.paymentModality === 'CLT') {
       switch(virtualStatus) {
         case 'present': return record.clockIn || 'P';
@@ -299,7 +299,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
           <table className="w-full min-w-[800px] border-collapse">
             <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase border-b">
               <tr>
-                <th className="sticky left-0 z-20 bg-slate-50 p-4 text-left border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] min-w-[200px]">Colaborador</th>
+                <th className="sticky left-0 z-20 bg-slate-50 p-4 text-left border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] min-w-[220px]">Colaborador</th>
                 {calendarDays.map(day => {
                    const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                    const isToday = dateStr === new Date().toISOString().split('T')[0];
@@ -323,7 +323,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                           {emp.paymentModality === 'CLT' && <Clock size={10} className="text-blue-500" />}
                           {emp.name}
                         </p>
-                        <p className="text-[8px] text-slate-400 font-bold uppercase">{emp.role} • {emp.paymentModality}</p>
+                        <p className="text-[8px] text-slate-400 font-bold uppercase">{emp.role}</p>
+                        <p className="text-[7px] text-emerald-600 font-black uppercase mt-0.5">{emp.team || 'SEM EQUIPE'}</p>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => handleEdit(emp)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={12}/></button>
@@ -336,9 +337,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                     const att = state.attendanceRecords.find(r => r.employeeId === emp.id && r.date === dateStr);
                     const isToday = dateStr === new Date().toISOString().split('T')[0];
                     const virtualStatus = att ? getVirtualStatus(att) : null;
-                    
                     let bgColor = 'text-slate-200 hover:bg-slate-100';
-
                     if (att) {
                         switch(virtualStatus) {
                           case 'present': bgColor = emp.paymentModality === 'CLT' ? 'bg-blue-600 text-white shadow-inner' : 'bg-emerald-500 text-white shadow-inner'; break;
@@ -351,13 +350,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                     } else if (isToday) {
                         bgColor = 'bg-blue-50/30 text-blue-400';
                     }
-
                     return (
-                      <td 
-                        key={day} 
-                        onClick={() => handleToggleAttendance(emp.id, dateStr)}
-                        className={`p-0 border-r h-12 text-center text-[8px] font-black transition-all cursor-pointer ${bgColor}`}
-                      >
+                      <td key={day} onClick={() => handleToggleAttendance(emp.id, dateStr)} className={`p-0 border-r h-12 text-center text-[8px] font-black transition-all cursor-pointer ${bgColor}`}>
                         {getAttendanceLabel(att, emp)}
                       </td>
                     );
@@ -399,6 +393,17 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                      <option value="">SELECIONE UM CARGO...</option>
                      {state.employeeRoles.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                    </select>
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Equipe / Encarregado</label>
+                   <div className="relative">
+                      <Users2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
+                      <select className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-4 rounded-2xl text-[11px] font-black uppercase outline-none" value={employeeForm.team} onChange={e => setEmployeeForm({...employeeForm, team: e.target.value})}>
+                        <option value="">NENHUMA EQUIPE</option>
+                        {state.teams.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                      </select>
+                   </div>
                 </div>
 
                 {employeeForm.paymentModality === 'DIARIA' && (

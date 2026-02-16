@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, InventoryItem } from '../types';
-import { Package, Plus, Search, X, Loader2, History, Trash2, Filter, AlertTriangle, CheckCircle2, List, Undo2, ArrowRightLeft, DollarSign, Edit2, Save } from 'lucide-react';
+import { Package, Plus, Search, X, Loader2, History, Trash2, Filter, AlertTriangle, CheckCircle2, List, Undo2, ArrowRightLeft, DollarSign, Edit2, Save, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -18,9 +18,13 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
   const [selectedItemId, setSelectedItemId] = useState('');
   const [itemSearchText, setItemSearchText] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // Estados para movimentação (Terminal e Modal)
   const [movementQty, setMovementQty] = useState('1');
   const [movementPrice, setMovementPrice] = useState('0');
   const [movementDest, setMovementDest] = useState('');
+  const [activeMovement, setActiveMovement] = useState<{ item: InventoryItem, type: 'in' | 'out' } | null>(null);
+
   const [newItem, setNewItem] = useState({ name: '', category: '', currentQty: '0', minQty: '0', idealQty: '0', unitValue: '0' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'ok'>('all');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -72,20 +76,18 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
     } catch (e) { notify("Erro ao salvar material", "error"); } finally { setIsLoading(false); }
   };
 
-  const handleMovement = async (type: 'in' | 'out') => {
-    if (!selectedItemId) return notify("Selecione um produto", "error");
-    if (!movementDest.trim()) return notify("Informe o Destino ou Origem", "error");
-    
-    const qty = parseFloat(movementQty);
-    const price = parseFloat(movementPrice.replace(',', '.'));
+  const executeMovement = async (type: 'in' | 'out', itemId: string, qtyStr: string, priceStr: string, dest: string) => {
+    const qty = parseFloat(qtyStr.replace(',', '.'));
+    const price = parseFloat(priceStr.replace(',', '.'));
     
     if (isNaN(qty) || qty <= 0) return notify("Quantidade inválida", "error");
     if (type === 'in' && (isNaN(price) || price < 0)) return notify("Informe o valor de entrada", "error");
+    if (!dest.trim()) return notify("Informe a Origem/Destino", "error");
 
     setIsLoading(true);
     try {
-      const item = state.inventory.find(i => i.id === selectedItemId);
-      if (!item) throw new Error();
+      const item = state.inventory.find(i => i.id === itemId);
+      if (!item) throw new Error("Item não encontrado");
 
       const newQty = type === 'in' ? Number(item.currentQty) + qty : Number(item.currentQty) - qty;
       if (type === 'out' && newQty < 0) {
@@ -101,21 +103,52 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
 
       await dbSave('inventory_exits', {
         companyId: state.currentUser?.companyId,
-        itemId: selectedItemId,
+        itemId: itemId,
         quantity: type === 'in' ? qty : -qty,
         date: new Date().toISOString().split('T')[0],
-        destination: movementDest.toUpperCase(),
+        destination: dest.toUpperCase(),
         observation: type === 'in' ? `ENTRADA (+) - VALOR UN: ${formatMoney(price)}` : `RETIRADA (-) - ${item.name}`
       });
 
       await refreshData();
+      notify("Movimentação registrada!");
+      return true;
+    } catch (e) { 
+      notify("Erro na sincronização", "error"); 
+      return false;
+    } finally { 
+      setIsLoading(false); 
+    }
+  };
+
+  const handleTerminalMovement = async (type: 'in' | 'out') => {
+    if (!selectedItemId) return notify("Selecione um produto", "error");
+    const success = await executeMovement(type, selectedItemId, movementQty, movementPrice, movementDest);
+    if (success) {
       setMovementQty('1');
       setMovementPrice('0');
       setMovementDest('');
       setItemSearchText('');
       setSelectedItemId('');
-      notify("Movimentação registrada!");
-    } catch (e) { notify("Erro na sincronização", "error"); } finally { setIsLoading(false); }
+    }
+  };
+
+  const handleModalMovement = async () => {
+    if (!activeMovement) return;
+    const success = await executeMovement(activeMovement.type, activeMovement.item.id, movementQty, movementPrice, movementDest);
+    if (success) {
+      setActiveMovement(null);
+      setMovementQty('1');
+      setMovementPrice('0');
+      setMovementDest('');
+    }
+  };
+
+  const openMovementModal = (item: InventoryItem, type: 'in' | 'out') => {
+    setActiveMovement({ item, type });
+    setMovementQty('1');
+    setMovementPrice(String(item.unitValue || 0).replace('.', ','));
+    setMovementDest('');
   };
 
   const handleDeleteHistory = async () => {
@@ -184,22 +217,42 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                 <label className="text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 block">Produto</label>
                 <div className="relative">
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-                  <input className="w-full bg-slate-50 border-2 border-slate-100 pl-14 pr-4 py-5 rounded-[24px] text-[12px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all uppercase shadow-sm" placeholder="BUSCAR ITEM..." value={itemSearchText} onFocus={() => setIsDropdownOpen(true)} onChange={e => setItemSearchText(e.target.value)} />
-                  {isDropdownOpen && itemSearchText && (
+                  <input 
+                    className="w-full bg-slate-50 border-2 border-slate-100 pl-14 pr-4 py-5 rounded-[24px] text-[12px] font-black outline-none focus:bg-white focus:border-slate-900 transition-all uppercase shadow-sm" 
+                    placeholder="BUSCAR ITEM..." 
+                    value={itemSearchText} 
+                    onFocus={() => setIsDropdownOpen(true)} 
+                    onChange={e => setItemSearchText(e.target.value)} 
+                  />
+                  {isDropdownOpen && (
                     <div className="absolute top-full left-0 right-0 bg-white border border-slate-100 rounded-[28px] shadow-2xl z-[100] mt-3 p-3 max-h-72 overflow-auto animate-in fade-in slide-in-from-top-2 border-2">
-                      {state.inventory.filter(i => i.name.toLowerCase().includes(itemSearchText.toLowerCase())).map(item => (
-                        <button key={item.id} className="w-full text-left p-4 hover:bg-slate-50 border-b last:border-0 flex justify-between rounded-[20px] transition-colors" onClick={() => { setSelectedItemId(item.id); setItemSearchText(item.name); setIsDropdownOpen(false); setMovementPrice(String(item.unitValue || 0)); }}>
+                      {state.inventory
+                        .filter(i => i.name.toLowerCase().includes(itemSearchText.toLowerCase()))
+                        .map(item => (
+                        <button 
+                          key={item.id} 
+                          className="w-full text-left p-4 hover:bg-slate-50 border-b last:border-0 flex justify-between rounded-[20px] transition-colors" 
+                          onClick={() => { 
+                            setSelectedItemId(item.id); 
+                            setItemSearchText(item.name); 
+                            setIsDropdownOpen(false); 
+                            setMovementPrice(String(item.unitValue || 0).replace('.', ',')); 
+                          }}
+                        >
                           <span className="text-[11px] font-black uppercase">{item.name}</span>
                           <span className="text-[10px] font-bold text-slate-400">SALDO: {item.currentQty}</span>
                         </button>
                       ))}
+                      {state.inventory.length === 0 && (
+                        <div className="p-4 text-center text-[10px] font-black text-slate-400 uppercase">Nenhum item cadastrado</div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
               <div className="md:col-span-1 lg:col-span-1">
                 <label className="text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 block">Qtd</label>
-                <input type="number" className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-[24px] font-black text-[12px] outline-none focus:bg-white focus:border-slate-900 shadow-sm" value={movementQty} onChange={e => setMovementQty(e.target.value)} />
+                <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-[24px] font-black text-[12px] outline-none focus:bg-white focus:border-slate-900 shadow-sm" value={movementQty} onChange={e => setMovementQty(e.target.value)} />
               </div>
               <div className="md:col-span-2 lg:col-span-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 block">V. Unitário (R$)</label>
@@ -210,8 +263,8 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                 <input className="w-full bg-slate-50 border-2 border-slate-100 p-5 rounded-[24px] font-black text-[12px] outline-none focus:bg-white focus:border-slate-900 shadow-sm uppercase" placeholder="EX: COMPRA NF 01" value={movementDest} onChange={e => setMovementDest(e.target.value)} />
               </div>
               <div className="md:col-span-3 lg:col-span-3 flex gap-3">
-                 <button onClick={() => handleMovement('out')} className="flex-1 bg-white border-2 border-rose-100 text-rose-600 p-5 rounded-[24px] font-black uppercase text-[10px] hover:bg-rose-50 transition-all shadow-sm">RETIRADA</button>
-                 <button onClick={() => handleMovement('in')} className="flex-1 bg-slate-900 text-white p-5 rounded-[24px] font-black uppercase text-[10px] hover:bg-emerald-600 transition-all shadow-lg">ENTRADA</button>
+                 <button onClick={() => handleTerminalMovement('out')} className="flex-1 bg-white border-2 border-rose-100 text-rose-600 p-5 rounded-[24px] font-black uppercase text-[10px] hover:bg-rose-50 transition-all shadow-sm">RETIRADA</button>
+                 <button onClick={() => handleTerminalMovement('in')} className="flex-1 bg-slate-900 text-white p-5 rounded-[24px] font-black uppercase text-[10px] hover:bg-emerald-600 transition-all shadow-lg">ENTRADA</button>
               </div>
             </div>
           </div>
@@ -243,10 +296,10 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                   <tr>
                     <th className="px-8 py-5">Produto</th>
                     <th className="px-8 py-5 text-center">Saldo Atual</th>
-                    <th className="px-8 py-5 text-center">Qtd. Ideal</th>
                     <th className="px-8 py-5 text-right">Valor Unitário</th>
                     <th className="px-8 py-5 text-right">Valor em Estoque</th>
                     <th className="px-8 py-5 text-center">Status</th>
+                    <th className="px-8 py-5 text-center">Movimentar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[11px] font-black uppercase text-slate-700">
@@ -264,7 +317,6 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                              <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">{item.category}</p>
                           </td>
                           <td className={`px-8 py-4 text-center font-black ${isCritical ? 'text-rose-600' : 'text-slate-900'}`}>{item.currentQty}</td>
-                          <td className="px-8 py-4 text-center font-black text-slate-400">{item.idealQty || 0}</td>
                           <td className="px-8 py-4 text-right">
                             <div className="flex items-center justify-end gap-2 group">
                               {isEditing ? (
@@ -282,7 +334,7 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                                 <>
                                   <span className="text-slate-500 font-bold">{formatMoney(item.unitValue || 0)}</span>
                                   <button 
-                                    onClick={() => setEditingPrice({ id: item.id, value: String(item.unitValue || 0) })}
+                                    onClick={() => setEditingPrice({ id: item.id, value: String(item.unitValue || 0).replace('.', ',') })}
                                     className="p-1 text-slate-200 group-hover:text-blue-500 transition-colors"
                                   >
                                     <Edit2 size={12}/>
@@ -299,25 +351,21 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                                <span className="text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl flex items-center justify-center gap-1 mx-auto w-fit text-[9px]"><CheckCircle2 size={12}/> OK</span>
                              )}
                           </td>
+                          <td className="px-8 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                               <button onClick={() => openMovementModal(item, 'in')} className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-sm" title="Entrada">
+                                 <Plus size={16}/>
+                               </button>
+                               <button onClick={() => openMovementModal(item, 'out')} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-xl transition-all shadow-sm" title="Retirada">
+                                 <X size={16}/>
+                               </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })
                   )}
                 </tbody>
-                {filteredItems.length > 0 && (
-                  <tfoot className="bg-slate-900 text-white">
-                    <tr>
-                      <td colSpan={4} className="px-8 py-4 text-[9px] font-black uppercase tracking-widest flex items-center justify-between">
-                        <span>Resumo Financeiro do Filtro ({filteredItems.length} Itens)</span>
-                        <span className="text-slate-500 ml-4 hidden sm:inline">Total Geral: {formatMoney(totalInventoryValue)}</span>
-                      </td>
-                      <td className="px-8 py-4 text-right text-emerald-400 text-sm font-black">
-                         {formatMoney(filteredSubTotal)}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                )}
               </table>
             </div>
           </div>
@@ -364,6 +412,51 @@ const Inventory: React.FC<InventoryProps> = ({ state, setState, notify }) => {
                </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Movimentação Direta (Entrada/Saída) */}
+      {activeMovement && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+           <div className="bg-white rounded-[40px] w-full max-w-sm p-10 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100">
+              <div className="flex justify-between items-center border-b pb-6">
+                <div>
+                   <h3 className="text-sm font-black uppercase text-slate-900">
+                     {activeMovement.type === 'in' ? 'Entrada de Material' : 'Retirada de Material'}
+                   </h3>
+                   <p className="text-[10px] font-black text-blue-500 uppercase mt-1">{activeMovement.item.name}</p>
+                </div>
+                <button onClick={() => setActiveMovement(null)} className="text-slate-300 hover:text-slate-900"><X/></button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Quantidade</label>
+                   <input type="text" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:bg-white" value={movementQty} onChange={e => setMovementQty(e.target.value)} />
+                </div>
+                
+                {activeMovement.type === 'in' && (
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Valor Unitário (R$)</label>
+                    <input type="text" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:bg-white" placeholder="0,00" value={movementPrice} onChange={e => setMovementPrice(e.target.value)} />
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{activeMovement.type === 'in' ? 'Origem / Fornecedor' : 'Destino / Local'}</label>
+                  <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl font-black text-xs outline-none focus:bg-white uppercase" placeholder="EX: COMPRA NF 123" value={movementDest} onChange={e => setMovementDest(e.target.value)} />
+                </div>
+
+                <button 
+                  onClick={handleModalMovement} 
+                  disabled={isLoading} 
+                  className={`w-full text-white py-5 rounded-3xl font-black uppercase text-[11px] tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 ${activeMovement.type === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
+                >
+                  {isLoading ? <Loader2 className="animate-spin" size={18}/> : (activeMovement.type === 'in' ? <Plus size={18}/> : <X size={18}/>)}
+                  CONFIRMAR {activeMovement.type === 'in' ? 'ENTRADA' : 'RETIRADA'}
+                </button>
+              </div>
+           </div>
         </div>
       )}
 

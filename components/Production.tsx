@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText, DollarSign, Layers, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText, DollarSign, Layers, BarChart3, Users2 } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -26,6 +26,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
   const [newArea, setNewArea] = useState<Partial<Area>>({
     name: '',
+    team: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
     startReference: '',
@@ -56,7 +57,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       });
       await refreshData();
       setIsAddingArea(false);
-      setNewArea({ name: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
+      setNewArea({ name: '', team: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
     } catch (e: any) { 
       alert("Erro ao criar O.S."); 
     } finally { 
@@ -117,7 +118,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   const filteredAreas = useMemo(() => {
     return state.areas.filter(area => {
       const matchStatus = area.status === viewStatus;
-      const matchName = area.name.toLowerCase().includes(searchName.toLowerCase());
+      const matchName = area.name.toLowerCase().includes(searchName.toLowerCase()) || 
+                       (area.team || '').toLowerCase().includes(searchName.toLowerCase());
       const matchType = filterServiceType === 'ALL' || (area.services || []).some(s => s.type === filterServiceType);
       
       let matchDate = true;
@@ -166,7 +168,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         </div>
       </header>
 
-      {/* Barra de Filtros Atualizada */}
       <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
@@ -191,7 +192,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
           </div>
         </div>
 
-        {/* Filtros de Data Reintroduzidos */}
         <div className="flex flex-col md:flex-row gap-4">
            <div className="flex-1 flex items-center gap-3 bg-slate-50 border border-slate-100 px-5 py-3 rounded-2xl">
               <Calendar size={16} className="text-slate-400" />
@@ -266,7 +266,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                     </div>
                     <div>
                       <h3 className="text-sm font-black uppercase leading-tight">{area.name}</h3>
-                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Iniciada em {formatDate(area.startDate)} • Ref: {area.startReference}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Iniciada em {formatDate(area.startDate)} • Ref: {area.startReference}</p>
+                        <span className="w-1 h-1 bg-slate-300 rounded-full"/>
+                        <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">{area.team || 'SEM EQUIPE'}</p>
+                      </div>
                     </div>
                   </div>
                   
@@ -415,8 +419,17 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="md:col-span-2 space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Identificação da O.S. (Nome/Área)</label>
-                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" placeholder="EX: AVENIDA CENTRAL - EQUIPE ALFA" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value.toUpperCase()})} />
+                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" placeholder="EX: AVENIDA CENTRAL" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value.toUpperCase()})} />
                  </div>
+                 
+                 <div className="md:col-span-2 space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-2"><Users2 size={12}/> Equipe / Encarregado Responsável</label>
+                    <select required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" value={newArea.team} onChange={e => setNewArea({...newArea, team: e.target.value})}>
+                      <option value="">SELECIONE UMA EQUIPE...</option>
+                      {state.teams.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                    </select>
+                 </div>
+
                  <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data de Início</label>
                     <input type="date" required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none" value={newArea.startDate} onChange={e => setNewArea({...newArea, startDate: e.target.value})} />

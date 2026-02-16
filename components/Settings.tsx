@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppState, ServiceType } from '../types';
-import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users, Calendar, Save, Activity, CreditCard, CheckCircle, X, Building, Globe, MapPin, Phone, Mail } from 'lucide-react';
+import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users, Calendar, Save, Activity, CreditCard, CheckCircle, X, Building, Globe, MapPin, Phone, Mail, Users2 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 import { SERVICE_OPTIONS } from '../constants';
 
@@ -13,7 +13,7 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [newEntries, setNewEntries] = useState({ finance: '', inventory: '', roles: '' });
+  const [newEntries, setNewEntries] = useState({ finance: '', inventory: '', roles: '', teams: '' });
   
   const [companyForm, setCompanyForm] = useState({
     name: state.company?.name || '',
@@ -78,7 +78,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     if (!state.currentUser?.companyId) return;
     setIsLoading(true);
     try {
-      // Usando chaves camelCase para compatibilidade com camelToSnake do lib/supabase.ts
       await dbSave('companies', {
         id: state.currentUser.companyId,
         serviceRates: localRates,
@@ -87,14 +86,13 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       await refreshData();
       notify("Valores técnicos e metas atualizados!");
     } catch (e) {
-      console.error(e);
       notify("Erro ao salvar configurações técnicas", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUpdateList = async (listKey: 'finance' | 'inventory' | 'roles', action: 'add' | 'remove', value: string) => {
+  const handleUpdateList = async (listKey: 'finance' | 'inventory' | 'roles' | 'teams', action: 'add' | 'remove', value: string) => {
     const companyId = state.currentUser?.companyId;
     if (!companyId) return notify("Erro: Empresa não identificada", "error");
 
@@ -113,9 +111,12 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       } else if (listKey === 'inventory') {
         dbField = 'inventoryCategories';
         stateKey = 'inventoryCategories';
-      } else {
+      } else if (listKey === 'roles') {
         dbField = 'employeeRoles';
         stateKey = 'employeeRoles';
+      } else {
+        dbField = 'teams';
+        stateKey = 'teams';
       }
 
       const currentList = (state[stateKey] as string[]) || [];
@@ -144,7 +145,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
 
       notify(action === 'add' ? "Parâmetro adicionado" : "Parâmetro removido");
     } catch (e: any) {
-      console.error(e);
       notify("Erro ao atualizar configurações", "error");
     } finally {
       setIsLoading(false);
@@ -154,7 +154,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   const handleSaveGoal = async () => {
     const val = parseFloat(goalForm.value);
     if (!goalForm.month || isNaN(val)) return notify("Valor da meta inválido", "error");
-    
     setIsLoading(true);
     try {
       const existing = state.monthlyGoals[goalForm.month] || { production: 0, revenue: 0, inventory: 0, finance: 0 };
@@ -178,7 +177,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Identidade da Unidade */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] shadow-sm space-y-6">
           <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
             <Building size={20} className="text-blue-500"/> Identidade da Unidade
@@ -210,7 +208,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </button>
         </div>
 
-        {/* Tabela de Preços e Metas Técnicas */}
         <div className="bg-white border border-slate-200 p-8 rounded-[40px] shadow-sm space-y-6">
           <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
             <DollarSign size={20} className="text-emerald-500"/> Configuração de Metas e Preços
@@ -231,23 +228,10 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
                       {serviceType}
                     </td>
                     <td className="py-2 text-right">
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        className="w-20 bg-slate-50 border border-slate-100 p-2 rounded-xl text-[10px] font-black text-right outline-none focus:bg-white" 
-                        value={localRates[serviceType]} 
-                        onChange={e => setLocalRates({...localRates, [serviceType]: parseFloat(e.target.value) || 0})} 
-                      />
+                      <input type="number" step="0.01" className="w-20 bg-slate-50 border border-slate-100 p-2 rounded-xl text-[10px] font-black text-right outline-none focus:bg-white" value={localRates[serviceType]} onChange={e => setLocalRates({...localRates, [serviceType]: parseFloat(e.target.value) || 0})} />
                     </td>
                     <td className="py-2 text-right">
-                      <input 
-                        type="number" 
-                        step="1" 
-                        className="w-24 bg-slate-50 border border-slate-100 p-2 rounded-xl text-[10px] font-black text-right outline-none focus:bg-white" 
-                        placeholder="Meta..."
-                        value={localServiceGoals[serviceType] || 0} 
-                        onChange={e => setLocalServiceGoals({...localServiceGoals, [serviceType]: parseFloat(e.target.value) || 0})} 
-                      />
+                      <input type="number" step="1" className="w-24 bg-slate-50 border border-slate-100 p-2 rounded-xl text-[10px] font-black text-right outline-none focus:bg-white" placeholder="Meta..." value={localServiceGoals[serviceType] || 0} onChange={e => setLocalServiceGoals({...localServiceGoals, [serviceType]: parseFloat(e.target.value) || 0})} />
                     </td>
                   </tr>
                 ))}
@@ -259,7 +243,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           </button>
         </div>
 
-        {/* Planejamento Geral Mensal */}
         <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-6 border border-white/5 lg:col-span-2">
             <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Planejamento Geral Mensal</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -285,47 +268,62 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white border border-slate-200 p-6 rounded-[40px] space-y-4 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-emerald-600 flex gap-2 items-center tracking-widest"><Tag size={16}/> Categorias de Fluxo</h4>
           <div className="flex gap-2">
-            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO..." value={newEntries.finance} onChange={e => setNewEntries({...newEntries, finance: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('finance', 'add', newEntries.finance)} />
-            <button onClick={() => handleUpdateList('finance', 'add', newEntries.finance)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl"><Plus size={18}/></button>
+            <input className="flex-1 bg-slate-50 border border-slate-200 p-3 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO..." value={newEntries.finance} onChange={e => setNewEntries({...newEntries, finance: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('finance', 'add', newEntries.finance)} />
+            <button onClick={() => handleUpdateList('finance', 'add', newEntries.finance)} disabled={isLoading} className="bg-slate-900 text-white p-3 rounded-2xl"><Plus size={16}/></button>
           </div>
           <div className="flex flex-wrap gap-2 pt-2">
-            {(state.financeCategories || []).map(c => (
-              <div key={c} className="bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl text-[9px] font-black flex items-center gap-3 uppercase text-slate-600">
-                {c} <button onClick={() => handleUpdateList('finance', 'remove', c)}><Trash2 size={14} className="text-slate-300 hover:text-rose-600"/></button>
+            {state.financeCategories.map(c => (
+              <div key={c} className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">
+                {c} <button onClick={() => handleUpdateList('finance', 'remove', c)}><Trash2 size={12} className="text-slate-300 hover:text-rose-600"/></button>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
+        <div className="bg-white border border-slate-200 p-6 rounded-[40px] space-y-4 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-blue-600 flex gap-2 items-center tracking-widest"><Package size={16}/> Categorias Estoque</h4>
           <div className="flex gap-2">
-            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVA..." value={newEntries.inventory} onChange={e => setNewEntries({...newEntries, inventory: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('inventory', 'add', newEntries.inventory)} />
-            <button onClick={() => handleUpdateList('inventory', 'add', newEntries.inventory)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl"><Plus size={18}/></button>
+            <input className="flex-1 bg-slate-50 border border-slate-200 p-3 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVA..." value={newEntries.inventory} onChange={e => setNewEntries({...newEntries, inventory: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('inventory', 'add', newEntries.inventory)} />
+            <button onClick={() => handleUpdateList('inventory', 'add', newEntries.inventory)} disabled={isLoading} className="bg-slate-900 text-white p-3 rounded-2xl"><Plus size={16}/></button>
           </div>
           <div className="flex flex-wrap gap-2 pt-2">
-            {(state.inventoryCategories || []).map(c => (
-              <div key={c} className="bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl text-[9px] font-black flex items-center gap-3 uppercase text-slate-600">
-                {c} <button onClick={() => handleUpdateList('inventory', 'remove', c)}><Trash2 size={14} className="text-slate-300 hover:text-rose-600"/></button>
+            {state.inventoryCategories.map(c => (
+              <div key={c} className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">
+                {c} <button onClick={() => handleUpdateList('inventory', 'remove', c)}><Trash2 size={12} className="text-slate-300 hover:text-rose-600"/></button>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 p-8 rounded-[40px] space-y-5 shadow-sm">
+        <div className="bg-white border border-slate-200 p-6 rounded-[40px] space-y-4 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-indigo-600 flex gap-2 items-center tracking-widest"><Users size={16}/> Cargos Unidade</h4>
           <div className="flex gap-2">
-            <input className="flex-1 bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO..." value={newEntries.roles} onChange={e => setNewEntries({...newEntries, roles: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('roles', 'add', newEntries.roles)} />
-            <button onClick={() => handleUpdateList('roles', 'add', newEntries.roles)} disabled={isLoading} className="bg-slate-900 text-white p-4 rounded-2xl"><Plus size={18}/></button>
+            <input className="flex-1 bg-slate-50 border border-slate-200 p-3 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO..." value={newEntries.roles} onChange={e => setNewEntries({...newEntries, roles: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('roles', 'add', newEntries.roles)} />
+            <button onClick={() => handleUpdateList('roles', 'add', newEntries.roles)} disabled={isLoading} className="bg-slate-900 text-white p-3 rounded-2xl"><Plus size={16}/></button>
           </div>
           <div className="flex flex-wrap gap-2 pt-2">
-            {(state.employeeRoles || []).map(r => (
-              <div key={r} className="bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl text-[9px] font-black flex items-center gap-3 uppercase text-slate-600">
-                {r} <button onClick={() => handleUpdateList('roles', 'remove', r)}><Trash2 size={14} className="text-slate-300 hover:text-rose-600"/></button>
+            {state.employeeRoles.map(r => (
+              <div key={r} className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">
+                {r} <button onClick={() => handleUpdateList('roles', 'remove', r)}><Trash2 size={12} className="text-slate-300 hover:text-rose-600"/></button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 p-6 rounded-[40px] space-y-4 shadow-sm">
+          <h4 className="text-[10px] font-black uppercase text-rose-600 flex gap-2 items-center tracking-widest"><Users2 size={16}/> Equipes (Encarregados)</h4>
+          <div className="flex gap-2">
+            <input className="flex-1 bg-slate-50 border border-slate-200 p-3 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO ENCARREGADO..." value={newEntries.teams} onChange={e => setNewEntries({...newEntries, teams: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('teams', 'add', newEntries.teams)} />
+            <button onClick={() => handleUpdateList('teams', 'add', newEntries.teams)} disabled={isLoading} className="bg-slate-900 text-white p-3 rounded-2xl"><Plus size={16}/></button>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-2">
+            {state.teams.map(t => (
+              <div key={t} className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">
+                {t} <button onClick={() => handleUpdateList('teams', 'remove', t)}><Trash2 size={12} className="text-slate-300 hover:text-rose-600"/></button>
               </div>
             ))}
           </div>

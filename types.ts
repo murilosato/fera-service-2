@@ -30,6 +30,7 @@ export interface Company {
   financeCategories?: string[];
   inventoryCategories?: string[];
   employeeRoles?: string[];
+  teams?: string[];
   cnpj?: string;
   phone?: string;
   address?: string;
@@ -53,6 +54,7 @@ export interface Area {
   id: string;
   companyId: string;
   name: string;
+  team?: string;
   startDate: string;
   endDate?: string;
   startReference: string;
@@ -78,6 +80,7 @@ export interface Employee {
   companyId: string;
   name: string;
   role: string;
+  team?: string;
   status: 'active' | 'inactive';
   defaultValue: number;
   paymentModality: 'DIARIA' | 'CLT';
@@ -170,6 +173,7 @@ export interface AppState {
   financeCategories: string[];
   inventoryCategories: string[];
   employeeRoles: string[];
+  teams: string[];
   currentUser: User | null;
   users: User[];
   company: Company | null;

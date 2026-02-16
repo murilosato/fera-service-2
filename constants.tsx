@@ -4,14 +4,12 @@ import { AppState, ServiceType, UserRole } from './types';
 export const INITIAL_STATE: AppState = {
   areas: [],
   employees: [
-    { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultValue: 85.00, paymentModality: 'DIARIA' },
-    { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultValue: 75.00, paymentModality: 'DIARIA' }
+    { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultValue: 85.00, paymentModality: 'DIARIA', team: 'EQUIPE 01' },
+    { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultValue: 75.00, paymentModality: 'DIARIA', team: 'EQUIPE 02' }
   ],
   attendanceRecords: [],
   inventory: [
-    // Fix: Added missing required property 'idealQty' to match InventoryItem interface
     { id: 'i1', companyId: 'fera-main', name: 'Fio de Nylon', category: 'insumos', currentQty: 10, minQty: 5, idealQty: 20, unitValue: 45.0 },
-    // Fix: Added missing required property 'idealQty' to match InventoryItem interface
     { id: 'i2', companyId: 'fera-main', name: 'Óleo 2T', category: 'insumos', currentQty: 3, minQty: 10, idealQty: 15, unitValue: 35.0 }
   ],
   inventoryExits: [],
@@ -42,9 +40,9 @@ export const INITIAL_STATE: AppState = {
     [ServiceType.PINTURA_MEIO_FIO]: 5000,
   },
   financeCategories: ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
-  // Fix: Adicionado propriedades faltantes exigidas pela interface AppState
   inventoryCategories: ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
   employeeRoles: ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado'],
+  teams: ['EQUIPE 01', 'EQUIPE 02'],
   currentUser: null,
   users: [
     {
@@ -54,7 +52,6 @@ export const INITIAL_STATE: AppState = {
       name: 'Diretoria Master',
       role: UserRole.MASTER,
       status: 'ativo',
-      // Fix: Adicionado a permissão 'ai' que estava faltando conforme a interface UserPermissions
       permissions: {
         production: true,
         finance: true,
@@ -65,7 +62,6 @@ export const INITIAL_STATE: AppState = {
       }
     }
   ],
-  // Fix: Adicionado propriedade 'company' inicial para satisfazer a interface AppState
   company: null
 };
 

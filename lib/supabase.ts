@@ -18,7 +18,6 @@ const camelToSnake = (obj: any) => {
   const n: any = {};
   Object.keys(obj).forEach(k => {
     let newKey = k;
-    // Mapeamentos explícitos para garantir compatibilidade com o schema do Banco
     if (k === 'companyId') newKey = 'company_id';
     else if (k === 'itemId') newKey = 'item_id';
     else if (k === 'areaId') newKey = 'area_id';
@@ -61,12 +60,7 @@ const camelToSnake = (obj: any) => {
     }
     
     let val = obj[k];
-    
-    // Converte strings vazias ou indefinidas para null para o banco
-    if (val === '' || val === undefined) {
-      val = null;
-    }
-    
+    if (val === '' || val === undefined) val = null;
     n[newKey] = val;
   });
   return n;
@@ -123,24 +117,6 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     };
   });
 
-  const defaultRates = {
-    [ServiceType.VARRICAO_KM]: 150.00,
-    [ServiceType.CAPINA_MANUAL_M2]: 2.50,
-    [ServiceType.ROCADA_MECANIZADA_M2]: 1.80,
-    [ServiceType.ROCADA_TRATOR_M2]: 0.90,
-    [ServiceType.BOCA_DE_LOBO]: 45.00,
-    [ServiceType.PINTURA_MEIO_FIO]: 1.20,
-  };
-
-  const defaultServiceGoals = {
-    [ServiceType.VARRICAO_KM]: 500,
-    [ServiceType.CAPINA_MANUAL_M2]: 10000,
-    [ServiceType.ROCADA_MECANIZADA_M2]: 20000,
-    [ServiceType.ROCADA_TRATOR_M2]: 30000,
-    [ServiceType.BOCA_DE_LOBO]: 100,
-    [ServiceType.PINTURA_MEIO_FIO]: 5000,
-  };
-
   const company = companyInfo?.data;
 
   return {
@@ -152,43 +128,23 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       address: company.address,
       email: company.email,
       website: company.website,
-      plan: company.plan
+      plan: company.plan,
+      teams: company.teams || []
     } : null,
     areas: areas.map((a: any) => ({
-      id: a.id, 
-      companyId: a.company_id, 
-      name: a.name, 
-      startDate: a.start_date, 
-      endDate: a.end_date,
-      startReference: a.start_reference, 
-      endReference: a.end_reference, 
-      observations: a.observations,
+      id: a.id, companyId: a.company_id, name: a.name, team: a.team, startDate: a.start_date, endDate: a.end_date,
+      startReference: a.start_reference, endReference: a.end_reference, observations: a.observations,
       status: a.status || 'executing',
       services: (a.services || []).map((s: any) => ({
-        id: s.id, 
-        companyId: s.company_id, 
-        areaId: s.area_id, 
-        type: s.type,
-        areaM2: Number(s.area_m2), 
-        unitValue: Number(s.unit_value), 
-        totalValue: Number(s.total_value), 
-        serviceDate: s.service_date
+        id: s.id, companyId: s.company_id, areaId: s.area_id, type: s.type,
+        areaM2: Number(s.area_m2), unitValue: Number(s.unit_value), totalValue: Number(s.total_value), serviceDate: s.service_date
       }))
     })),
     employees: emps.map((e: any) => ({
-      id: e.id, 
-      companyId: e.company_id, 
-      name: e.name, 
-      role: e.role, 
-      status: e.status || 'active',
-      defaultValue: Number(e.default_value), 
-      paymentModality: e.payment_modality || 'DIARIA',
-      cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address,
-      workload: e.workload,
-      startTime: e.start_time,
-      breakStart: e.break_start,
-      breakEnd: e.break_end,
-      endTime: e.end_time
+      id: e.id, companyId: e.company_id, name: e.name, role: e.role, team: e.team, status: e.status || 'active',
+      defaultValue: Number(e.default_value), paymentModality: e.payment_modality || 'DIARIA',
+      cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address, workload: e.workload,
+      startTime: e.start_time, breakStart: e.break_start, breakEnd: e.break_end, endTime: e.end_time
     })),
     inventory: inv.map((i: any) => ({
       id: i.id, companyId: i.company_id, name: i.name, category: i.category,
@@ -200,36 +156,22 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     cashIn: flow.filter((f: any) => f.type === 'in').map((f: any) => ({ id: f.id, companyId: f.company_id, date: f.date, value: Number(f.value), reference: f.reference, type: f.type, category: f.category })),
     cashOut: flow.filter((f: any) => f.type === 'out').map((f: any) => ({ id: f.id, companyId: f.company_id, date: f.date, value: Number(f.value), type: f.type, category: f.category, reference: f.reference })),
     attendanceRecords: att.map((r: any) => ({
-      id: r.id, 
-      companyId: r.company_id, 
-      employeeId: r.employee_id, 
-      date: r.date, 
-      status: r.status, 
-      value: Number(r.value), 
-      paymentStatus: r.payment_status,
-      discountValue: Number(r.discount_value || 0), 
-      discountObservation: r.discount_observation,
-      clockIn: r.clock_in,
-      breakStart: r.break_start,
-      breakEnd: r.break_end,
-      clockOut: r.clock_out
+      id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status,
+      discountValue: Number(r.discount_value || 0), discountObservation: r.discount_observation, clockIn: r.clock_in, breakStart: r.break_start, breakEnd: r.break_end, clockOut: r.clock_out
     })),
     monthlyGoals: goalsMap,
-    serviceRates: company?.service_rates || defaultRates,
-    serviceGoals: company?.service_goals || defaultServiceGoals,
-    financeCategories: company?.finance_categories || ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
-    inventoryCategories: company?.inventory_categories || ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
-    employeeRoles: company?.employee_roles || ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado']
+    serviceRates: company?.service_rates || {},
+    serviceGoals: company?.service_goals || {},
+    financeCategories: company?.finance_categories || [],
+    inventoryCategories: company?.inventory_categories || [],
+    employeeRoles: company?.employee_roles || [],
+    teams: company?.teams || ['EQUIPE 01', 'EQUIPE 02']
   };
 };
 
 export const dbSave = async (table: string, data: any) => {
   const fullPayload = camelToSnake(data);
-  
-  // CRUCIAL: Se o ID for nulo ou indefinido, removemos a chave do payload 
-  // para que o PostgreSQL use a geração automática (Identity/Serial)
   const { id, ...payloadWithoutId } = fullPayload;
-  
   let query;
   if (id) {
     query = supabase.from(table).update(payloadWithoutId).eq('id', id);
@@ -237,32 +179,23 @@ export const dbSave = async (table: string, data: any) => {
     if (table === 'monthly_goals') {
        query = supabase.from(table).upsert(fullPayload, { onConflict: 'company_id, month_key' });
     } else {
-       // Em inserções novas, não enviamos a coluna ID se ela for nula
        query = supabase.from(table).insert(payloadWithoutId);
     }
   }
-  
   const { data: saved, error } = await query.select();
-  if (error) {
-    console.error(`Erro crítico no Supabase (${table}):`, error.message, error.details);
-    throw error;
-  }
+  if (error) throw error;
   return saved;
 };
 
 export const dbDelete = async (table: string, id: string) => {
   const { error } = await supabase.from(table).delete().eq('id', id);
-  if (error) {
-    console.error(`Erro ao excluir da tabela ${table}:`, error);
-    throw error;
-  }
+  if (error) throw error;
 };
 
 export const signOut = async () => {
   try {
     await supabase.auth.signOut();
   } catch (e) {
-    console.error("SignOut error:", e);
   } finally {
     localStorage.clear();
     sessionStorage.clear();
