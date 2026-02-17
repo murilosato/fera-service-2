@@ -467,7 +467,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                 </div>
 
                 <div className="md:col-span-2 space-y-1">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1 de Residência</label>
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Endereço de Residência</label>
                    <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-slate-900" placeholder="RUA, NÚMERO, BAIRRO, CIDADE" value={employeeForm.address} onChange={e => setEmployeeForm({...employeeForm, address: e.target.value})} />
                 </div>
 
