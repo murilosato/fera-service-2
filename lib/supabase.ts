@@ -57,6 +57,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'discountValue') newKey = 'discount_value';
     else if (k === 'bonusValue') newKey = 'bonus_value';
     else if (k === 'discountObservation') newKey = 'discount_observation';
+    else if (k === 'createdAt') newKey = 'created_at';
     else {
       newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     }
@@ -98,7 +99,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
 
   const baseFilter = (q: any) => (!isMaster && companyId) ? q.eq('company_id', companyId) : q;
 
-  const [areas, emps, inv, exits, flow, att, goals, companyInfo] = await Promise.all([
+  const [areas, emps, inv, exits, flow, att, goals, support, companyInfo] = await Promise.all([
     safeQuery('areas', baseFilter(supabase.from('areas').select('*, services(*)').order('created_at', { ascending: false }))),
     safeQuery('employees', baseFilter(supabase.from('employees').select('*').order('name'))),
     safeQuery('inventory', baseFilter(supabase.from('inventory').select('*').order('name'))),
@@ -106,6 +107,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     safeQuery('cash_flow', baseFilter(supabase.from('cash_flow').select('*').order('date', { ascending: false }))),
     safeQuery('attendance_records', baseFilter(supabase.from('attendance_records').select('*'))),
     safeQuery('monthly_goals', baseFilter(supabase.from('monthly_goals').select('*'))),
+    safeQuery('support_requests', baseFilter(supabase.from('support_requests').select('*').order('created_at', { ascending: false }))),
     companyId ? supabase.from('companies').select('*').eq('id', companyId).maybeSingle() : Promise.resolve({ data: null })
   ]);
 
@@ -159,6 +161,9 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     attendanceRecords: att.map((r: any) => ({
       id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status,
       discountValue: Number(r.discount_value || 0), bonusValue: Number(r.bonus_value || 0), discountObservation: r.discount_observation, clockIn: r.clock_in, breakStart: r.break_start, breakEnd: r.break_end, clockOut: r.clock_out
+    })),
+    supportRequests: support.map((s: any) => ({
+        id: s.id, companyId: s.company_id, description: s.description, status: s.status, createdAt: s.created_at
     })),
     monthlyGoals: goalsMap,
     serviceRates: company?.service_rates || {},

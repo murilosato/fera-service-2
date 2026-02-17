@@ -13,6 +13,7 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import Analytics from './components/Analytics';
 import Management from './components/Management';
+import Support from './components/Support';
 import ConfirmationModal from './components/ConfirmationModal';
 import { RefreshCw, LogOut, AlertCircle, X, CheckCircle2 } from 'lucide-react';
 
@@ -146,6 +147,7 @@ const App = () => {
             case 'analytics': return <Analytics {...props} />;
             case 'management': return <Management {...props} />;
             case 'settings': return <Settings {...props} />;
+            case 'support': return <Support {...props} />;
             default: return <Dashboard {...props} />;
           }
         })()}

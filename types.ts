@@ -109,6 +109,14 @@ export interface AttendanceRecord {
   breakEnd?: string;
 }
 
+export interface SupportRequest {
+  id: string;
+  companyId: string;
+  description: string;
+  status: 'pendente' | 'concluido';
+  createdAt: string;
+}
+
 export interface CashIn {
   id: string;
   companyId: string;
@@ -163,6 +171,7 @@ export interface AppState {
   attendanceRecords: AttendanceRecord[];
   inventory: InventoryItem[];
   inventoryExits: InventoryExit[];
+  supportRequests: SupportRequest[];
   cashIn: CashIn[];
   cashOut: CashOut[];
   monthlyGoals: Record<string, MonthlyGoal>;

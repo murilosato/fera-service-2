@@ -13,6 +13,8 @@ export const INITIAL_STATE: AppState = {
     { id: 'i2', companyId: 'fera-main', name: 'Óleo 2T', category: 'insumos', currentQty: 3, minQty: 10, idealQty: 15, unitValue: 35.0 }
   ],
   inventoryExits: [],
+  // Adicionando propriedade faltante para cumprir o contrato da interface AppState
+  supportRequests: [],
   cashIn: [],
   cashOut: [],
   monthlyGoals: {
