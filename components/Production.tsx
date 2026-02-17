@@ -52,16 +52,25 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     }
     setIsLoading(true);
     try {
-      await dbSave('areas', { 
-        ...newArea, 
-        companyId: state.currentUser?.companyId, 
-        status: 'executing' 
-      });
+      // Sanitização do Payload: Removemos campos vazios que não devem ser enviados na criação
+      const payload = {
+        companyId: state.currentUser?.companyId,
+        name: newArea.name.toUpperCase(),
+        responsibleEmployeeId: newArea.responsibleEmployeeId || null,
+        startDate: newArea.startDate,
+        startReference: newArea.startReference.toUpperCase(),
+        endReference: newArea.endReference.toUpperCase(),
+        observations: newArea.observations?.toUpperCase() || '',
+        status: 'executing'
+      };
+
+      await dbSave('areas', payload);
       await refreshData();
       setIsAddingArea(false);
       setNewArea({ name: '', responsibleEmployeeId: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
     } catch (e: any) { 
-      alert("Erro ao criar O.S."); 
+      console.error("Erro Supabase:", e);
+      alert("Erro ao criar O.S. Detalhes: " + (e.message || "Erro de validação no banco.")); 
     } finally { 
       setIsLoading(false); 
     }
@@ -432,7 +441,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
                       placeholder="EX: AVENIDA CENTRAL" 
                       value={newArea.name} 
-                      onChange={e => setNewArea({...newArea, name: e.target.value.toUpperCase()})} 
+                      onChange={e => setNewArea({...newArea, name: e.target.value})} 
                     />
                  </div>
                  
@@ -469,7 +478,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" 
                       placeholder="EX: KM 01 OU RUA X" 
                       value={newArea.startReference} 
-                      onChange={e => setNewArea({...newArea, startReference: e.target.value.toUpperCase()})} 
+                      onChange={e => setNewArea({...newArea, startReference: e.target.value})} 
                     />
                  </div>
                  
@@ -480,7 +489,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" 
                       placeholder="EX: KM 10 OU RUA Y" 
                       value={newArea.endReference} 
-                      onChange={e => setNewArea({...newArea, endReference: e.target.value.toUpperCase()})} 
+                      onChange={e => setNewArea({...newArea, endReference: e.target.value})} 
                     />
                  </div>
                  
@@ -490,7 +499,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase h-20 outline-none resize-none focus:bg-white focus:border-[#010a1b] transition-all" 
                       placeholder="DETALHES DA EXECUÇÃO..." 
                       value={newArea.observations} 
-                      onChange={e => setNewArea({...newArea, observations: e.target.value.toUpperCase()})} 
+                      onChange={e => setNewArea({...newArea, observations: e.target.value})} 
                     />
                  </div>
               </div>

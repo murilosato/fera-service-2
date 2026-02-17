@@ -63,7 +63,15 @@ const camelToSnake = (obj: any) => {
     }
     
     let val = obj[k];
-    if (val === '' || val === undefined) val = null;
+    // Apenas converte para null se for undefined ou nulo de fato. 
+    // Strings vazias podem ser importantes para o banco.
+    if (val === undefined) val = null;
+    
+    // Tratamento especial para IDs: se for string vazia, vira null para não quebrar UUID
+    if ((k.toLowerCase().includes('id') || k.toLowerCase().includes('date')) && val === '') {
+      val = null;
+    }
+
     n[newKey] = val;
   });
   return n;
