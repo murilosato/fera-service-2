@@ -412,27 +412,38 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
         )}
       </div>
 
-      {/* Modal Nova O.S. */}
+      {/* Modal Nova O.S. - REDIMENSIONADO E OTIMIZADO */}
       {isAddingArea && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-           <form onSubmit={handleAddArea} className="bg-white rounded-[40px] w-full max-w-xl p-10 space-y-8 shadow-2xl animate-in zoom-in-95 border border-slate-100">
-              <div className="flex justify-between items-center border-b pb-6">
+           <form onSubmit={handleAddArea} className="bg-white rounded-[32px] w-full max-w-lg p-6 md:p-8 space-y-6 shadow-2xl animate-in zoom-in-95 border border-slate-100 max-h-[95vh] overflow-y-auto">
+              <div className="flex justify-between items-center border-b pb-4">
                 <div>
-                   <h3 className="text-sm font-black uppercase text-slate-900">Abertura de Nova O.S.</h3>
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Identificação e Responsabilidade Técnica</p>
+                   <h3 className="text-sm font-black uppercase text-slate-900 leading-none">Abertura de Nova O.S.</h3>
+                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Identificação e Responsabilidade</p>
                 </div>
-                <button type="button" onClick={() => setIsAddingArea(false)} className="text-slate-300 hover:text-slate-900 p-2"><X size={24}/></button>
+                <button type="button" onClick={() => setIsAddingArea(false)} className="text-slate-300 hover:text-slate-900 p-2"><X size={20}/></button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div className="md:col-span-2 space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Identificação da O.S. (Nome/Área)</label>
-                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" placeholder="EX: AVENIDA CENTRAL" value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value.toUpperCase()})} />
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Identificação da O.S. (Nome/Área)</label>
+                    <input 
+                      required 
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
+                      placeholder="EX: AVENIDA CENTRAL" 
+                      value={newArea.name} 
+                      onChange={e => setNewArea({...newArea, name: e.target.value.toUpperCase()})} 
+                    />
                  </div>
                  
                  <div className="md:col-span-2 space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-2"><UserCheck size={12}/> Colaborador Responsável (Encarregado)</label>
-                    <select required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" value={newArea.responsibleEmployeeId} onChange={e => setNewArea({...newArea, responsibleEmployeeId: e.target.value})}>
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 flex items-center gap-2"><UserCheck size={10}/> Colaborador Responsável</label>
+                    <select 
+                      required 
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all appearance-none" 
+                      value={newArea.responsibleEmployeeId} 
+                      onChange={e => setNewArea({...newArea, responsibleEmployeeId: e.target.value})}
+                    >
                       <option value="">SELECIONE UM COLABORADOR...</option>
                       {activeEmployees.map(emp => (
                         <option key={emp.id} value={emp.id}>{emp.name.toUpperCase()}</option>
@@ -441,25 +452,55 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                  </div>
 
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data de Início</label>
-                    <input type="date" required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none" value={newArea.startDate} onChange={e => setNewArea({...newArea, startDate: e.target.value})} />
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Data de Início</label>
+                    <input 
+                      type="date" 
+                      required 
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black outline-none focus:bg-white focus:border-[#010a1b]" 
+                      value={newArea.startDate} 
+                      onChange={e => setNewArea({...newArea, startDate: e.target.value})} 
+                    />
                  </div>
+                 
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Ref. Inicial (Ponto A)</label>
-                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none" placeholder="EX: KM 01 OU RUA X" value={newArea.startReference} onChange={e => setNewArea({...newArea, startReference: e.target.value.toUpperCase()})} />
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Ref. Inicial (Ponto A)</label>
+                    <input 
+                      required 
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" 
+                      placeholder="EX: KM 01 OU RUA X" 
+                      value={newArea.startReference} 
+                      onChange={e => setNewArea({...newArea, startReference: e.target.value.toUpperCase()})} 
+                    />
                  </div>
+                 
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Ref. Final (Ponto B)</label>
-                    <input required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none" placeholder="EX: KM 10 OU RUA Y" value={newArea.endReference} onChange={e => setNewArea({...newArea, endReference: e.target.value.toUpperCase()})} />
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Ref. Final (Ponto B)</label>
+                    <input 
+                      required 
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" 
+                      placeholder="EX: KM 10 OU RUA Y" 
+                      value={newArea.endReference} 
+                      onChange={e => setNewArea({...newArea, endReference: e.target.value.toUpperCase()})} 
+                    />
                  </div>
+                 
                  <div className="md:col-span-2 space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Observações Técnicas</label>
-                    <textarea className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase h-24 outline-none resize-none" placeholder="DESCREVA DETALHES DA EXECUÇÃO..." value={newArea.observations} onChange={e => setNewArea({...newArea, observations: e.target.value.toUpperCase()})} />
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block">Observações Técnicas</label>
+                    <textarea 
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase h-20 outline-none resize-none focus:bg-white focus:border-[#010a1b] transition-all" 
+                      placeholder="DETALHES DA EXECUÇÃO..." 
+                      value={newArea.observations} 
+                      onChange={e => setNewArea({...newArea, observations: e.target.value.toUpperCase()})} 
+                    />
                  </div>
               </div>
 
-              <button disabled={isLoading} type="submit" className="w-full bg-[#010a1b] text-white py-5 rounded-3xl font-black uppercase text-[11px] tracking-[0.2em] shadow-xl transition-all hover:bg-emerald-600 active:scale-95 flex items-center justify-center gap-3">
-                 {isLoading ? <Loader2 className="animate-spin" size={18}/> : <><MapPin size={18}/> ABRIR ORDEM DE SERVIÇO</>}
+              <button 
+                disabled={isLoading} 
+                type="submit" 
+                className="w-full bg-[#010a1b] text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl transition-all hover:bg-emerald-600 active:scale-95 flex items-center justify-center gap-3"
+              >
+                 {isLoading ? <Loader2 className="animate-spin" size={16}/> : <><MapPin size={16}/> ABRIR ORDEM DE SERVIÇO</>}
               </button>
            </form>
         </div>

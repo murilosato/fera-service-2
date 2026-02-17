@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
-import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2, CheckCircle2, Wallet } from 'lucide-react';
+import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2, CheckCircle2, Wallet, BarChart3 } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface EmployeesProps {
@@ -257,7 +257,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       }
     });
 
-    return { paid, pending };
+    return { paid, pending, total: paid + pending };
   }, [state.attendanceRecords, filteredEmployees, currentCalendarDate]);
 
   const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -305,8 +305,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         </div>
       </header>
 
-      {/* Cards de Resumo Financeiro de Equipe */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Cards de Resumo Financeiro de Equipe - ADICIONADO CUSTO TOTAL */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5 transition-all hover:border-emerald-200">
            <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner"><CheckCircle2 size={28} /></div>
            <div>
@@ -314,11 +314,18 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
               <h3 className="text-2xl font-black text-emerald-600 tracking-tighter">{formatMoney(monthSummary.paid)}</h3>
            </div>
         </div>
-        <div className="bg-slate-900 p-6 rounded-[32px] border border-white/5 shadow-2xl flex items-center gap-5 transition-all hover:bg-slate-800">
-           <div className="w-14 h-14 bg-white/10 text-amber-400 rounded-2xl flex items-center justify-center shadow-inner"><Wallet size={28} /></div>
+        <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5 transition-all hover:border-amber-200">
+           <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center shadow-inner"><Wallet size={28} /></div>
            <div>
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Saldo Pendente Acumulado</p>
-              <h3 className="text-2xl font-black text-white tracking-tighter">{formatMoney(monthSummary.pending)}</h3>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Pendente Acumulado</p>
+              <h3 className="text-2xl font-black text-slate-800 tracking-tighter">{formatMoney(monthSummary.pending)}</h3>
+           </div>
+        </div>
+        <div className="bg-slate-900 p-6 rounded-[32px] border border-white/5 shadow-2xl flex items-center gap-5 transition-all hover:bg-slate-800">
+           <div className="w-14 h-14 bg-white/10 text-blue-400 rounded-2xl flex items-center justify-center shadow-inner"><BarChart3 size={28} /></div>
+           <div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Custo Total de Operação</p>
+              <h3 className="text-2xl font-black text-white tracking-tighter">{formatMoney(monthSummary.total)}</h3>
            </div>
         </div>
       </div>
@@ -460,7 +467,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                 </div>
 
                 <div className="md:col-span-2 space-y-1">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Endereço de Residência</label>
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1 de Residência</label>
                    <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-slate-900" placeholder="RUA, NÚMERO, BAIRRO, CIDADE" value={employeeForm.address} onChange={e => setEmployeeForm({...employeeForm, address: e.target.value})} />
                 </div>
 
