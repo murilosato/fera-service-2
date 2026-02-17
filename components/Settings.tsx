@@ -13,7 +13,7 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [newEntries, setNewEntries] = useState({ finance: '', inventory: '', roles: '', teams: '' });
+  const [newEntries, setNewEntries] = useState({ finance: '', inventory: '', roles: '' });
   
   const [companyForm, setCompanyForm] = useState({
     name: state.company?.name || '',
@@ -92,7 +92,7 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     }
   };
 
-  const handleUpdateList = async (listKey: 'finance' | 'inventory' | 'roles' | 'teams', action: 'add' | 'remove', value: string) => {
+  const handleUpdateList = async (listKey: 'finance' | 'inventory' | 'roles', action: 'add' | 'remove', value: string) => {
     const companyId = state.currentUser?.companyId;
     if (!companyId) return notify("Erro: Empresa não identificada", "error");
 
@@ -111,12 +111,9 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
       } else if (listKey === 'inventory') {
         dbField = 'inventoryCategories';
         stateKey = 'inventoryCategories';
-      } else if (listKey === 'roles') {
+      } else {
         dbField = 'employeeRoles';
         stateKey = 'employeeRoles';
-      } else {
-        dbField = 'teams';
-        stateKey = 'teams';
       }
 
       const currentList = (state[stateKey] as string[]) || [];
@@ -268,7 +265,7 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white border border-slate-200 p-6 rounded-[40px] space-y-4 shadow-sm">
           <h4 className="text-[10px] font-black uppercase text-emerald-600 flex gap-2 items-center tracking-widest"><Tag size={16}/> Categorias de Fluxo</h4>
           <div className="flex gap-2">
@@ -309,21 +306,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
             {state.employeeRoles.map(r => (
               <div key={r} className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">
                 {r} <button onClick={() => handleUpdateList('roles', 'remove', r)}><Trash2 size={12} className="text-slate-300 hover:text-rose-600"/></button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-6 rounded-[40px] space-y-4 shadow-sm">
-          <h4 className="text-[10px] font-black uppercase text-rose-600 flex gap-2 items-center tracking-widest"><Users2 size={16}/> Equipes (Encarregados)</h4>
-          <div className="flex gap-2">
-            <input className="flex-1 bg-slate-50 border border-slate-200 p-3 rounded-2xl text-[10px] font-black uppercase outline-none" placeholder="NOVO ENCARREGADO..." value={newEntries.teams} onChange={e => setNewEntries({...newEntries, teams: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleUpdateList('teams', 'add', newEntries.teams)} />
-            <button onClick={() => handleUpdateList('teams', 'add', newEntries.teams)} disabled={isLoading} className="bg-slate-900 text-white p-3 rounded-2xl"><Plus size={16}/></button>
-          </div>
-          <div className="flex flex-wrap gap-2 pt-2">
-            {state.teams.map(t => (
-              <div key={t} className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl text-[8px] font-black flex items-center gap-2 uppercase text-slate-600">
-                {t} <button onClick={() => handleUpdateList('teams', 'remove', t)}><Trash2 size={12} className="text-slate-300 hover:text-rose-600"/></button>
               </div>
             ))}
           </div>

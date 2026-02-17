@@ -114,20 +114,24 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
     );
   };
 
-  // Lógica de Filtragem
-  const filteredData = useMemo(() => {
-    const list = activeTab === 'in' ? state.cashIn : state.cashOut;
+  // Lógica de Filtragem Universal (Aplicada tanto para a tabela quanto para os cards de resumo)
+  const filterList = (list: any[]) => {
     return list.filter(item => {
       const matchesSearch = item.reference.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = categoryFilter.length === 0 || categoryFilter.includes(item.category);
       const matchesDate = (!startDate || item.date >= startDate) && (!endDate || item.date <= endDate);
       return matchesSearch && matchesCategory && matchesDate;
     });
-  }, [activeTab, state.cashIn, state.cashOut, searchQuery, categoryFilter, startDate, endDate]);
+  };
 
-  const totalIn = state.cashIn.reduce((acc, c) => acc + c.value, 0);
-  const totalOut = state.cashOut.reduce((acc, c) => acc + c.value, 0);
-  const filteredTotal = filteredData.reduce((acc, item) => acc + item.value, 0);
+  const filteredIn = useMemo(() => filterList(state.cashIn), [state.cashIn, searchQuery, categoryFilter, startDate, endDate]);
+  const filteredOut = useMemo(() => filterList(state.cashOut), [state.cashOut, searchQuery, categoryFilter, startDate, endDate]);
+
+  const totalIn = useMemo(() => filteredIn.reduce((acc, c) => acc + c.value, 0), [filteredIn]);
+  const totalOut = useMemo(() => filteredOut.reduce((acc, c) => acc + c.value, 0), [filteredOut]);
+  const totalBalance = totalIn - totalOut;
+
+  const filteredData = activeTab === 'in' ? filteredIn : filteredOut;
 
   return (
     <div className="space-y-6">
@@ -144,15 +148,28 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-4">
            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center"><ArrowUpCircle size={24} /></div>
-           <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Receitas Totais</p><p className="text-lg font-black text-emerald-600">{formatMoney(totalIn)}</p></div>
+           <div>
+             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+               Receitas {(startDate || endDate || categoryFilter.length > 0 || searchQuery) ? 'Filtradas' : 'Totais'}
+             </p>
+             <p className="text-lg font-black text-emerald-600">{formatMoney(totalIn)}</p>
+           </div>
         </div>
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-4">
            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center"><ArrowDownCircle size={24} /></div>
-           <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Despesas Totais</p><p className="text-lg font-black text-rose-600">{formatMoney(totalOut)}</p></div>
+           <div>
+             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+               Despesas {(startDate || endDate || categoryFilter.length > 0 || searchQuery) ? 'Filtradas' : 'Totais'}
+             </p>
+             <p className="text-lg font-black text-rose-600">{formatMoney(totalOut)}</p>
+           </div>
         </div>
         <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl flex items-center gap-4 border border-white/5">
            <div className="w-12 h-12 bg-white/10 text-emerald-400 rounded-xl flex items-center justify-center"><Wallet size={24} /></div>
-           <div><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Saldo Disponível</p><p className="text-lg font-black text-emerald-400">{formatMoney(totalIn - totalOut)}</p></div>
+           <div>
+             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Saldo no Período</p>
+             <p className={`text-lg font-black ${totalBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatMoney(totalBalance)}</p>
+           </div>
         </div>
       </div>
 
@@ -283,8 +300,8 @@ const Finance: React.FC<FinanceProps> = ({ state, setState, notify }) => {
             {filteredData.length > 0 && (
               <tfoot className="bg-slate-50/80 border-t border-slate-100">
                 <tr>
-                  <td colSpan={3} className="px-8 py-4 text-[9px] font-black uppercase text-slate-400">Total Filtrado ({activeTab === 'in' ? 'Receitas' : 'Despesas'})</td>
-                  <td className={`px-8 py-4 text-right font-black text-sm ${activeTab === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(filteredTotal)}</td>
+                  <td colSpan={3} className="px-8 py-4 text-[9px] font-black uppercase text-slate-400">Total na Lista ({activeTab === 'in' ? 'Receitas' : 'Despesas'})</td>
+                  <td className={`px-8 py-4 text-right font-black text-sm ${activeTab === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(activeTab === 'in' ? totalIn : totalOut)}</td>
                   <td></td>
                 </tr>
               </tfoot>

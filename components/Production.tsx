@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { Area, Service, AppState, ServiceType } from '../types';
-import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText, DollarSign, Layers, BarChart3, Users2 } from 'lucide-react';
+import { Area, Service, AppState, ServiceType, Employee } from '../types';
+import { Plus, Trash2, CheckCircle2, MapPin, X, ChevronDown, ChevronUp, Loader2, Info, ArrowRight, Activity, Archive, Calendar, Edit3, Search, Filter, Clock, FileText, DollarSign, Layers, BarChart3, UserCheck } from 'lucide-react';
 import { SERVICE_OPTIONS } from '../constants';
 import ConfirmationModal from './ConfirmationModal';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -26,7 +26,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
 
   const [newArea, setNewArea] = useState<Partial<Area>>({
     name: '',
-    team: '',
+    responsibleEmployeeId: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
     startReference: '',
@@ -35,6 +35,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   });
 
   const [newService, setNewService] = useState({ type: ServiceType.VARRICAO_KM, quantity: '' });
+
+  const activeEmployees = useMemo(() => state.employees.filter(e => e.status === 'active'), [state.employees]);
 
   const refreshData = async () => {
     if (state.currentUser?.companyId || state.currentUser?.role === 'DIRETORIA_MASTER') {
@@ -57,7 +59,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       });
       await refreshData();
       setIsAddingArea(false);
-      setNewArea({ name: '', team: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
+      setNewArea({ name: '', responsibleEmployeeId: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
     } catch (e: any) { 
       alert("Erro ao criar O.S."); 
     } finally { 
@@ -118,8 +120,11 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   const filteredAreas = useMemo(() => {
     return state.areas.filter(area => {
       const matchStatus = area.status === viewStatus;
+      
+      const responsible = state.employees.find(e => e.id === area.responsibleEmployeeId);
       const matchName = area.name.toLowerCase().includes(searchName.toLowerCase()) || 
-                       (area.team || '').toLowerCase().includes(searchName.toLowerCase());
+                       (responsible?.name || '').toLowerCase().includes(searchName.toLowerCase());
+      
       const matchType = filterServiceType === 'ALL' || (area.services || []).some(s => s.type === filterServiceType);
       
       let matchDate = true;
@@ -128,7 +133,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       
       return matchStatus && matchName && matchType && matchDate;
     });
-  }, [state.areas, viewStatus, searchName, filterDateStart, filterDateEnd, filterServiceType]);
+  }, [state.areas, viewStatus, searchName, filterDateStart, filterDateEnd, filterServiceType, state.employees]);
 
   const productionTotals = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -174,7 +179,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
             <input 
               className="w-full bg-slate-50 border border-slate-100 pl-12 pr-4 py-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all" 
-              placeholder="BUSCAR O.S. POR NOME OU EQUIPE..." 
+              placeholder="BUSCAR O.S. POR NOME OU RESPONSÁVEL..." 
               value={searchName}
               onChange={e => setSearchName(e.target.value)}
             />
@@ -253,6 +258,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
             const areaTotalM2 = (area.services || []).reduce((acc: number, s) => acc + (Number(s.areaM2) || 0), 0);
             const areaTotalValue = (area.services || []).reduce((acc: number, s) => acc + (Number(s.totalValue) || 0), 0);
             const isExpanded = expandedAreaId === area.id;
+            const responsible = state.employees.find(e => e.id === area.responsibleEmployeeId);
 
             return (
               <div key={area.id} className={`bg-white rounded-[32px] border ${isExpanded ? 'border-[#010a1b] shadow-xl' : 'border-slate-100 shadow-sm'} overflow-hidden transition-all duration-300`}>
@@ -269,7 +275,9 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       <div className="flex items-center gap-3 mt-1">
                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Iniciada em {formatDate(area.startDate)} • Ref: {area.startReference}</p>
                         <span className="w-1 h-1 bg-slate-300 rounded-full"/>
-                        <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">{area.team || 'SEM EQUIPE'}</p>
+                        <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                          <UserCheck size={10}/> {responsible?.name || 'SEM RESPONSÁVEL'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -411,7 +419,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
               <div className="flex justify-between items-center border-b pb-6">
                 <div>
                    <h3 className="text-sm font-black uppercase text-slate-900">Abertura de Nova O.S.</h3>
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Identificação e Ponto de Partida</p>
+                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Identificação e Responsabilidade Técnica</p>
                 </div>
                 <button type="button" onClick={() => setIsAddingArea(false)} className="text-slate-300 hover:text-slate-900 p-2"><X size={24}/></button>
               </div>
@@ -423,10 +431,12 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                  </div>
                  
                  <div className="md:col-span-2 space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-2"><Users2 size={12}/> Equipe / Encarregado Responsável</label>
-                    <select required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" value={newArea.team} onChange={e => setNewArea({...newArea, team: e.target.value})}>
-                      <option value="">SELECIONE UMA EQUIPE...</option>
-                      {state.teams.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1 flex items-center gap-2"><UserCheck size={12}/> Colaborador Responsável (Encarregado)</label>
+                    <select required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b]" value={newArea.responsibleEmployeeId} onChange={e => setNewArea({...newArea, responsibleEmployeeId: e.target.value})}>
+                      <option value="">SELECIONE UM COLABORADOR...</option>
+                      {activeEmployees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.name.toUpperCase()}</option>
+                      ))}
                     </select>
                  </div>
 

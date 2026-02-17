@@ -11,7 +11,6 @@ export const askAssistant = async (history: { role: 'user' | 'bot'; text: string
   const currentGoal = state.monthlyGoals[currentMonthKey] || { production: 0, revenue: 0 };
 
   // Compilação do contexto operacional para a IA "enxergar" o sistema
-  // Fix: substitui 'monthlyGoalM2' (inexistente) pelo valor da meta do mês atual
   const context = {
     totalAreas: state.areas.length,
     productionM2: state.areas.reduce((acc, area) => acc + area.services.reduce((sAcc, s) => sAcc + s.areaM2, 0), 0),
@@ -35,9 +34,11 @@ export const askAssistant = async (history: { role: 'user' | 'bot'; text: string
         systemInstruction: `Você é o Diretor de Operações da Fera Service. 
         Você tem acesso aos seguintes dados em tempo real: ${JSON.stringify(context)}.
         Sua missão é ajudar o gestor a tomar decisões sobre faturamento, produtividade e estoque.
+        Utilize a ferramenta de busca do Google para obter regulamentações urbanas, preços de mercado de insumos ou notícias do setor se necessário.
         Seja conciso, profissional e use R$ para valores monetários.`,
         temperature: 0.7,
-        thinkingConfig: { thinkingBudget: 1000 }
+        tools: [{ googleSearch: {} }],
+        thinkingConfig: { thinkingBudget: 4000 }
       }
     });
 

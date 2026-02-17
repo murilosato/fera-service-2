@@ -22,6 +22,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'itemId') newKey = 'item_id';
     else if (k === 'areaId') newKey = 'area_id';
     else if (k === 'employeeId') newKey = 'employee_id';
+    else if (k === 'responsibleEmployeeId') newKey = 'responsible_employee_id';
     else if (k === 'monthKey') newKey = 'month_key';
     else if (k === 'startDate') newKey = 'start_date';
     else if (k === 'endDate') newKey = 'end_date';
@@ -54,6 +55,7 @@ const camelToSnake = (obj: any) => {
     else if (k === 'inventoryGoal') newKey = 'inventory_goal';
     else if (k === 'balanceGoal') newKey = 'balance_goal';
     else if (k === 'discountValue') newKey = 'discount_value';
+    else if (k === 'bonusValue') newKey = 'bonus_value';
     else if (k === 'discountObservation') newKey = 'discount_observation';
     else {
       newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
@@ -128,11 +130,10 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       address: company.address,
       email: company.email,
       website: company.website,
-      plan: company.plan,
-      teams: company.teams || []
+      plan: company.plan
     } : null,
     areas: areas.map((a: any) => ({
-      id: a.id, companyId: a.company_id, name: a.name, team: a.team, startDate: a.start_date, endDate: a.end_date,
+      id: a.id, companyId: a.company_id, name: a.name, responsibleEmployeeId: a.responsible_employee_id, startDate: a.start_date, endDate: a.end_date,
       startReference: a.start_reference, endReference: a.end_reference, observations: a.observations,
       status: a.status || 'executing',
       services: (a.services || []).map((s: any) => ({
@@ -141,7 +142,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
       }))
     })),
     employees: emps.map((e: any) => ({
-      id: e.id, companyId: e.company_id, name: e.name, role: e.role, team: e.team, status: e.status || 'active',
+      id: e.id, companyId: e.company_id, name: e.name, role: e.role, status: e.status || 'active',
       defaultValue: Number(e.default_value), paymentModality: e.payment_modality || 'DIARIA',
       cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address, workload: e.workload,
       startTime: e.start_time, breakStart: e.break_start, breakEnd: e.break_end, endTime: e.end_time
@@ -157,15 +158,14 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     cashOut: flow.filter((f: any) => f.type === 'out').map((f: any) => ({ id: f.id, companyId: f.company_id, date: f.date, value: Number(f.value), type: f.type, category: f.category, reference: f.reference })),
     attendanceRecords: att.map((r: any) => ({
       id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status,
-      discountValue: Number(r.discount_value || 0), discountObservation: r.discount_observation, clockIn: r.clock_in, breakStart: r.break_start, breakEnd: r.break_end, clockOut: r.clock_out
+      discountValue: Number(r.discount_value || 0), bonusValue: Number(r.bonus_value || 0), discountObservation: r.discount_observation, clockIn: r.clock_in, breakStart: r.break_start, breakEnd: r.break_end, clockOut: r.clock_out
     })),
     monthlyGoals: goalsMap,
     serviceRates: company?.service_rates || {},
     serviceGoals: company?.service_goals || {},
     financeCategories: company?.finance_categories || [],
     inventoryCategories: company?.inventory_categories || [],
-    employeeRoles: company?.employee_roles || [],
-    teams: company?.teams || ['EQUIPE 01', 'EQUIPE 02']
+    employeeRoles: company?.employee_roles || []
   };
 };
 

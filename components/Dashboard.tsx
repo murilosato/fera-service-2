@@ -24,7 +24,9 @@ import {
   Package,
   Layers,
   Target,
-  Activity
+  Activity,
+  UserCheck,
+  ArrowUpRight
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -125,6 +127,36 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
     });
   }, [state.areas, state.cashIn, state.cashOut, monthlySeries, state.monthlyGoals, state.serviceGoals, selectedService]);
 
+  // Ranking de Produtividade por Responsável
+  const responsibleRanking = useMemo(() => {
+    const rankingMap: Record<string, { id: string, name: string, production: number, revenue: number }> = {};
+    
+    state.areas.forEach(area => {
+      // Consideramos apenas O.S. finalizadas no mês de referência atual (endPeriod)
+      const isFinishedInPeriod = area.status === 'finished' && area.endDate?.startsWith(endPeriod);
+      
+      if (isFinishedInPeriod) {
+        const respId = area.responsibleEmployeeId || 'unassigned';
+        const respName = respId === 'unassigned' 
+          ? 'SEM RESPONSÁVEL' 
+          : (state.employees.find(e => e.id === respId)?.name || 'EX-COLABORADOR');
+
+        if (!rankingMap[respId]) {
+          rankingMap[respId] = { id: respId, name: respName, production: 0, revenue: 0 };
+        }
+
+        (area.services || []).forEach(s => {
+          if (selectedService === 'TOTAL' || s.type === selectedService) {
+            rankingMap[respId].production += Number(s.areaM2) || 0;
+            rankingMap[respId].revenue += Number(s.totalValue) || 0;
+          }
+        });
+      }
+    });
+
+    return Object.values(rankingMap).sort((a, b) => b.revenue - a.revenue);
+  }, [state.areas, state.employees, endPeriod, selectedService]);
+
   const periodTotals = useMemo(() => {
     const filterKey = endPeriod; 
     const currentMonthGoal = state.monthlyGoals[filterKey] || { production: 0, revenue: 0 };
@@ -145,7 +177,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
       }
     });
 
-    // Cálculo de Dias Trabalhados (Dias únicos com presença no mês selecionado)
     const activeDays = new Set();
     state.attendanceRecords.forEach(record => {
       if (record.date.startsWith(filterKey) && (record.status === 'present' || record.status === 'partial')) {
@@ -306,7 +337,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" fontSize={10} fontWeight="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" fontSize={10} fontWeights="900" stroke="#94a3b8" axisLine={false} tickLine={false} />
                   <YAxis 
                     fontSize={10} 
                     fontWeight="900" 
@@ -351,33 +382,55 @@ const Dashboard: React.FC<DashboardProps> = ({ state, setActiveTab }) => {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm overflow-hidden">
-             <h3 className="font-black text-[10px] text-[#2e3545] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <Wallet size={16} className="text-blue-500" /> Fluxo de Caixa Mensal
-             </h3>
-             <div className="overflow-x-auto -mx-8 px-8">
-               <table className="w-full text-left min-w-[500px]">
-                  <thead className="text-[9px] font-black uppercase text-[#2e3545] border-b">
-                     <tr>
-                        <th className="py-4">Mês</th>
-                        <th className="py-4">Entradas</th>
-                        <th className="py-4">Saídas</th>
-                        <th className="py-4 text-right">Saldo</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y text-[10px] font-black uppercase text-[#010a1b]">
-                     {chartData.map((month, idx) => (
-                       <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-4 text-[#2e3545]">{month.name}</td>
-                          <td className="py-4 text-emerald-600">{formatMoney(month.income)}</td>
-                          <td className="py-4 text-rose-600">{formatMoney(month.expense)}</td>
-                          <td className={`py-4 text-right ${month.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                             {formatMoney(month.balance)}
-                          </td>
-                       </tr>
-                     ))}
-                  </tbody>
-               </table>
+          {/* NOVO: Produtividade por Responsável (Substituto das Equipes) */}
+          <div className="bg-white border border-slate-200 rounded-[32px] p-8 shadow-sm">
+             <div className="flex items-center justify-between mb-8">
+               <div>
+                  <h3 className="font-black text-[10px] text-[#2e3545] uppercase tracking-[0.2em] flex items-center gap-2">
+                    <UserCheck size={16} className="text-emerald-500" /> Desempenho por Colaborador Responsável
+                  </h3>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Somas baseadas em O.S. finalizadas no período</p>
+               </div>
+               <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-100 px-3 py-1 rounded-lg">Mês: {monthlySeries[monthlySeries.length-1].label}</span>
+             </div>
+
+             <div className="space-y-6">
+                {responsibleRanking.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <p className="text-[10px] font-black text-slate-300 uppercase italic">Nenhuma produção vinculada e finalizada neste mês</p>
+                  </div>
+                ) : (
+                  responsibleRanking.map((resp, idx) => {
+                    const maxRevenue = Math.max(...responsibleRanking.map(r => r.revenue));
+                    const percentage = maxRevenue > 0 ? (resp.revenue / maxRevenue) * 100 : 0;
+                    
+                    return (
+                      <div key={resp.id} className="group">
+                        <div className="flex justify-between items-end mb-2">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[10px] font-black shadow-lg">
+                                {idx + 1}
+                              </div>
+                              <div>
+                                 <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{resp.name}</p>
+                                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Responsável Técnico</p>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[11px] font-black text-emerald-600">{formatMoney(resp.revenue)}</p>
+                              <p className="text-[9px] font-black text-slate-500">{formatNumber(resp.production)} {currentUnit}</p>
+                           </div>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                           <div 
+                            className={`h-full transition-all duration-1000 ${resp.id === 'unassigned' ? 'bg-slate-400' : 'bg-emerald-500'}`} 
+                            style={{ width: `${percentage}%` }} 
+                           />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
              </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
-import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2 } from 'lucide-react';
+import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2, CheckCircle2, Wallet } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
 
 interface EmployeesProps {
@@ -21,7 +21,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const initialFormState = { 
     name: '', 
     role: '', 
-    team: '',
     defaultValue: '0', 
     cpf: '', 
     phone: '', 
@@ -189,7 +188,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         companyId: state.currentUser?.companyId,
         name: employeeForm.name.toUpperCase(),
         role: employeeForm.role.toUpperCase(),
-        team: employeeForm.team.toUpperCase(),
         defaultValue: finalValue,
         cpf: employeeForm.cpf || null,
         phone: employeeForm.phone || null,
@@ -220,7 +218,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     setEmployeeForm({
       name: emp.name,
       role: emp.role,
-      team: emp.team || '',
       defaultValue: String(emp.defaultValue || 0),
       cpf: emp.cpf || '',
       phone: emp.phone || '',
@@ -239,6 +236,30 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const daysInMonth = useMemo(() => new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0).getDate(), [currentCalendarDate]);
   const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const filteredEmployees = state.employees.filter(e => showInactive || e.status === 'active');
+
+  // Cálculos de Resumo Financeiro do Mês Visualizado
+  const monthSummary = useMemo(() => {
+    const yearMonth = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}`;
+    const visibleEmpIds = new Set(filteredEmployees.map(e => e.id));
+    
+    let paid = 0;
+    let pending = 0;
+
+    state.attendanceRecords.forEach(record => {
+      if (record.date.startsWith(yearMonth) && visibleEmpIds.has(record.employeeId)) {
+        const netValue = record.value - (record.discountValue || 0);
+        if (record.paymentStatus === 'pago') {
+          paid += netValue;
+        } else {
+          pending += netValue;
+        }
+      }
+    });
+
+    return { paid, pending };
+  }, [state.attendanceRecords, filteredEmployees, currentCalendarDate]);
+
+  const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const getAttendanceLabel = (record: AttendanceRecord | undefined, emp: Employee) => {
     if (!record) return '-';
@@ -283,6 +304,24 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         </div>
       </header>
 
+      {/* Cards de Resumo Financeiro de Equipe */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-5 transition-all hover:border-emerald-200">
+           <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner"><CheckCircle2 size={28} /></div>
+           <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Já Pago (Mês)</p>
+              <h3 className="text-2xl font-black text-emerald-600 tracking-tighter">{formatMoney(monthSummary.paid)}</h3>
+           </div>
+        </div>
+        <div className="bg-slate-900 p-6 rounded-[32px] border border-white/5 shadow-2xl flex items-center gap-5 transition-all hover:bg-slate-800">
+           <div className="w-14 h-14 bg-white/10 text-amber-400 rounded-2xl flex items-center justify-center shadow-inner"><Wallet size={28} /></div>
+           <div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Saldo Pendente Acumulado</p>
+              <h3 className="text-2xl font-black text-white tracking-tighter">{formatMoney(monthSummary.pending)}</h3>
+           </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
         <div className="p-4 md:p-6 border-b bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -324,7 +363,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                           {emp.name}
                         </p>
                         <p className="text-[8px] text-slate-400 font-bold uppercase">{emp.role}</p>
-                        <p className="text-[7px] text-emerald-600 font-black uppercase mt-0.5">{emp.team || 'SEM EQUIPE'}</p>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => handleEdit(emp)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={12}/></button>
@@ -393,17 +431,6 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                      <option value="">SELECIONE UM CARGO...</option>
                      {state.employeeRoles.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                    </select>
-                </div>
-
-                <div className="space-y-1">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Equipe / Encarregado</label>
-                   <div className="relative">
-                      <Users2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16}/>
-                      <select className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-4 rounded-2xl text-[11px] font-black uppercase outline-none" value={employeeForm.team} onChange={e => setEmployeeForm({...employeeForm, team: e.target.value})}>
-                        <option value="">NENHUMA EQUIPE</option>
-                        {state.teams.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
-                      </select>
-                   </div>
                 </div>
 
                 {employeeForm.paymentModality === 'DIARIA' && (

@@ -4,8 +4,8 @@ import { AppState, ServiceType, UserRole } from './types';
 export const INITIAL_STATE: AppState = {
   areas: [],
   employees: [
-    { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultValue: 85.00, paymentModality: 'DIARIA', team: 'EQUIPE 01' },
-    { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultValue: 75.00, paymentModality: 'DIARIA', team: 'EQUIPE 02' }
+    { id: 'e1', companyId: 'fera-main', name: 'João Silva', role: 'Operador de Roçadeira', status: 'active', defaultValue: 85.00, paymentModality: 'DIARIA' },
+    { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultValue: 75.00, paymentModality: 'DIARIA' }
   ],
   attendanceRecords: [],
   inventory: [
@@ -42,7 +42,6 @@ export const INITIAL_STATE: AppState = {
   financeCategories: ['Salários', 'Insumos', 'Manutenção', 'Impostos', 'Aluguel', 'Combustível'],
   inventoryCategories: ['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
   employeeRoles: ['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado'],
-  teams: ['EQUIPE 01', 'EQUIPE 02'],
   currentUser: null,
   users: [
     {
@@ -57,8 +56,7 @@ export const INITIAL_STATE: AppState = {
         finance: true,
         inventory: true,
         employees: true,
-        analytics: true,
-        ai: true
+        analytics: true
       }
     }
   ],
