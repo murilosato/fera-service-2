@@ -52,8 +52,8 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     }
     setIsLoading(true);
     try {
-      // Garantir que responsibleEmployeeId seja null e não string vazia
-      const respId = newArea.responsibleEmployeeId && newArea.responsibleEmployeeId !== '' 
+      // Garantir que campos de ID vazios sejam enviados como NULL para o PostgreSQL
+      const respId = (newArea.responsibleEmployeeId && newArea.responsibleEmployeeId !== '') 
         ? newArea.responsibleEmployeeId 
         : null;
 
@@ -74,7 +74,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       setNewArea({ name: '', responsibleEmployeeId: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
     } catch (e: any) { 
       console.error("Erro Supabase:", e);
-      alert("Erro ao criar O.S. Detalhes: " + (e.message || "Verifique se todas as colunas existem no banco de dados.")); 
+      alert("Falha técnica ao abrir O.S. Detalhes: " + (e.message || "Erro no Schema do Banco.")); 
     } finally { 
       setIsLoading(false); 
     }

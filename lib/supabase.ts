@@ -64,9 +64,8 @@ const camelToSnake = (obj: any) => {
     
     let val = obj[k];
     
-    // Tratamento rigoroso para UUIDs e Chaves Estrangeiras
-    // Se for um campo de ID e estiver vazio, DEVE ser null para não causar erro 400
-    if (k.toLowerCase().includes('id') && (val === '' || val === undefined)) {
+    // Tratamento rigoroso: strings vazias em campos de ID ou Data devem ser NULL no PostgreSQL
+    if ((k.toLowerCase().includes('id') || k.toLowerCase().includes('date')) && (val === '' || val === undefined)) {
       val = null;
     } else if (val === undefined) {
       val = null;
@@ -192,14 +191,13 @@ export const dbSave = async (table: string, data: any) => {
     if (table === 'monthly_goals') {
        query = supabase.from(table).upsert(fullPayload, { onConflict: 'company_id, month_key' });
     } else {
-       // Na inserção, removemos o ID se ele for nulo ou vazio para deixar o banco gerar
-       const cleanData = { ...payloadWithoutId };
-       query = supabase.from(table).insert(cleanData);
+       // Na inserção, garantimos que o payload seja o objeto snake_case limpo
+       query = supabase.from(table).insert(payloadWithoutId);
     }
   }
   const { data: saved, error } = await query.select();
   if (error) {
-    console.error(`Erro ao salvar na tabela ${table}:`, error);
+    console.error(`Erro crítico no banco [${table}]:`, error);
     throw error;
   }
   return saved;
