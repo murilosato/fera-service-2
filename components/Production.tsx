@@ -52,11 +52,15 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
     }
     setIsLoading(true);
     try {
-      // Sanitização do Payload: Removemos campos vazios que não devem ser enviados na criação
+      // Garantir que responsibleEmployeeId seja null e não string vazia
+      const respId = newArea.responsibleEmployeeId && newArea.responsibleEmployeeId !== '' 
+        ? newArea.responsibleEmployeeId 
+        : null;
+
       const payload = {
         companyId: state.currentUser?.companyId,
         name: newArea.name.toUpperCase(),
-        responsibleEmployeeId: newArea.responsibleEmployeeId || null,
+        responsibleEmployeeId: respId,
         startDate: newArea.startDate,
         startReference: newArea.startReference.toUpperCase(),
         endReference: newArea.endReference.toUpperCase(),
@@ -70,7 +74,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       setNewArea({ name: '', responsibleEmployeeId: '', startDate: new Date().toISOString().split('T')[0], endDate: '', startReference: '', endReference: '', observations: '' });
     } catch (e: any) { 
       console.error("Erro Supabase:", e);
-      alert("Erro ao criar O.S. Detalhes: " + (e.message || "Erro de validação no banco.")); 
+      alert("Erro ao criar O.S. Detalhes: " + (e.message || "Verifique se todas as colunas existem no banco de dados.")); 
     } finally { 
       setIsLoading(false); 
     }
@@ -386,7 +390,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                                      ) : (
                                        (area.services || []).map(s => (
                                          <tr key={s.id} className="hover:bg-slate-50/50">
-                                            <td className="px-6 py-4 text-slate-400">{formatDate(s.serviceDate)}</td>
+                                            <td className="px-6 py-4 text-slate-500">{formatDate(s.serviceDate)}</td>
                                             <td className="px-6 py-4">{s.type}</td>
                                             <td className="px-6 py-4 text-right">{formatNumber(s.areaM2)} {s.type.includes('KM') ? 'KM' : 'm²'}</td>
                                             <td className="px-6 py-4 text-right text-emerald-600">{formatMoney(s.totalValue)}</td>
@@ -448,7 +452,6 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                  <div className="md:col-span-2 space-y-1">
                     <label className="text-[8px] font-black text-slate-400 uppercase ml-1 flex items-center gap-2"><UserCheck size={10}/> Colaborador Responsável</label>
                     <select 
-                      required 
                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-[10px] font-black uppercase outline-none focus:bg-white focus:border-[#010a1b] transition-all appearance-none" 
                       value={newArea.responsibleEmployeeId} 
                       onChange={e => setNewArea({...newArea, responsibleEmployeeId: e.target.value})}

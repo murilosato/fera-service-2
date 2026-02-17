@@ -63,12 +63,12 @@ const camelToSnake = (obj: any) => {
     }
     
     let val = obj[k];
-    // Apenas converte para null se for undefined ou nulo de fato. 
-    // Strings vazias podem ser importantes para o banco.
-    if (val === undefined) val = null;
     
-    // Tratamento especial para IDs: se for string vazia, vira null para não quebrar UUID
-    if ((k.toLowerCase().includes('id') || k.toLowerCase().includes('date')) && val === '') {
+    // Tratamento rigoroso para UUIDs e Chaves Estrangeiras
+    // Se for um campo de ID e estiver vazio, DEVE ser null para não causar erro 400
+    if (k.toLowerCase().includes('id') && (val === '' || val === undefined)) {
+      val = null;
+    } else if (val === undefined) {
       val = null;
     }
 
@@ -192,11 +192,16 @@ export const dbSave = async (table: string, data: any) => {
     if (table === 'monthly_goals') {
        query = supabase.from(table).upsert(fullPayload, { onConflict: 'company_id, month_key' });
     } else {
-       query = supabase.from(table).insert(payloadWithoutId);
+       // Na inserção, removemos o ID se ele for nulo ou vazio para deixar o banco gerar
+       const cleanData = { ...payloadWithoutId };
+       query = supabase.from(table).insert(cleanData);
     }
   }
   const { data: saved, error } = await query.select();
-  if (error) throw error;
+  if (error) {
+    console.error(`Erro ao salvar na tabela ${table}:`, error);
+    throw error;
+  }
   return saved;
 };
 
