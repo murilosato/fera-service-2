@@ -237,7 +237,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const filteredEmployees = state.employees.filter(e => showInactive || e.status === 'active');
 
-  // Cálculos de Resumo Financeiro do Mês Visualizado
+  // Cálculos de Resumo Financeiro do Mês Visualizado - ATUALIZADO PARA INCLUIR BONUS
   const monthSummary = useMemo(() => {
     const yearMonth = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}`;
     const visibleEmpIds = new Set(filteredEmployees.map(e => e.id));
@@ -247,7 +247,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
     state.attendanceRecords.forEach(record => {
       if (record.date.startsWith(yearMonth) && visibleEmpIds.has(record.employeeId)) {
-        const netValue = record.value - (record.discountValue || 0);
+        // Cálculo: (Valor do Dia + Bônus) - Descontos
+        const netValue = (record.value + (record.bonusValue || 0)) - (record.discountValue || 0);
         if (record.paymentStatus === 'pago') {
           paid += netValue;
         } else {
@@ -503,7 +504,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
       {showTimeModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-           <div className="bg-white rounded-[40px] w-full max-w-md p-10 space-y-6 shadow-2xl border border-slate-100 animate-in zoom-in-95">
+           <div className="bg-white rounded-[40px] w-full max-md p-10 space-y-6 shadow-2xl border border-slate-100 animate-in zoom-in-95">
               <div className="flex justify-between items-center border-b pb-4">
                  <div>
                     <h3 className="text-sm font-black uppercase text-slate-900">Registro de Ponto: {showTimeModal.emp.name.split(' ')[0]}</h3>
