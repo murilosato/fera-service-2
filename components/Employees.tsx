@@ -525,17 +525,17 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
           </div>
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] border-collapse">
+        <div className="overflow-x-auto scrollbar-hide">
+          <table className="w-full min-w-[1000px] md:min-w-[800px] border-collapse">
             <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase border-b">
               <tr>
-                <th className="sticky left-0 z-20 bg-slate-50 p-4 text-left border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] min-w-[220px]">Colaborador</th>
+                <th className="sticky left-0 z-20 bg-slate-50 p-3 md:p-4 text-left border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] min-w-[140px] md:min-w-[220px]">Colaborador</th>
                 {calendarDays.map(day => {
                    const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                    const isToday = dateStr === new Date().toISOString().split('T')[0];
                    return (
-                     <th key={day} className="p-2 text-center border-r min-w-[34px]">
-                       <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-all ${isToday ? 'bg-blue-600 text-white shadow-md' : ''}`}>
+                     <th key={day} className="p-1 md:p-2 text-center border-r min-w-[44px] md:min-w-[34px]">
+                       <span className={`inline-flex items-center justify-center w-8 h-8 md:w-7 md:h-7 rounded-lg transition-all ${isToday ? 'bg-blue-600 text-white shadow-md' : ''}`}>
                         {day}
                        </span>
                      </th>
@@ -546,18 +546,18 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
             <tbody className="divide-y divide-slate-100">
               {filteredEmployees.map(emp => (
                 <tr key={emp.id} className={`hover:bg-slate-50/50 transition-colors group ${emp.status === 'inactive' ? 'opacity-50' : ''}`}>
-                  <td className="sticky left-0 z-10 bg-white p-4 border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]">
-                    <div className="flex justify-between items-center gap-2">
+                  <td className="sticky left-0 z-10 bg-white p-3 md:p-4 border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-2">
                       <div className="min-w-0">
-                        <p onClick={() => setSelectedEmployeeFinance(emp)} className={`text-[10px] font-black uppercase truncate flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors ${emp.status === 'inactive' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                        <p onClick={() => setSelectedEmployeeFinance(emp)} className={`text-[9px] md:text-[10px] font-black uppercase truncate flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors ${emp.status === 'inactive' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                           {emp.paymentModality === 'CLT' && <Clock size={10} className="text-blue-500" />}
                           {emp.name}
                         </p>
-                        <p className="text-[8px] text-slate-400 font-bold uppercase">{emp.role}</p>
+                        <p className="text-[7px] md:text-[8px] text-slate-400 font-bold uppercase truncate">{emp.role}</p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => handleEdit(emp)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={12}/></button>
-                        <button onClick={() => setConfirmStatusToggle(emp)} className={`p-1.5 rounded-lg ${emp.status === 'active' ? 'text-rose-400 hover:bg-rose-50' : 'text-emerald-500 hover:bg-emerald-50'}`} title={emp.status === 'active' ? 'Desativar' : 'Ativar'}><Power size={12}/></button>
+                        <button onClick={() => handleEdit(emp)} className="p-1 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={10}/></button>
+                        <button onClick={() => setConfirmStatusToggle(emp)} className={`p-1 rounded-lg ${emp.status === 'active' ? 'text-rose-400 hover:bg-rose-50' : 'text-emerald-500 hover:bg-emerald-50'}`} title={emp.status === 'active' ? 'Desativar' : 'Ativar'}><Power size={10}/></button>
                       </div>
                     </div>
                   </td>
@@ -580,7 +580,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                         bgColor = 'bg-blue-50/30 text-blue-400';
                     }
                     return (
-                      <td key={day} onClick={() => handleToggleAttendance(emp.id, dateStr)} className={`p-0 border-r h-12 text-center text-[8px] font-black transition-all cursor-pointer ${bgColor}`}>
+                      <td key={day} onClick={() => handleToggleAttendance(emp.id, dateStr)} className={`p-0 border-r h-12 md:h-10 text-center text-[10px] font-black transition-all cursor-pointer active:scale-95 ${bgColor}`}>
                         {getAttendanceLabel(att, emp)}
                       </td>
                     );
@@ -767,123 +767,123 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       />
 
       {selectedEmployeeFinance && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[250] flex items-center justify-center p-4 overflow-hidden">
-          <div className="bg-white rounded-[40px] w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl border border-slate-100 animate-in zoom-in-95 overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[250] flex items-center justify-center p-0 md:p-4 overflow-hidden">
+          <div className="bg-white rounded-none md:rounded-[40px] w-full max-w-5xl h-full md:h-[90vh] flex flex-col shadow-2xl border border-slate-100 animate-in zoom-in-95 overflow-hidden">
             {/* Header */}
-            <div className="p-8 border-b flex justify-between items-center bg-slate-50/50">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg">
+            <div className="p-6 md:p-8 border-b flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-900 text-white rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-xl shadow-lg">
                   {selectedEmployeeFinance.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="text-lg font-black uppercase text-slate-900 tracking-tight">Ficha Financeira: {selectedEmployeeFinance.name}</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedEmployeeFinance.role} • {selectedEmployeeFinance.paymentModality}</p>
+                  <h3 className="text-sm md:text-lg font-black uppercase text-slate-900 tracking-tight">Ficha Financeira: {selectedEmployeeFinance.name}</h3>
+                  <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedEmployeeFinance.role} • {selectedEmployeeFinance.paymentModality}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedEmployeeFinance(null)} className="p-2 text-slate-300 hover:text-slate-900 transition-colors"><X size={28}/></button>
+              <button onClick={() => setSelectedEmployeeFinance(null)} className="p-2 text-slate-300 hover:text-slate-900 transition-colors"><X size={24}/></button>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
               {/* Left Panel: Form & Balance */}
-              <div className="w-80 border-r p-8 space-y-8 overflow-y-auto bg-slate-50/30">
-                <div className="p-6 bg-emerald-50 rounded-[32px] border border-emerald-100 text-center shadow-inner">
-                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2">Saldo em Aberto</p>
-                  <h2 className="text-3xl font-black text-emerald-600 tracking-tighter">{formatMoney(ledgerBalance)}</h2>
+              <div className="w-full md:w-80 border-b md:border-r p-6 md:p-8 space-y-6 md:space-y-8 overflow-y-auto bg-slate-50/30">
+                <div className="p-4 md:p-6 bg-emerald-50 rounded-[24px] md:rounded-[32px] border border-emerald-100 text-center shadow-inner">
+                  <p className="text-[8px] md:text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1 md:mb-2">Saldo em Aberto</p>
+                  <h2 className="text-2xl md:text-3xl font-black text-emerald-600 tracking-tighter">{formatMoney(ledgerBalance)}</h2>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-slate-900 pl-3">Filtrar Histórico</h4>
+                  <h4 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-slate-900 pl-3">Filtrar Histórico</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[8px] font-black text-slate-300 uppercase">Início</label>
-                      <input type="date" className="w-full bg-white border border-slate-200 p-3 rounded-xl text-[10px] font-black" value={financeSheetStartDate} onChange={e => setFinanceSheetStartDate(e.target.value)} />
+                      <input type="date" className="w-full bg-white border border-slate-200 p-2 md:p-3 rounded-xl text-[9px] md:text-[10px] font-black" value={financeSheetStartDate} onChange={e => setFinanceSheetStartDate(e.target.value)} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[8px] font-black text-slate-300 uppercase">Fim</label>
-                      <input type="date" className="w-full bg-white border border-slate-200 p-3 rounded-xl text-[10px] font-black" value={financeSheetEndDate} onChange={e => setFinanceSheetEndDate(e.target.value)} />
+                      <input type="date" className="w-full bg-white border border-slate-200 p-2 md:p-3 rounded-xl text-[9px] md:text-[10px] font-black" value={financeSheetEndDate} onChange={e => setFinanceSheetEndDate(e.target.value)} />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-slate-900 pl-3">Novo Lançamento</h4>
+                  <h4 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-slate-900 pl-3">Novo Lançamento</h4>
                   <div className="flex p-1 bg-slate-200 rounded-2xl">
-                    <button onClick={() => setNewFinanceEntry({...newFinanceEntry, type: 'out'})} className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all ${newFinanceEntry.type === 'out' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Despesa/Vale</button>
-                    <button onClick={() => setNewFinanceEntry({...newFinanceEntry, type: 'in'})} className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all ${newFinanceEntry.type === 'in' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500'}`}>Receita/Extra</button>
+                    <button onClick={() => setNewFinanceEntry({...newFinanceEntry, type: 'out'})} className={`flex-1 py-2 rounded-xl text-[8px] md:text-[9px] font-black uppercase transition-all ${newFinanceEntry.type === 'out' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Despesa/Vale</button>
+                    <button onClick={() => setNewFinanceEntry({...newFinanceEntry, type: 'in'})} className={`flex-1 py-2 rounded-xl text-[8px] md:text-[9px] font-black uppercase transition-all ${newFinanceEntry.type === 'in' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500'}`}>Receita/Extra</button>
                   </div>
                   
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <label className="text-[8px] font-black text-slate-400 uppercase">Valor (R$)</label>
-                      <input type="text" className="w-full bg-white border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:border-slate-900" placeholder="0,00" value={newFinanceEntry.value} onChange={e => setNewFinanceEntry({...newFinanceEntry, value: e.target.value})} />
+                      <input type="text" className="w-full bg-white border border-slate-200 p-3 md:p-4 rounded-2xl text-[10px] md:text-[11px] font-black outline-none focus:border-slate-900" placeholder="0,00" value={newFinanceEntry.value} onChange={e => setNewFinanceEntry({...newFinanceEntry, value: e.target.value})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[8px] font-black text-slate-400 uppercase">Referência</label>
-                      <input className="w-full bg-white border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-slate-900" placeholder="EX: ADIANTAMENTO, BONIFICAÇÃO..." value={newFinanceEntry.description} onChange={e => setNewFinanceEntry({...newFinanceEntry, description: e.target.value})} />
+                      <input className="w-full bg-white border border-slate-200 p-3 md:p-4 rounded-2xl text-[10px] md:text-[11px] font-black uppercase outline-none focus:border-slate-900" placeholder="EX: ADIANTAMENTO, BONIFICAÇÃO..." value={newFinanceEntry.description} onChange={e => setNewFinanceEntry({...newFinanceEntry, description: e.target.value})} />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[8px] font-black text-slate-400 uppercase">Data</label>
-                      <input type="date" className="w-full bg-white border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:border-slate-900" value={newFinanceEntry.date} onChange={e => setNewFinanceEntry({...newFinanceEntry, date: e.target.value})} />
+                      <input type="date" className="w-full bg-white border border-slate-200 p-3 md:p-4 rounded-2xl text-[10px] md:text-[11px] font-black outline-none focus:border-slate-900" value={newFinanceEntry.date} onChange={e => setNewFinanceEntry({...newFinanceEntry, date: e.target.value})} />
                     </div>
-                    <button onClick={handleAddFinanceEntry} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2">
-                      {isLoading ? <Loader2 className="animate-spin" size={16}/> : 'Confirmar Lançamento'}
+                    <button onClick={handleAddFinanceEntry} disabled={isLoading} className="w-full bg-emerald-600 text-white py-3 md:py-4 rounded-2xl font-black uppercase text-[9px] md:text-[10px] tracking-widest shadow-lg hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2">
+                      {isLoading ? <Loader2 className="animate-spin" size={14}/> : 'Confirmar Lançamento'}
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Right Panel: Ledger List */}
-              <div className="flex-1 p-8 flex flex-col overflow-hidden">
-                <div className="flex justify-between items-center mb-6">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-blue-600 pl-3">Extrato Detalhado</h4>
-                  <div className="flex gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all">
-                      <Printer size={14}/> Imprimir Ficha Financeira
+              <div className="flex-1 p-6 md:p-8 flex flex-col overflow-hidden">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+                  <h4 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-blue-600 pl-3">Extrato Detalhado</h4>
+                  <div className="flex gap-2 md:gap-3">
+                    <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                      <Printer size={12}/> <span className="hidden sm:inline">Imprimir Ficha</span><span className="sm:hidden">Imprimir</span>
                     </button>
-                    <button onClick={handleSendTotalBalanceToFinance} disabled={isLoading || ledgerBalance <= 0} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50">
-                      <Send size={14}/> Enviar Balanço Total
+                    <button onClick={handleSendTotalBalanceToFinance} disabled={isLoading || ledgerBalance <= 0} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-blue-600 text-white rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                      <Send size={12}/> <span className="hidden sm:inline">Enviar Balanço Total</span><span className="sm:hidden">Enviar Tudo</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
+                <div className="flex-1 overflow-y-auto space-y-2 md:space-y-3 pr-1 md:pr-2 scrollbar-hide">
                   {ledgerEntries.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-50">
-                      <BarChart3 size={48} className="mb-4"/>
-                      <p className="text-[10px] font-black uppercase tracking-widest">Nenhum lançamento no período</p>
+                      <BarChart3 size={40} className="mb-4"/>
+                      <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Nenhum lançamento no período</p>
                     </div>
                   ) : (
                     ledgerEntries.map((entry) => (
-                      <div key={entry.id} className={`p-6 rounded-[24px] border transition-all flex items-center justify-between group ${entry.sentToFinance ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-md'}`}>
-                        <div className="flex items-center gap-5">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${entry.type === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                            {entry.type === 'in' ? <ChevronRight size={20}/> : <ChevronLeft size={20}/>}
+                      <div key={entry.id} className={`p-4 md:p-6 rounded-[20px] md:rounded-[24px] border transition-all flex items-center justify-between group ${entry.sentToFinance ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-md'}`}>
+                        <div className="flex items-center gap-3 md:gap-5">
+                          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center ${entry.type === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                            {entry.type === 'in' ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
                           </div>
-                          <div>
-                            <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">{entry.description}</p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{entry.date.split('-').reverse().join('/')} • {entry.source === 'attendance' ? 'DIÁRIA' : 'LANÇAMENTO MANUAL'}</p>
+                          <div className="min-w-0">
+                            <p className="text-[10px] md:text-[11px] font-black uppercase text-slate-900 tracking-tight truncate">{entry.description}</p>
+                            <p className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase tracking-widest">{entry.date.split('-').reverse().join('/')} • {entry.source === 'attendance' ? 'DIÁRIA' : 'MANUAL'}</p>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-6">
-                          <p className={`text-sm font-black tracking-tighter ${entry.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <div className="flex items-center gap-3 md:gap-6">
+                          <p className={`text-xs md:text-sm font-black tracking-tighter ${entry.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {entry.type === 'in' ? '+' : '-'} {formatMoney(entry.value)}
                           </p>
                           
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 md:gap-2">
                             {!entry.sentToFinance && (
                               <>
-                                <button onClick={() => handleDeleteFinanceEntry(entry.id, entry.source)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all" title="Excluir">
-                                  <Trash2 size={16}/>
+                                <button onClick={() => handleDeleteFinanceEntry(entry.id, entry.source)} className="p-1.5 md:p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all" title="Excluir">
+                                  <Trash2 size={14}/>
                                 </button>
-                                <button onClick={() => handleSendEntryToFinance(entry)} className="p-2 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all" title="Enviar para Financeiro">
-                                  <Send size={16}/>
+                                <button onClick={() => handleSendEntryToFinance(entry)} className="p-1.5 md:p-2 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all" title="Enviar para Financeiro">
+                                  <Send size={14}/>
                                 </button>
                               </>
                             )}
                             {entry.sentToFinance && (
-                              <div className="px-3 py-1.5 bg-emerald-100 text-emerald-600 rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
-                                <CheckCircle2 size={10}/> Enviado
+                              <div className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[7px] md:text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
+                                <CheckCircle2 size={8}/> <span className="hidden sm:inline">Enviado</span>
                               </div>
                             )}
                           </div>
