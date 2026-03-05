@@ -1,11 +1,12 @@
 {
-  "name": "copy-of-gestor-de-produção-e-manutenção-urbana",
+  "name": "sistemagestao",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lint": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {

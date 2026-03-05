@@ -85,6 +85,7 @@ export interface Employee {
   phone?: string;
   pixKey?: string;
   address?: string;
+  admissionDate?: string;
   workload?: string;
   startTime?: string;
   breakStart?: string;
@@ -165,10 +166,23 @@ export interface MonthlyGoal {
   finance: number;
 }
 
+export interface EmployeeTransaction {
+  id: string;
+  companyId: string;
+  employeeId: string;
+  date: string;
+  description: string;
+  type: 'in' | 'out'; // 'in' is extra/earnings for employee, 'out' is advance/deduction
+  value: number;
+  sentToFinance: boolean;
+  financeId?: string;
+}
+
 export interface AppState {
   areas: Area[];
   employees: Employee[];
   attendanceRecords: AttendanceRecord[];
+  employeeTransactions: EmployeeTransaction[];
   inventory: InventoryItem[];
   inventoryExits: InventoryExit[];
   supportRequests: SupportRequest[];

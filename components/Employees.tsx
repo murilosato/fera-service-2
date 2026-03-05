@@ -1,8 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
-import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2, CheckCircle2, Wallet, BarChart3 } from 'lucide-react';
+import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2, CheckCircle2, Wallet, BarChart3, Send, Printer } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
+import ConfirmationModal from './ConfirmationModal';
+import { EmployeeTransaction } from '../types';
 
 interface EmployeesProps {
   state: AppState;
@@ -17,6 +19,22 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [showInactive, setShowInactive] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState<{ emp: Employee, date: string, record?: AttendanceRecord } | null>(null);
+  const [confirmStatusToggle, setConfirmStatusToggle] = useState<Employee | null>(null);
+  const [selectedEmployeeFinance, setSelectedEmployeeFinance] = useState<Employee | null>(null);
+  const [financeSheetStartDate, setFinanceSheetStartDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [financeSheetEndDate, setFinanceSheetEndDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
+  const [newFinanceEntry, setNewFinanceEntry] = useState({
+    description: '',
+    value: '',
+    type: 'out' as 'in' | 'out',
+    date: new Date().toISOString().split('T')[0]
+  });
 
   const initialFormState = { 
     name: '', 
@@ -26,6 +44,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     phone: '', 
     pixKey: '', 
     address: '',
+    admissionDate: new Date().toISOString().split('T')[0],
     paymentModality: 'DIARIA' as 'DIARIA' | 'CLT',
     workload: '44H SEMANAIS',
     startTime: '08:00',
@@ -174,6 +193,134 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     } catch (e) { notify("Falha ao atualizar status", "error"); } finally { setIsLoading(false); }
   };
 
+  const handleAddFinanceEntry = async () => {
+    if (!selectedEmployeeFinance || !newFinanceEntry.description || !newFinanceEntry.value) return;
+    setIsLoading(true);
+    try {
+      await dbSave('employee_transactions', {
+        companyId: state.currentUser?.companyId,
+        employeeId: selectedEmployeeFinance.id,
+        date: newFinanceEntry.date,
+        description: newFinanceEntry.description.toUpperCase(),
+        type: newFinanceEntry.type,
+        value: parseFloat(newFinanceEntry.value.replace(',', '.')),
+        sentToFinance: false
+      });
+      await refreshData();
+      setNewFinanceEntry({ ...newFinanceEntry, description: '', value: '' });
+      notify("Lançamento realizado com sucesso!");
+    } catch (e) {
+      notify("Erro ao realizar lançamento", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteFinanceEntry = async (id: string, source: 'manual' | 'attendance') => {
+    if (source === 'attendance') {
+      notify("Registros de presença devem ser alterados no calendário", "error");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await dbDelete('employee_transactions', id);
+      await refreshData();
+      notify("Lançamento excluído");
+    } catch (e) {
+      notify("Erro ao excluir lançamento", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendEntryToFinance = async (entry: any) => {
+    if (entry.sentToFinance) return;
+    setIsLoading(true);
+    try {
+      // Sempre gera uma SAÍDA no financeiro geral
+      const cashFlowEntry = await dbSave('cash_flow', {
+        companyId: state.currentUser?.companyId,
+        type: 'out',
+        value: entry.value,
+        date: new Date().toISOString().split('T')[0],
+        reference: `PAGTO/VALE: ${selectedEmployeeFinance?.name} - ${entry.description}`,
+        category: 'Salários'
+      });
+
+      if (entry.source === 'manual') {
+        await dbSave('employee_transactions', {
+          id: entry.id,
+          sentToFinance: true,
+          financeId: cashFlowEntry[0].id
+        });
+      } else {
+        // Se for attendance, marcamos como pago
+        const record = state.attendanceRecords.find(r => r.id === entry.id);
+        if (record) {
+          await dbSave('attendance_records', {
+            ...record,
+            paymentStatus: 'pago'
+          });
+        }
+      }
+      await refreshData();
+      notify("Lançamento enviado ao financeiro!");
+    } catch (e) {
+      notify("Erro ao enviar ao financeiro", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendTotalBalanceToFinance = async () => {
+    if (!selectedEmployeeFinance || ledgerEntries.length === 0) return;
+    const pendingEntries = ledgerEntries.filter(e => !e.sentToFinance);
+    if (pendingEntries.length === 0) return notify("Nenhum lançamento pendente", "info");
+
+    const totalValue = pendingEntries.reduce((acc, e) => {
+      // Na ficha do funcionário: IN aumenta saldo, OUT diminui saldo
+      return acc + (e.type === 'in' ? e.value : -e.value);
+    }, 0);
+
+    if (totalValue <= 0) return notify("Balanço total deve ser positivo para envio", "error");
+
+    setIsLoading(true);
+    try {
+      const cashFlowEntry = await dbSave('cash_flow', {
+        companyId: state.currentUser?.companyId,
+        type: 'out',
+        value: totalValue,
+        date: new Date().toISOString().split('T')[0],
+        reference: `FECHAMENTO TOTAL: ${selectedEmployeeFinance.name}`,
+        category: 'Salários'
+      });
+
+      const updates = pendingEntries.map(entry => {
+        if (entry.source === 'manual') {
+          return dbSave('employee_transactions', {
+            id: entry.id,
+            sentToFinance: true,
+            financeId: cashFlowEntry[0].id
+          });
+        } else {
+          const record = state.attendanceRecords.find(r => r.id === entry.id);
+          return dbSave('attendance_records', {
+            ...record,
+            paymentStatus: 'pago'
+          });
+        }
+      });
+
+      await Promise.all(updates);
+      await refreshData();
+      notify("Balanço total enviado ao financeiro!");
+    } catch (e) {
+      notify("Erro ao processar balanço total", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeForm.name) return notify("Nome completo é obrigatório", "error");
@@ -193,6 +340,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         phone: employeeForm.phone || null,
         pixKey: employeeForm.pixKey || null,
         address: employeeForm.address.toUpperCase() || null,
+        admissionDate: employeeForm.admissionDate || null,
         status: editingId ? (state.employees.find(e => e.id === editingId)?.status || 'active') : 'active',
         paymentModality: employeeForm.paymentModality,
         workload: employeeForm.workload.toUpperCase() || null,
@@ -223,6 +371,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       phone: emp.phone || '',
       pixKey: emp.pixKey || '',
       address: emp.address || '',
+      admissionDate: emp.admissionDate || new Date().toISOString().split('T')[0],
       paymentModality: emp.paymentModality || 'DIARIA',
       workload: emp.workload || '44H SEMANAIS',
       startTime: emp.startTime || '08:00',
@@ -261,6 +410,40 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   }, [state.attendanceRecords, filteredEmployees, currentCalendarDate]);
 
   const formatMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const ledgerEntries = useMemo(() => {
+    if (!selectedEmployeeFinance) return [];
+    
+    const attRecords = state.attendanceRecords
+      .filter(r => r.employeeId === selectedEmployeeFinance.id && r.value > 0 && r.date >= financeSheetStartDate && r.date <= financeSheetEndDate)
+      .map(r => ({
+        id: r.id,
+        date: r.date,
+        description: 'DIÁRIA',
+        type: 'in' as const,
+        value: r.value,
+        source: 'attendance' as const,
+        sentToFinance: r.paymentStatus === 'pago'
+      }));
+
+    const manualTrans = (state.employeeTransactions || [])
+      .filter(t => t.employeeId === selectedEmployeeFinance.id && t.date >= financeSheetStartDate && t.date <= financeSheetEndDate)
+      .map(t => ({
+        id: t.id,
+        date: t.date,
+        description: t.description,
+        type: t.type,
+        value: t.value,
+        source: 'manual' as const,
+        sentToFinance: t.sentToFinance
+      }));
+
+    return [...attRecords, ...manualTrans].sort((a, b) => b.date.localeCompare(a.date));
+  }, [state.attendanceRecords, state.employeeTransactions, selectedEmployeeFinance, financeSheetStartDate, financeSheetEndDate]);
+
+  const ledgerBalance = useMemo(() => {
+    return ledgerEntries.reduce((acc, e) => acc + (e.type === 'in' ? e.value : -e.value), 0);
+  }, [ledgerEntries]);
 
   const getAttendanceLabel = (record: AttendanceRecord | undefined, emp: Employee) => {
     if (!record) return '-';
@@ -366,15 +549,15 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                   <td className="sticky left-0 z-10 bg-white p-4 border-r shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                     <div className="flex justify-between items-center gap-2">
                       <div className="min-w-0">
-                        <p className={`text-[10px] font-black uppercase truncate flex items-center gap-1 ${emp.status === 'inactive' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                        <p onClick={() => setSelectedEmployeeFinance(emp)} className={`text-[10px] font-black uppercase truncate flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors ${emp.status === 'inactive' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                           {emp.paymentModality === 'CLT' && <Clock size={10} className="text-blue-500" />}
                           {emp.name}
                         </p>
                         <p className="text-[8px] text-slate-400 font-bold uppercase">{emp.role}</p>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1">
                         <button onClick={() => handleEdit(emp)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={12}/></button>
-                        <button onClick={() => handleToggleStatus(emp)} className={`p-1.5 rounded-lg ${emp.status === 'active' ? 'text-rose-400 hover:bg-rose-50' : 'text-emerald-500 hover:bg-emerald-50'}`}><Power size={12}/></button>
+                        <button onClick={() => setConfirmStatusToggle(emp)} className={`p-1.5 rounded-lg ${emp.status === 'active' ? 'text-rose-400 hover:bg-rose-50' : 'text-emerald-500 hover:bg-emerald-50'}`} title={emp.status === 'active' ? 'Desativar' : 'Ativar'}><Power size={12}/></button>
                       </div>
                     </div>
                   </td>
@@ -464,6 +647,11 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                 <div className="space-y-1">
                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Chave PIX (Acertos)</label>
                    <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="E-MAIL, CPF OU ALEATÓRIA" value={employeeForm.pixKey} onChange={e => setEmployeeForm({...employeeForm, pixKey: e.target.value})} />
+                </div>
+
+                <div className="space-y-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data de Admissão</label>
+                   <input type="date" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" value={employeeForm.admissionDate} onChange={e => setEmployeeForm({...employeeForm, admissionDate: e.target.value})} />
                 </div>
 
                 <div className="md:col-span-2 space-y-1">
@@ -562,6 +750,151 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
                  {isLoading ? <Loader2 className="animate-spin mx-auto" size={16}/> : 'CONFIRMAR REGISTRO'}
               </button>
            </div>
+        </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={!!confirmStatusToggle}
+        onClose={() => setConfirmStatusToggle(null)}
+        onConfirm={() => confirmStatusToggle && handleToggleStatus(confirmStatusToggle)}
+        title={confirmStatusToggle?.status === 'active' ? 'Desativar Colaborador' : 'Reativar Colaborador'}
+        message={confirmStatusToggle?.status === 'active' 
+          ? `Deseja realmente desativar ${confirmStatusToggle?.name}? Ele não aparecerá mais na lista de frequência ativa.`
+          : `Deseja reativar ${confirmStatusToggle?.name}?`
+        }
+        confirmText={confirmStatusToggle?.status === 'active' ? 'Desativar' : 'Reativar'}
+        type={confirmStatusToggle?.status === 'active' ? 'danger' : 'success'}
+      />
+
+      {selectedEmployeeFinance && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[250] flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white rounded-[40px] w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl border border-slate-100 animate-in zoom-in-95 overflow-hidden">
+            {/* Header */}
+            <div className="p-8 border-b flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg">
+                  {selectedEmployeeFinance.name.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black uppercase text-slate-900 tracking-tight">Ficha Financeira: {selectedEmployeeFinance.name}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedEmployeeFinance.role} • {selectedEmployeeFinance.paymentModality}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedEmployeeFinance(null)} className="p-2 text-slate-300 hover:text-slate-900 transition-colors"><X size={28}/></button>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+              {/* Left Panel: Form & Balance */}
+              <div className="w-80 border-r p-8 space-y-8 overflow-y-auto bg-slate-50/30">
+                <div className="p-6 bg-emerald-50 rounded-[32px] border border-emerald-100 text-center shadow-inner">
+                  <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2">Saldo em Aberto</p>
+                  <h2 className="text-3xl font-black text-emerald-600 tracking-tighter">{formatMoney(ledgerBalance)}</h2>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-slate-900 pl-3">Filtrar Histórico</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-300 uppercase">Início</label>
+                      <input type="date" className="w-full bg-white border border-slate-200 p-3 rounded-xl text-[10px] font-black" value={financeSheetStartDate} onChange={e => setFinanceSheetStartDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-300 uppercase">Fim</label>
+                      <input type="date" className="w-full bg-white border border-slate-200 p-3 rounded-xl text-[10px] font-black" value={financeSheetEndDate} onChange={e => setFinanceSheetEndDate(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-slate-900 pl-3">Novo Lançamento</h4>
+                  <div className="flex p-1 bg-slate-200 rounded-2xl">
+                    <button onClick={() => setNewFinanceEntry({...newFinanceEntry, type: 'out'})} className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all ${newFinanceEntry.type === 'out' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Despesa/Vale</button>
+                    <button onClick={() => setNewFinanceEntry({...newFinanceEntry, type: 'in'})} className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all ${newFinanceEntry.type === 'in' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500'}`}>Receita/Extra</button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase">Valor (R$)</label>
+                      <input type="text" className="w-full bg-white border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:border-slate-900" placeholder="0,00" value={newFinanceEntry.value} onChange={e => setNewFinanceEntry({...newFinanceEntry, value: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase">Referência</label>
+                      <input className="w-full bg-white border border-slate-200 p-4 rounded-2xl text-[11px] font-black uppercase outline-none focus:border-slate-900" placeholder="EX: ADIANTAMENTO, BONIFICAÇÃO..." value={newFinanceEntry.description} onChange={e => setNewFinanceEntry({...newFinanceEntry, description: e.target.value})} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase">Data</label>
+                      <input type="date" className="w-full bg-white border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:border-slate-900" value={newFinanceEntry.date} onChange={e => setNewFinanceEntry({...newFinanceEntry, date: e.target.value})} />
+                    </div>
+                    <button onClick={handleAddFinanceEntry} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2">
+                      {isLoading ? <Loader2 className="animate-spin" size={16}/> : 'Confirmar Lançamento'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Panel: Ledger List */}
+              <div className="flex-1 p-8 flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center mb-6">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-4 border-blue-600 pl-3">Extrato Detalhado</h4>
+                  <div className="flex gap-3">
+                    <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                      <Printer size={14}/> Imprimir Ficha Financeira
+                    </button>
+                    <button onClick={handleSendTotalBalanceToFinance} disabled={isLoading || ledgerBalance <= 0} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                      <Send size={14}/> Enviar Balanço Total
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
+                  {ledgerEntries.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-50">
+                      <BarChart3 size={48} className="mb-4"/>
+                      <p className="text-[10px] font-black uppercase tracking-widest">Nenhum lançamento no período</p>
+                    </div>
+                  ) : (
+                    ledgerEntries.map((entry) => (
+                      <div key={entry.id} className={`p-6 rounded-[24px] border transition-all flex items-center justify-between group ${entry.sentToFinance ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-md'}`}>
+                        <div className="flex items-center gap-5">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${entry.type === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                            {entry.type === 'in' ? <ChevronRight size={20}/> : <ChevronLeft size={20}/>}
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">{entry.description}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{entry.date.split('-').reverse().join('/')} • {entry.source === 'attendance' ? 'DIÁRIA' : 'LANÇAMENTO MANUAL'}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-6">
+                          <p className={`text-sm font-black tracking-tighter ${entry.type === 'in' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {entry.type === 'in' ? '+' : '-'} {formatMoney(entry.value)}
+                          </p>
+                          
+                          <div className="flex items-center gap-2">
+                            {!entry.sentToFinance && (
+                              <>
+                                <button onClick={() => handleDeleteFinanceEntry(entry.id, entry.source)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all" title="Excluir">
+                                  <Trash2 size={16}/>
+                                </button>
+                                <button onClick={() => handleSendEntryToFinance(entry)} className="p-2 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all" title="Enviar para Financeiro">
+                                  <Send size={16}/>
+                                </button>
+                              </>
+                            )}
+                            {entry.sentToFinance && (
+                              <div className="px-3 py-1.5 bg-emerald-100 text-emerald-600 rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
+                                <CheckCircle2 size={10}/> Enviado
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -50,6 +50,8 @@ const camelToSnake = (obj: any) => {
     else if (k === 'serviceRates') newKey = 'service_rates';
     else if (k === 'serviceGoals') newKey = 'service_goals';
     else if (k === 'serviceDate') newKey = 'service_date';
+    else if (k === 'sentToFinance') newKey = 'sent_to_finance';
+    else if (k === 'financeId') newKey = 'finance_id';
     else if (k === 'productionGoal') newKey = 'production_goal';
     else if (k === 'revenueGoal') newKey = 'revenue_goal';
     else if (k === 'inventoryGoal') newKey = 'inventory_goal';
@@ -106,13 +108,14 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
 
   const baseFilter = (q: any) => (!isMaster && companyId) ? q.eq('company_id', companyId) : q;
 
-  const [areas, emps, inv, exits, flow, att, goals, support, companyInfo] = await Promise.all([
+  const [areas, emps, inv, exits, flow, att, trans, goals, support, companyInfo] = await Promise.all([
     safeQuery('areas', baseFilter(supabase.from('areas').select('*, services(*)').order('created_at', { ascending: false }))),
     safeQuery('employees', baseFilter(supabase.from('employees').select('*').order('name'))),
     safeQuery('inventory', baseFilter(supabase.from('inventory').select('*').order('name'))),
     safeQuery('inventory_exits', baseFilter(supabase.from('inventory_exits').select('*').order('date', { ascending: false }))),
     safeQuery('cash_flow', baseFilter(supabase.from('cash_flow').select('*').order('date', { ascending: false }))),
     safeQuery('attendance_records', baseFilter(supabase.from('attendance_records').select('*'))),
+    safeQuery('employee_transactions', baseFilter(supabase.from('employee_transactions').select('*').order('date', { ascending: false }))),
     safeQuery('monthly_goals', baseFilter(supabase.from('monthly_goals').select('*'))),
     safeQuery('support_requests', baseFilter(supabase.from('support_requests').select('*').order('created_at', { ascending: false }))),
     companyId ? supabase.from('companies').select('*').eq('id', companyId).maybeSingle() : Promise.resolve({ data: null })
@@ -153,7 +156,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     employees: emps.map((e: any) => ({
       id: e.id, companyId: e.company_id, name: e.name, role: e.role, status: e.status || 'active',
       defaultValue: Number(e.default_value), paymentModality: e.payment_modality || 'DIARIA',
-      cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address, workload: e.workload,
+      cpf: e.cpf, phone: e.phone, pixKey: e.pix_key, address: e.address, admissionDate: e.admission_date, workload: e.workload,
       startTime: e.start_time, breakStart: e.break_start, breakEnd: e.break_end, endTime: e.end_time
     })),
     inventory: inv.map((i: any) => ({
@@ -168,6 +171,9 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     attendanceRecords: att.map((r: any) => ({
       id: r.id, companyId: r.company_id, employeeId: r.employee_id, date: r.date, status: r.status, value: Number(r.value), paymentStatus: r.payment_status,
       discountValue: Number(r.discount_value || 0), bonusValue: Number(r.bonus_value || 0), discountObservation: r.discount_observation, clockIn: r.clock_in, breakStart: r.break_start, breakEnd: r.break_end, clockOut: r.clock_out
+    })),
+    employeeTransactions: trans.map((t: any) => ({
+      id: t.id, companyId: t.company_id, employeeId: t.employee_id, date: t.date, description: t.description, type: t.type, value: Number(t.value), sentToFinance: t.sent_to_finance, financeId: t.finance_id
     })),
     supportRequests: support.map((s: any) => ({
         id: s.id, companyId: s.company_id, description: s.description, status: s.status, createdAt: s.created_at

@@ -26,6 +26,20 @@ ADD COLUMN IF NOT EXISTS finance_categories text[] DEFAULT ARRAY['Salários', 'I
 ADD COLUMN IF NOT EXISTS inventory_categories text[] DEFAULT ARRAY['Insumos', 'Equipamentos', 'Manutenção', 'EPIS'],
 ADD COLUMN IF NOT EXISTS employee_roles text[] DEFAULT ARRAY['Operador de Roçadeira', 'Ajudante Geral', 'Motorista', 'Encarregado'];
 
+-- 4. TABELA DE TRANSAÇÕES FINANCEIRAS DE COLABORADORES
+CREATE TABLE IF NOT EXISTS public.employee_transactions (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    company_id uuid REFERENCES public.companies(id),
+    employee_id uuid REFERENCES public.employees(id),
+    date date NOT NULL,
+    description text NOT NULL,
+    type text CHECK (type IN ('in', 'out')),
+    value numeric(12,2) NOT NULL,
+    sent_to_finance boolean DEFAULT false,
+    finance_id uuid REFERENCES public.cash_flow(id),
+    created_at timestamptz DEFAULT now()
+);
+
 -- 2. GARANTIR QUE AS POLÍTICAS DE RLS PERMITAM A ATUALIZAÇÃO DESSES CAMPOS
 DROP POLICY IF EXISTS "empresa_update" ON public.companies;
 CREATE POLICY "empresa_update" ON public.companies

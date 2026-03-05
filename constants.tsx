@@ -8,6 +8,7 @@ export const INITIAL_STATE: AppState = {
     { id: 'e2', companyId: 'fera-main', name: 'Maria Santos', role: 'Ajudante Geral', status: 'active', defaultValue: 75.00, paymentModality: 'DIARIA' }
   ],
   attendanceRecords: [],
+  employeeTransactions: [],
   inventory: [
     { id: 'i1', companyId: 'fera-main', name: 'Fio de Nylon', category: 'insumos', currentQty: 10, minQty: 5, idealQty: 20, unitValue: 45.0 },
     { id: 'i2', companyId: 'fera-main', name: 'Óleo 2T', category: 'insumos', currentQty: 3, minQty: 10, idealQty: 15, unitValue: 35.0 }

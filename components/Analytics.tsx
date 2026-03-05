@@ -17,6 +17,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
   const [viewMode, setViewMode] = useState<'employees' | 'production'>('employees');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [onlyActive, setOnlyActive] = useState(true);
   const [showPrintView, setShowPrintView] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -162,7 +163,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
     }
   };
 
-  const filteredEmployees = state.employees.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredEmployees = state.employees.filter(e => {
+    const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = onlyActive ? e.status === 'active' : true;
+    return matchesSearch && matchesStatus;
+  });
   const selectedEmployee = state.employees.find(e => e.id === selectedEmployeeId);
   
   const attendanceHistory = useMemo(() => {
@@ -320,6 +325,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                <div className="relative">
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
                   <input className="w-full bg-white border-2 border-slate-100 pl-14 pr-4 py-5 rounded-[24px] text-[13px] font-black uppercase outline-none focus:border-slate-900 focus:bg-white transition-all shadow-sm" placeholder="BUSCAR NOME..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+               </div>
+               <div className="mt-4 flex items-center justify-between px-1">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-all border-2 ${onlyActive ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-200'}`}>
+                      <input 
+                        type="checkbox" 
+                        checked={onlyActive} 
+                        onChange={e => setOnlyActive(e.target.checked)}
+                        className="hidden"
+                      />
+                      {onlyActive && <CheckCircle2 size={14} className="text-white" />}
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-slate-600 transition-colors">Apenas Ativos</span>
+                  </label>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">{filteredEmployees.length} Resultados</span>
                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
