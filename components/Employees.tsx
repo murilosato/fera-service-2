@@ -328,22 +328,26 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     
     setIsLoading(true);
     try {
+      if (!state.currentUser?.companyId) {
+        throw new Error("Sessão expirada ou empresa não identificada.");
+      }
+
       const finalValue = parseFloat(employeeForm.defaultValue.replace(',', '.')) || 0;
 
       await dbSave('employees', {
         id: editingId || undefined,
-        companyId: state.currentUser?.companyId,
-        name: employeeForm.name.toUpperCase(),
-        role: employeeForm.role.toUpperCase(),
+        companyId: state.currentUser.companyId,
+        name: (employeeForm.name || '').toUpperCase(),
+        role: (employeeForm.role || '').toUpperCase(),
         defaultValue: finalValue,
         cpf: employeeForm.cpf || null,
         phone: employeeForm.phone || null,
         pixKey: employeeForm.pixKey || null,
-        address: employeeForm.address.toUpperCase() || null,
+        address: (employeeForm.address || '').toUpperCase() || null,
         admissionDate: employeeForm.admissionDate || null,
         status: editingId ? (state.employees.find(e => e.id === editingId)?.status || 'active') : 'active',
         paymentModality: employeeForm.paymentModality,
-        workload: employeeForm.workload.toUpperCase() || null,
+        workload: (employeeForm.workload || '').toUpperCase() || null,
         startTime: employeeForm.startTime || null,
         breakStart: employeeForm.breakStart || null,
         breakEnd: employeeForm.breakEnd || null,

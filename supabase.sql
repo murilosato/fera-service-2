@@ -40,6 +40,22 @@ CREATE TABLE IF NOT EXISTS public.employee_transactions (
     created_at timestamptz DEFAULT now()
 );
 
+-- 5. GARANTIR COLUNAS NA TABELA EMPLOYEES
+ALTER TABLE public.employees 
+ADD COLUMN IF NOT EXISTS cpf text,
+ADD COLUMN IF NOT EXISTS phone text,
+ADD COLUMN IF NOT EXISTS pix_key text,
+ADD COLUMN IF NOT EXISTS address text,
+ADD COLUMN IF NOT EXISTS admission_date date,
+ADD COLUMN IF NOT EXISTS workload text,
+ADD COLUMN IF NOT EXISTS start_time text,
+ADD COLUMN IF NOT EXISTS break_start text,
+ADD COLUMN IF NOT EXISTS break_end text,
+ADD COLUMN IF NOT EXISTS end_time text,
+ADD COLUMN IF NOT EXISTS payment_modality text DEFAULT 'DIARIA',
+ADD COLUMN IF NOT EXISTS default_value numeric(12,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS status text DEFAULT 'active';
+
 -- 2. GARANTIR QUE AS POLÍTICAS DE RLS PERMITAM A ATUALIZAÇÃO DESSES CAMPOS
 DROP POLICY IF EXISTS "empresa_update" ON public.companies;
 CREATE POLICY "empresa_update" ON public.companies
@@ -50,3 +66,25 @@ FOR UPDATE USING (
 -- 3. COMENTÁRIOS PARA DOCUMENTAÇÃO
 COMMENT ON COLUMN public.companies.service_rates IS 'Tabela de preços unitários por tipo de serviço.';
 COMMENT ON COLUMN public.companies.service_goals IS 'Metas técnicas mensais de produção por tipo de serviço.';
+
+-- 6. POLÍTICAS DE RLS PARA EMPLOYEES E TRANSAÇÕES
+DROP POLICY IF EXISTS "employees_select" ON public.employees;
+CREATE POLICY "employees_select" ON public.employees FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "employees_insert" ON public.employees;
+CREATE POLICY "employees_insert" ON public.employees FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "employees_update" ON public.employees;
+CREATE POLICY "employees_update" ON public.employees FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "employee_transactions_select" ON public.employee_transactions;
+CREATE POLICY "employee_transactions_select" ON public.employee_transactions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "employee_transactions_insert" ON public.employee_transactions;
+CREATE POLICY "employee_transactions_insert" ON public.employee_transactions FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "employee_transactions_update" ON public.employee_transactions;
+CREATE POLICY "employee_transactions_update" ON public.employee_transactions FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "employee_transactions_delete" ON public.employee_transactions;
+CREATE POLICY "employee_transactions_delete" ON public.employee_transactions FOR DELETE USING (true);
