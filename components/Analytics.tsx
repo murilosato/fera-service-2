@@ -516,16 +516,34 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
              @media print { 
-               @page { margin: 0; size: A4 portrait; }
+               @page { margin: 1cm; size: A4 portrait; }
                body * { visibility: hidden; }
                .print-view-container, .print-view-container * { visibility: visible; }
-               .print-view-container { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; }
+               .print-view-container { 
+                 position: absolute !important; 
+                 left: 0 !important; 
+                 top: 0 !important; 
+                 width: 100% !important; 
+                 margin: 0 !important; 
+                 padding: 0 !important; 
+                 background: white !important;
+                 overflow: visible !important;
+               }
                .no-print { display: none !important; }
-               .sheet { box-shadow: none !important; margin: 0 !important; width: 100% !important; padding: 1cm !important; border: none !important; }
+               .sheet { 
+                 box-shadow: none !important; 
+                 margin: 0 !important; 
+                 width: 100% !important; 
+                 padding: 0 !important; 
+                 border: none !important; 
+                 min-height: auto !important;
+               }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-               table { width: 100%; border-collapse: collapse; }
-               th, td { border: 1px solid #cbd5e1; padding: 4px; font-size: 8px; }
-               thead { background-color: #f1f5f9 !important; }
+               table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+               tr { page-break-inside: avoid; page-break-after: auto; }
+               th, td { border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 8px; }
+               thead { display: table-header-group; background-color: #f1f5f9 !important; }
+               .avoid-break { break-inside: avoid; page-break-inside: avoid; }
              }
              @media screen {
                 .print-view-container { display: flex; align-items: flex-start; justify-content: center; padding: 40px; background: rgba(0,0,0,0.85); backdrop-blur: 10px; }
@@ -536,7 +554,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
               <button onClick={() => setShowPrintView(false)} className="no-print absolute top-8 right-8 bg-rose-600 text-white px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-slate-900 transition-all z-[1100] flex items-center gap-2"><X size={18}/> FECHAR</button>
               
               {/* Header Empresa */}
-              <div className="border-b-4 border-slate-900 pb-6 mb-6 flex justify-between items-start">
+              <div className="border-b-4 border-slate-900 pb-6 mb-6 flex justify-between items-start avoid-break">
                 <div className="space-y-1">
                   <h1 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900">{state.company?.name || "FERA SERVICE"}</h1>
                   <p className="text-[8px] font-bold text-slate-500 uppercase leading-relaxed max-w-xs">{state.company?.address}</p>
@@ -548,7 +566,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
               </div>
 
               {/* Dados do Colaborador - Cabeçalho Detalhado */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-3 gap-4 mb-6 avoid-break">
                 <div className="col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Dados Profissionais</p>
                   <div className="grid grid-cols-2 gap-y-2">
@@ -633,45 +651,47 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 </tbody>
               </table>
 
-              {/* Resumo Financeiro no Rodapé - Apenas Pendentes */}
-              {selectedEmployee.paymentModality !== 'CLT' && (
-                <div className="mt-8 flex justify-end">
-                  <div className="w-full max-w-sm">
-                     <div className="bg-[#0f172a] p-6 rounded-[32px] text-white shadow-2xl grid grid-cols-2 gap-6 items-center border border-white/5">
-                        <div className="space-y-4">
-                           <div>
-                              <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1">Base + Bônus (+)</p>
-                              <p className="text-sm font-black tracking-tight">{formatMoney(totalBaseValue + totalBonuses)}</p>
-                           </div>
-                           <div className="pt-4 border-t border-white/10">
-                              <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1">Descontos (-) </p>
-                              <p className="text-sm font-black text-rose-400 tracking-tight">{formatMoney(totalDiscounts)}</p>
-                           </div>
-                        </div>
-                        <div className="bg-white/5 p-6 rounded-2xl flex flex-col justify-center text-center border border-white/5">
-                           <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2">Líquido a Pagar</p>
-                           <h2 className="text-2xl font-black text-emerald-400 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
-                        </div>
-                     </div>
+              <div className="avoid-break">
+                {/* Resumo Financeiro no Rodapé - Apenas Pendentes */}
+                {selectedEmployee.paymentModality !== 'CLT' && (
+                  <div className="mt-8 flex justify-end">
+                    <div className="w-full max-w-sm">
+                      <div className="bg-[#0f172a] p-6 rounded-[32px] text-white shadow-2xl grid grid-cols-2 gap-6 items-center border border-white/5">
+                          <div className="space-y-4">
+                            <div>
+                                <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1">Base + Bônus (+)</p>
+                                <p className="text-sm font-black tracking-tight">{formatMoney(totalBaseValue + totalBonuses)}</p>
+                            </div>
+                            <div className="pt-4 border-t border-white/10">
+                                <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1">Descontos (-) </p>
+                                <p className="text-sm font-black text-rose-400 tracking-tight">{formatMoney(totalDiscounts)}</p>
+                            </div>
+                          </div>
+                          <div className="bg-white/5 p-6 rounded-2xl flex flex-col justify-center text-center border border-white/5">
+                            <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2">Líquido a Pagar</p>
+                            <h2 className="text-2xl font-black text-emerald-400 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+                          </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Assinaturas */}
+                <div className="mt-20 pt-12 grid grid-cols-2 gap-24 text-center">
+                  <div className="space-y-2">
+                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee.name}</div>
+                    <p className="text-[6px] font-bold text-slate-400">Assinatura do Colaborador</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Administração Unidade</div>
+                    <p className="text-[6px] font-bold text-slate-400">Fera Service Operações Urbanas</p>
                   </div>
                 </div>
-              )}
 
-              {/* Assinaturas */}
-              <div className="mt-20 pt-12 grid grid-cols-2 gap-24 text-center">
-                <div className="space-y-2">
-                  <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">{selectedEmployee.name}</div>
-                  <p className="text-[6px] font-bold text-slate-400">Assinatura do Colaborador</p>
+                {/* Rodapé Administrativo */}
+                <div className="mt-12 text-center text-[6px] text-slate-300 font-bold uppercase tracking-widest border-t pt-4">
+                  Documento emitido via Sistema Central Fera Service Cloud v3.5 • {new Date().toLocaleString('pt-BR')}
                 </div>
-                <div className="space-y-2">
-                  <div className="border-t-2 border-slate-900 pt-3 text-[10px] font-black uppercase">Administração Unidade</div>
-                  <p className="text-[6px] font-bold text-slate-400">Fera Service Operações Urbanas</p>
-                </div>
-              </div>
-
-              {/* Rodapé Administrativo */}
-              <div className="mt-12 text-center text-[6px] text-slate-300 font-bold uppercase tracking-widest border-t pt-4">
-                Documento emitido via Sistema Central Fera Service Cloud v3.5 • {new Date().toLocaleString('pt-BR')}
               </div>
            </div>
         </div>
