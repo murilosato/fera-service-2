@@ -516,13 +516,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
         <div className="fixed inset-0 z-[1000] bg-white text-slate-900 font-sans print-view-container overflow-y-auto">
            <style>{`
              @media print { 
-               @page { margin: 1cm; size: A4 portrait; }
+               @page { margin: 1.5cm; size: A4 portrait; }
+               html, body { background: white !important; color: black !important; }
                body * { visibility: hidden; }
                .print-view-container, .print-view-container * { visibility: visible; }
                .print-view-container { 
-                 position: absolute !important; 
-                 left: 0 !important; 
-                 top: 0 !important; 
+                 position: static !important; 
+                 display: block !important;
                  width: 100% !important; 
                  margin: 0 !important; 
                  padding: 0 !important; 
@@ -531,6 +531,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                }
                .no-print { display: none !important; }
                .sheet { 
+                 background: white !important;
                  box-shadow: none !important; 
                  margin: 0 !important; 
                  width: 100% !important; 
@@ -539,9 +540,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                  min-height: auto !important;
                }
                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-               table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+               table { width: 100%; border-collapse: collapse; page-break-inside: auto; background: white !important; }
                tr { page-break-inside: avoid; page-break-after: auto; }
-               th, td { border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 8px; }
+               th, td { border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 8px; background: white !important; }
                thead { display: table-header-group; background-color: #f1f5f9 !important; }
                .avoid-break { break-inside: avoid; page-break-inside: avoid; }
              }
@@ -656,20 +657,20 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                 {selectedEmployee.paymentModality !== 'CLT' && (
                   <div className="mt-8 flex justify-end">
                     <div className="w-full max-w-sm">
-                      <div className="bg-[#0f172a] p-6 rounded-[32px] text-white shadow-2xl grid grid-cols-2 gap-6 items-center border border-white/5">
+                      <div className="bg-[#0f172a] p-6 rounded-[32px] text-white shadow-2xl grid grid-cols-2 gap-6 items-center border border-white/5 print:bg-white print:text-black print:border-slate-900 print:border-2">
                           <div className="space-y-4">
                             <div>
-                                <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1">Base + Bônus (+)</p>
+                                <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1 print:text-slate-600">Base + Bônus (+)</p>
                                 <p className="text-sm font-black tracking-tight">{formatMoney(totalBaseValue + totalBonuses)}</p>
                             </div>
-                            <div className="pt-4 border-t border-white/10">
-                                <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1">Descontos (-) </p>
-                                <p className="text-sm font-black text-rose-400 tracking-tight">{formatMoney(totalDiscounts)}</p>
+                            <div className="pt-4 border-t border-white/10 print:border-slate-200">
+                                <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1 print:text-rose-600">Descontos (-) </p>
+                                <p className="text-sm font-black text-rose-400 tracking-tight print:text-rose-600">{formatMoney(totalDiscounts)}</p>
                             </div>
                           </div>
-                          <div className="bg-white/5 p-6 rounded-2xl flex flex-col justify-center text-center border border-white/5">
-                            <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2">Líquido a Pagar</p>
-                            <h2 className="text-2xl font-black text-emerald-400 tracking-tighter leading-none">{formatMoney(totalToPay)}</h2>
+                          <div className="bg-white/5 p-6 rounded-2xl flex flex-col justify-center text-center border border-white/5 print:bg-slate-50 print:border-slate-200">
+                            <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2 print:text-emerald-600">Líquido a Pagar</p>
+                            <h2 className="text-2xl font-black text-emerald-400 tracking-tighter leading-none print:text-emerald-600">{formatMoney(totalToPay)}</h2>
                           </div>
                       </div>
                     </div>
