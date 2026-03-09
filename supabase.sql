@@ -88,3 +88,25 @@ CREATE POLICY "employee_transactions_update" ON public.employee_transactions FOR
 
 DROP POLICY IF EXISTS "employee_transactions_delete" ON public.employee_transactions;
 CREATE POLICY "employee_transactions_delete" ON public.employee_transactions FOR DELETE USING (true);
+
+-- 7. DRE STATEMENTS
+CREATE TABLE IF NOT EXISTS public.dre_statements (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE,
+    month text NOT NULL, -- YYYY-MM
+    entries jsonb NOT NULL DEFAULT '[]',
+    created_at timestamptz DEFAULT now(),
+    UNIQUE(company_id, month)
+);
+
+DROP POLICY IF EXISTS "dre_statements_select" ON public.dre_statements;
+CREATE POLICY "dre_statements_select" ON public.dre_statements FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "dre_statements_insert" ON public.dre_statements;
+CREATE POLICY "dre_statements_insert" ON public.dre_statements FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "dre_statements_update" ON public.dre_statements;
+CREATE POLICY "dre_statements_update" ON public.dre_statements FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "dre_statements_delete" ON public.dre_statements;
+CREATE POLICY "dre_statements_delete" ON public.dre_statements FOR DELETE USING (true);

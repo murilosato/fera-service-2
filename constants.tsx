@@ -18,6 +18,7 @@ export const INITIAL_STATE: AppState = {
   supportRequests: [],
   cashIn: [],
   cashOut: [],
+  dreStatements: [],
   monthlyGoals: {
     [`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`]: {
       production: 50000,
@@ -59,7 +60,8 @@ export const INITIAL_STATE: AppState = {
         finance: true,
         inventory: true,
         employees: true,
-        analytics: true
+        analytics: true,
+        dre: true
       }
     }
   ],

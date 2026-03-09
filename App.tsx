@@ -12,6 +12,7 @@ import Employees from './components/Employees';
 import Settings from './components/Settings';
 import Login from './components/Login';
 import Analytics from './components/Analytics';
+import DRE from './components/DRE';
 import Management from './components/Management';
 import Support from './components/Support';
 import ConfirmationModal from './components/ConfirmationModal';
@@ -145,6 +146,7 @@ const App = () => {
             case 'inventory': return <Inventory {...props} />;
             case 'employees': return <Employees {...props} />;
             case 'analytics': return <Analytics {...props} />;
+            case 'dre': return <DRE {...props} />;
             case 'management': return <Management {...props} />;
             case 'settings': return <Settings {...props} />;
             case 'support': return <Support {...props} />;

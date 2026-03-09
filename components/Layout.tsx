@@ -12,7 +12,8 @@ import {
   X,
   BarChart3,
   ShieldCheck,
-  LifeBuoy
+  LifeBuoy,
+  TrendingUp
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 
@@ -35,6 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, user
     { id: 'inventory', label: 'Almoxarifado', icon: Package, permission: user?.permissions.inventory },
     { id: 'employees', label: 'Equipe & RH', icon: Users, permission: user?.permissions.employees },
     { id: 'analytics', label: 'Relatórios', icon: BarChart3, permission: user?.permissions.analytics },
+    { id: 'dre', label: 'DRE', icon: TrendingUp, permission: user?.permissions.dre },
     { id: 'support', label: 'Suporte', icon: LifeBuoy, permission: true },
     { id: 'management', label: 'Gestão de Acessos', icon: ShieldCheck, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },
     { id: 'settings', label: 'Configurações', icon: Settings, permission: userRole === UserRole.MASTER || userRole === UserRole.ADMIN },

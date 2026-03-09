@@ -60,6 +60,10 @@ const camelToSnake = (obj: any) => {
     else if (k === 'bonusValue') newKey = 'bonus_value';
     else if (k === 'discountObservation') newKey = 'discount_observation';
     else if (k === 'createdAt') newKey = 'created_at';
+    else if (k === 'isPercentage') newKey = 'is_percentage';
+    else if (k === 'percentageValue') newKey = 'percentage_value';
+    else if (k === 'isManualOverride') newKey = 'is_manual_override';
+    else if (k === 'originalValue') newKey = 'original_value';
     else {
       newKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     }
@@ -108,7 +112,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
 
   const baseFilter = (q: any) => (!isMaster && companyId) ? q.eq('company_id', companyId) : q;
 
-  const [areas, emps, inv, exits, flow, att, trans, goals, support, companyInfo] = await Promise.all([
+  const [areas, emps, inv, exits, flow, att, trans, goals, support, dre, companyInfo] = await Promise.all([
     safeQuery('areas', baseFilter(supabase.from('areas').select('*, services(*)').order('created_at', { ascending: false }))),
     safeQuery('employees', baseFilter(supabase.from('employees').select('*').order('name'))),
     safeQuery('inventory', baseFilter(supabase.from('inventory').select('*').order('name'))),
@@ -118,6 +122,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     safeQuery('employee_transactions', baseFilter(supabase.from('employee_transactions').select('*').order('date', { ascending: false }))),
     safeQuery('monthly_goals', baseFilter(supabase.from('monthly_goals').select('*'))),
     safeQuery('support_requests', baseFilter(supabase.from('support_requests').select('*').order('created_at', { ascending: false }))),
+    safeQuery('dre_statements', baseFilter(supabase.from('dre_statements').select('*'))),
     companyId ? supabase.from('companies').select('*').eq('id', companyId).maybeSingle() : Promise.resolve({ data: null })
   ]);
 
@@ -177,6 +182,21 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     })),
     supportRequests: support.map((s: any) => ({
         id: s.id, companyId: s.company_id, description: s.description, status: s.status, createdAt: s.created_at
+    })),
+    dreStatements: (dre || []).map((s: any) => ({
+      id: s.id,
+      companyId: s.company_id,
+      month: s.month,
+      entries: (s.entries || []).map((e: any) => ({
+        id: e.id,
+        description: e.description,
+        value: Number(e.value || 0),
+        type: e.type,
+        isPercentage: e.is_percentage || e.isPercentage || false,
+        percentageValue: Number(e.percentage_value || e.percentageValue || 0),
+        isManualOverride: e.is_manual_override || e.isManualOverride || false,
+        originalValue: e.original_value !== undefined ? Number(e.original_value) : (e.originalValue !== undefined ? Number(e.originalValue) : undefined)
+      }))
     })),
     monthlyGoals: goalsMap,
     serviceRates: company?.service_rates || {},

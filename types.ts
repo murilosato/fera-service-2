@@ -20,6 +20,7 @@ export interface UserPermissions {
   inventory: boolean;
   employees: boolean;
   analytics: boolean;
+  dre: boolean;
 }
 
 export interface Company {
@@ -178,6 +179,24 @@ export interface EmployeeTransaction {
   financeId?: string;
 }
 
+export interface DREEntry {
+  id: string;
+  description: string;
+  value: number;
+  type: 'revenue' | 'expense';
+  isPercentage: boolean;
+  percentageValue?: number;
+  isManualOverride: boolean;
+  originalValue?: number;
+}
+
+export interface DREStatement {
+  id: string;
+  companyId: string;
+  month: string; // YYYY-MM
+  entries: DREEntry[];
+}
+
 export interface AppState {
   areas: Area[];
   employees: Employee[];
@@ -188,6 +207,7 @@ export interface AppState {
   supportRequests: SupportRequest[];
   cashIn: CashIn[];
   cashOut: CashOut[];
+  dreStatements: DREStatement[];
   monthlyGoals: Record<string, MonthlyGoal>;
   serviceRates: Record<ServiceType, number>;
   serviceGoals: Record<ServiceType, number>;
