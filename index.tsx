@@ -1,14 +1,20 @@
 
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot, Root } from 'react-dom/client';
 import App from './App';
+
+// Evitar recriação do root se o script for carregado múltiplas vezes
+let root: Root | null = null;
 
 const init = () => {
   const rootElement = document.getElementById('root');
   if (!rootElement) return;
 
   try {
-    const root = ReactDOM.createRoot(rootElement);
+    if (!root) {
+      root = createRoot(rootElement);
+    }
+    
     root.render(
       <React.StrictMode>
         <App />

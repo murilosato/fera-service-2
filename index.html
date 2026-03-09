@@ -20,11 +20,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
-      :root {
-        --title-color: #010a1b;
-        --subtitle-color: #2e3545;
-      }
-      body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; color: var(--subtitle-color); }
       #root:empty { display: none; }
       .initial-loader {
         display: flex;
@@ -75,13 +70,13 @@
     <script type="importmap">
     {
       "imports": {
-        "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-        "recharts": "https://esm.sh/recharts@^3.7.0",
-        "react/": "https://esm.sh/react@^19.2.3/",
-        "react": "https://esm.sh/react@^19.2.3",
-        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-        "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.93.3"
+        "react": "https://esm.sh/react@19.0.0",
+        "react-dom": "https://esm.sh/react-dom@19.0.0",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.460.0",
+        "recharts": "https://esm.sh/recharts@2.13.3",
+        "@google/genai": "https://esm.sh/@google/genai@0.21.0",
+        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.46.1"
       }
     }
     </script>
@@ -101,7 +96,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="./index.js"></script>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

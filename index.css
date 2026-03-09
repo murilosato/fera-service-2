@@ -1,0 +1,16 @@
+:root {
+  --title-color: #010a1b;
+  --subtitle-color: #2e3545;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  color: var(--subtitle-color);
+  background-color: #010a1b;
+}
+
+#root:empty {
+  display: none;
+}

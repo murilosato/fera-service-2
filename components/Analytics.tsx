@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppState, AttendanceRecord, Employee } from '../types';
 import { 
   Printer, Search, Calendar, FileText, User, Hash, Smartphone, Database, TableProperties,
-  Users, DollarSign, Edit2, Save, Loader2, Clock, CheckCircle2, MapPin, X, BarChart3, Layers, Gift
+  Users, DollarSign, Edit2, Save, Loader2, Clock, CheckCircle2, MapPin, X, BarChart3, Layers, Gift, Wallet
 } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
 
@@ -367,6 +367,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                            <div className="grid grid-cols-2 gap-4">
                               <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"><Hash size={12}/> CPF: <span className="text-white ml-2">{selectedEmployee.cpf || '--'}</span></div>
                               <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"><Smartphone size={12}/> CONTATO: <span className="text-white ml-2">{selectedEmployee.phone || '--'}</span></div>
+                              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2"><Wallet size={12}/> CHAVE PIX: <span className="text-white">{selectedEmployee.pixKey || '--'}</span></div>
                               {selectedEmployee.paymentModality === 'CLT' && (<div className="text-[10px] text-blue-400 font-black uppercase col-span-2 flex items-center gap-2"><Clock size={12}/> JORNADA: {selectedEmployee.workload} ({selectedEmployee.startTime} às {selectedEmployee.endTime})</div>)}
                            </div>
                         </div>
@@ -578,6 +579,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
                     <div>
                       <p className="text-[8px] font-bold text-slate-500 uppercase"><span className="font-black text-slate-900">CPF:</span> {selectedEmployee.cpf || '--'}</p>
                       <p className="text-[8px] font-bold text-slate-500 uppercase mt-1"><span className="font-black text-slate-900">TEL:</span> {selectedEmployee.phone || '--'}</p>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase mt-1"><span className="font-black text-slate-900">PIX:</span> {selectedEmployee.pixKey || '--'}</p>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-200">
