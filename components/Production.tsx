@@ -18,6 +18,7 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
   const [viewStatus, setViewStatus] = useState<'executing' | 'finished'>('executing');
   const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; areaId: string; serviceId?: string } | null>(null);
   const [confirmFinish, setConfirmFinish] = useState<{ isOpen: boolean; area: Area; date: string } | null>(null);
+  const [editingResponsibleId, setEditingResponsibleId] = useState<string | null>(null);
 
   const [searchName, setSearchName] = useState('');
   const [filterDateStart, setFilterDateStart] = useState('');
@@ -114,6 +115,22 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
       setExpandedAreaId(null);
       setViewStatus('finished');
     } catch (e: any) { alert("Falha ao finalizar O.S."); } finally { setIsLoading(false); }
+  };
+
+  const handleUpdateResponsible = async (areaId: string, employeeId: string) => {
+    setIsLoading(true);
+    try {
+      await dbSave('areas', {
+        id: areaId,
+        responsibleEmployeeId: employeeId || null
+      });
+      await refreshData();
+      setEditingResponsibleId(null);
+    } catch (e: any) {
+      alert("Falha ao atualizar responsável.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const performDelete = async () => {
@@ -288,9 +305,36 @@ const Production: React.FC<ProductionProps> = ({ state, setState }) => {
                       <div className="flex items-center gap-3 mt-1">
                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Iniciada em {formatDate(area.startDate)} • Ref: {area.startReference}</p>
                         <span className="w-1 h-1 bg-slate-300 rounded-full"/>
-                        <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
-                          <UserCheck size={10}/> {responsible?.name || 'SEM RESPONSÁVEL'}
-                        </p>
+                        {editingResponsibleId === area.id ? (
+                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            <select 
+                              className="bg-slate-50 border border-slate-200 rounded-lg text-[8px] font-black uppercase outline-none px-2 py-1"
+                              value={area.responsibleEmployeeId || ''}
+                              onChange={e => handleUpdateResponsible(area.id, e.target.value)}
+                              autoFocus
+                              onBlur={() => setEditingResponsibleId(null)}
+                            >
+                              <option value="">SEM RESPONSÁVEL</option>
+                              {activeEmployees.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.name.toUpperCase()}</option>
+                              ))}
+                            </select>
+                            <button onClick={() => setEditingResponsibleId(null)} className="text-slate-400 hover:text-rose-500">
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <p 
+                            className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1 hover:bg-emerald-50 px-2 py-1 rounded-lg transition-colors cursor-pointer group"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingResponsibleId(area.id);
+                            }}
+                          >
+                            <UserCheck size={10}/> {responsible?.name || 'SEM RESPONSÁVEL'}
+                            <Edit3 size={10} className="opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
