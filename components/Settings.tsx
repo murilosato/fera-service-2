@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, ServiceType } from '../types';
-import { Target, Map, DollarSign, Package, Loader2, Plus, Trash2, Tag, Users, Calendar, Save, Activity, CreditCard, CheckCircle, X, Building, Globe, MapPin, Phone, Mail, Users2 } from 'lucide-react';
+import { AppState } from '../types';
+import { Building, DollarSign, Loader2, Save, Tag, Plus, Package, Trash2, Users } from 'lucide-react';
 import { dbSave, fetchCompleteCompanyData } from '../lib/supabase';
-import { SERVICE_OPTIONS } from '../constants';
 
 interface SettingsProps {
   state: AppState;
@@ -22,13 +21,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     address: state.company?.address || '',
     email: state.company?.email || '',
     website: state.company?.website || ''
-  });
-
-  const [goalForm, setGoalForm] = useState({
-    month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
-    type: 'production' as 'production' | 'revenue',
-    serviceType: ServiceType.ROCADA_MECANIZADA_M2,
-    value: ''
   });
 
   const [localRates, setLocalRates] = useState<Record<string, number>>(state.serviceRates);
@@ -148,24 +140,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
     }
   };
 
-  const handleSaveGoal = async () => {
-    const val = parseFloat(goalForm.value);
-    if (!goalForm.month || isNaN(val)) return notify("Valor da meta inválido", "error");
-    setIsLoading(true);
-    try {
-      const existing = state.monthlyGoals[goalForm.month] || { production: 0, revenue: 0, inventory: 0, finance: 0 };
-      await dbSave('monthly_goals', {
-        companyId: state.currentUser?.companyId,
-        monthKey: goalForm.month,
-        productionGoal: goalForm.type === 'production' ? val : existing.production,
-        revenueGoal: goalForm.type === 'revenue' ? val : existing.revenue,
-      });
-      await refreshData();
-      setGoalForm({...goalForm, value: ''});
-      notify("Meta mensal atualizada!");
-    } catch (e) { notify("Erro ao salvar meta", "error"); } finally { setIsLoading(false); }
-  };
-
   return (
     <div className="space-y-6 pb-24">
       <header>
@@ -238,30 +212,6 @@ const Settings: React.FC<SettingsProps> = ({ state, setState, notify }) => {
           <button onClick={handleUpdateRatesAndGoals} disabled={isLoading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
              {isLoading ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} SALVAR PARÂMETROS TÉCNICOS
           </button>
-        </div>
-
-        <div className="bg-slate-900 text-white rounded-[40px] p-8 shadow-2xl space-y-6 border border-white/5 lg:col-span-2">
-            <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-3"><Target size={24} className="text-emerald-400"/> Planejamento Geral Mensal</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="space-y-1">
-                 <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Mês</label>
-                 <input type="month" className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-xs font-black outline-none focus:border-emerald-500 text-white" value={goalForm.month} onChange={e => setGoalForm({...goalForm, month: e.target.value})} />
-              </div>
-              <div className="space-y-1">
-                 <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Tipo de Meta</label>
-                 <select className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-xs font-black outline-none text-white" value={goalForm.type} onChange={e => setGoalForm({...goalForm, type: e.target.value as any})}>
-                   <option value="production">PRODUÇÃO TOTAL (M²)</option>
-                   <option value="revenue">FATURAMENTO TOTAL (R$)</option>
-                 </select>
-              </div>
-              <div className="space-y-1">
-                 <label className="text-[9px] font-black text-slate-500 uppercase ml-1 block">Valor Alvo</label>
-                 <input type="number" className="w-full bg-slate-800 border border-white/10 p-3.5 rounded-2xl text-xs font-black outline-none text-white" placeholder="0.00" value={goalForm.value} onChange={e => setGoalForm({...goalForm, value: e.target.value})} />
-              </div>
-            </div>
-            <button onClick={handleSaveGoal} disabled={isLoading} className="w-full bg-emerald-500 text-slate-900 py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2">
-               {isLoading ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} SALVAR META MENSAL
-            </button>
         </div>
       </div>
 

@@ -55,6 +55,23 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
   
   const [employeeForm, setEmployeeForm] = useState(initialFormState);
 
+  const formatCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const formatPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
+  };
+
   const [pointForm, setPointForm] = useState({
     clockIn: '',
     breakStart: '',
@@ -371,8 +388,8 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       name: emp.name,
       role: emp.role,
       defaultValue: String(emp.defaultValue || 0),
-      cpf: emp.cpf || '',
-      phone: emp.phone || '',
+      cpf: formatCPF(emp.cpf || ''),
+      phone: formatPhone(emp.phone || ''),
       pixKey: emp.pixKey || '',
       address: emp.address || '',
       admissionDate: emp.admissionDate || new Date().toISOString().split('T')[0],
@@ -640,12 +657,12 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
 
                 <div className="space-y-1">
                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">CPF</label>
-                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="000.000.000-00" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: e.target.value})} />
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="000.000.000-00" value={employeeForm.cpf} onChange={e => setEmployeeForm({...employeeForm, cpf: formatCPF(e.target.value)})} />
                 </div>
 
                 <div className="space-y-1">
                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Telefone / WhatsApp</label>
-                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="(00) 00000-0000" value={employeeForm.phone} onChange={e => setEmployeeForm({...employeeForm, phone: e.target.value})} />
+                   <input className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-[11px] font-black outline-none focus:bg-white" placeholder="(00) 00000-0000" value={employeeForm.phone} onChange={e => setEmployeeForm({...employeeForm, phone: formatPhone(e.target.value)})} />
                 </div>
 
                 <div className="space-y-1">
