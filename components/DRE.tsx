@@ -124,20 +124,30 @@ const DRE: React.FC<DREProps> = ({ state, setState, notify }) => {
     if (!state.currentUser?.companyId) return;
     setIsSaving(true);
     try {
-      const newStatement: DREStatement = {
-        id: currentStatement?.id || crypto.randomUUID(),
+      const payload: any = {
+        id: currentStatement?.id || undefined,
         companyId: state.currentUser.companyId,
         month: selectedMonth,
         entries: updatedEntries
       };
 
-      const newStatements = currentStatement
-        ? state.dreStatements.map(s => s.id === currentStatement.id ? newStatement : s)
-        : [...state.dreStatements, newStatement];
+      const saved = await dbSave('dre_statements', payload);
+      
+      if (saved && saved[0]) {
+        const savedStatement: DREStatement = {
+          id: saved[0].id,
+          companyId: state.currentUser.companyId,
+          month: selectedMonth,
+          entries: updatedEntries
+        };
 
-      await dbSave('dre_statements', newStatement);
-      setState(prev => ({ ...prev, dreStatements: newStatements }));
-      notify('DRE salva com sucesso!');
+        const newStatements = currentStatement
+          ? state.dreStatements.map(s => s.id === currentStatement.id ? savedStatement : s)
+          : [...state.dreStatements, savedStatement];
+
+        setState(prev => ({ ...prev, dreStatements: newStatements }));
+        notify('DRE salva com sucesso!');
+      }
     } catch (e) {
       notify('Erro ao salvar DRE', 'error');
     } finally {
