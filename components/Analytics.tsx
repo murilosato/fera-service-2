@@ -657,22 +657,22 @@ const Analytics: React.FC<AnalyticsProps> = ({ state, setState, notify }) => {
               <div className="avoid-break">
                 {/* Resumo Financeiro no Rodapé - Apenas Pendentes */}
                 {selectedEmployee.paymentModality !== 'CLT' && (
-                  <div className="mt-8 flex justify-end">
-                    <div className="w-full max-w-sm">
-                      <div className="bg-[#0f172a] p-6 rounded-[32px] text-white shadow-2xl grid grid-cols-2 gap-6 items-center border border-white/5 print:bg-white print:text-black print:border-slate-900 print:border-2">
-                          <div className="space-y-4">
+                  <div className="mt-2 flex justify-end">
+                    <div className="w-full max-w-[240px]">
+                      <div className="bg-[#0f172a] p-3 rounded-2xl text-white shadow-xl grid grid-cols-2 gap-3 items-center border border-white/5 print:bg-white print:text-black print:border-slate-900 print:border-2">
+                          <div className="space-y-2">
                             <div>
-                                <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1 print:text-slate-600">Base + Bônus (+)</p>
-                                <p className="text-sm font-black tracking-tight">{formatMoney(totalBaseValue + totalBonuses)}</p>
+                                <p className="text-[6px] font-black uppercase text-slate-400 tracking-widest mb-0.5 print:text-slate-600">Base + Bônus (+)</p>
+                                <p className="text-[10px] font-black tracking-tight">{formatMoney(totalBaseValue + totalBonuses)}</p>
                             </div>
-                            <div className="pt-4 border-t border-white/10 print:border-slate-200">
-                                <p className="text-[7px] font-black uppercase text-rose-400 tracking-widest mb-1 print:text-rose-600">Descontos (-) </p>
-                                <p className="text-sm font-black text-rose-400 tracking-tight print:text-rose-600">{formatMoney(totalDiscounts)}</p>
+                            <div className="pt-2 border-t border-white/10 print:border-slate-200">
+                                <p className="text-[6px] font-black uppercase text-rose-400 tracking-widest mb-0.5 print:text-rose-600">Descontos (-) </p>
+                                <p className="text-[10px] font-black text-rose-400 tracking-tight print:text-rose-600">{formatMoney(totalDiscounts)}</p>
                             </div>
                           </div>
-                          <div className="bg-white/5 p-6 rounded-2xl flex flex-col justify-center text-center border border-white/5 print:bg-slate-50 print:border-slate-200">
-                            <p className="text-[8px] font-black uppercase text-emerald-400 tracking-widest mb-2 print:text-emerald-600">Líquido a Pagar</p>
-                            <h2 className="text-2xl font-black text-emerald-400 tracking-tighter leading-none print:text-emerald-600">{formatMoney(totalToPay)}</h2>
+                          <div className="bg-white/5 p-2 rounded-xl flex flex-col justify-center text-center border border-white/5 print:bg-slate-50 print:border-slate-200">
+                            <p className="text-[6px] font-black uppercase text-emerald-400 tracking-widest mb-1 print:text-emerald-600">Líquido a Pagar</p>
+                            <h2 className="text-lg font-black text-emerald-400 tracking-tighter leading-none print:text-emerald-600">{formatMoney(totalToPay)}</h2>
                           </div>
                       </div>
                     </div>
