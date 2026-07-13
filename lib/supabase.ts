@@ -118,7 +118,7 @@ export const fetchCompleteCompanyData = async (companyId: string | null, isMaste
     safeQuery('inventory', baseFilter(supabase.from('inventory').select('*').order('name'))),
     safeQuery('inventory_exits', baseFilter(supabase.from('inventory_exits').select('*').order('date', { ascending: false }))),
     safeQuery('cash_flow', baseFilter(supabase.from('cash_flow').select('*').order('date', { ascending: false }))),
-    safeQuery('attendance_records', baseFilter(supabase.from('attendance_records').select('*'))),
+    safeQuery('attendance_records', baseFilter(supabase.from('attendance_records').select('*').limit(5000).order('date', { ascending: false }))),
     safeQuery('employee_transactions', baseFilter(supabase.from('employee_transactions').select('*').order('date', { ascending: false }))),
     safeQuery('monthly_goals', baseFilter(supabase.from('monthly_goals').select('*'))),
     safeQuery('support_requests', baseFilter(supabase.from('support_requests').select('*').order('created_at', { ascending: false }))),
