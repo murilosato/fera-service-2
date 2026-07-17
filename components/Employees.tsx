@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { AppState, Employee, AttendanceRecord } from '../types';
 import { Users, UserPlus, X, ChevronRight, ChevronLeft, Edit2, Trash2, Loader2, Save, Fingerprint, Smartphone, MapPin, CreditCard, Power, UserX, AlertCircle, Clock, Briefcase, HeartPulse, ShieldAlert, Palmtree, Mail, DollarSign, Calendar, Users2, CheckCircle2, Wallet, BarChart3, Send, Printer } from 'lucide-react';
 import { dbSave, dbDelete, fetchCompleteCompanyData } from '../lib/supabase';
@@ -13,6 +13,7 @@ interface EmployeesProps {
 }
 
 const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
+  const savingKeys = useRef<Set<string>>(new Set());
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,25 +103,43 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
     if (!emp) return;
     if (emp.status === 'inactive') return notify("Não é possível lançar frequência para inativos", "error");
 
-    const existing = state.attendanceRecords.find(r => r.employeeId === empId && r.date === date);
-
-    if (emp.paymentModality === 'CLT') {
-      const virtualStatus = existing ? getVirtualStatus(existing) : 'present';
-      const cleanObs = (existing?.discountObservation || '').replace(/^\[(AT|FJ|FE)\]\s*/, '');
-
-      setPointForm({
-        clockIn: existing?.clockIn || emp.startTime || '08:00',
-        breakStart: existing?.breakStart || emp.breakStart || '12:00',
-        breakEnd: existing?.breakEnd || emp.breakEnd || '13:00',
-        clockOut: existing?.clockOut || emp.endTime || '17:00',
-        status: virtualStatus,
-        observation: cleanObs
-      });
-      setShowTimeModal({ emp, date, record: existing });
-      return;
-    }
+    const key = `${empId}_${date}`;
+    if (savingKeys.current.has(key)) return;
+    savingKeys.current.add(key);
 
     try {
+      const allExisting = state.attendanceRecords.filter(r => r.employeeId === empId && r.date === date);
+      let existing = allExisting[0];
+
+      // Se houver registros duplicados no estado local, removemos os excedentes no Supabase para limpar sujeira
+      if (allExisting.length > 1) {
+        console.warn(`Duplicados encontrados para o colaborador ${empId} em ${date}. Limpando...`);
+        try {
+          const deletePromises = allExisting.slice(1).map(r => dbDelete('attendance_records', r.id));
+          await Promise.all(deletePromises);
+        } catch (err) {
+          console.error("Erro ao deletar registros duplicados:", err);
+        }
+      }
+
+      if (emp.paymentModality === 'CLT') {
+        const virtualStatus = existing ? getVirtualStatus(existing) : 'present';
+        const cleanObs = (existing?.discountObservation || '').replace(/^\[(AT|FJ|FE)\]\s*/, '');
+
+        setPointForm({
+          clockIn: existing?.clockIn || emp.startTime || '08:00',
+          breakStart: existing?.breakStart || emp.breakStart || '12:00',
+          breakEnd: existing?.breakEnd || emp.breakEnd || '13:00',
+          clockOut: existing?.clockOut || emp.endTime || '17:00',
+          status: virtualStatus,
+          observation: cleanObs
+        });
+        setShowTimeModal({ emp, date, record: existing });
+        // Liberar a chave pois o fluxo vai continuar no modal
+        savingKeys.current.delete(key);
+        return;
+      }
+
       if (!existing) {
         await dbSave('attendance_records', {
           companyId: state.currentUser?.companyId,
@@ -140,12 +159,18 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       await refreshData();
     } catch (e) { 
       notify("Erro ao sincronizar presença", "error"); 
+    } finally {
+      savingKeys.current.delete(key);
     }
   };
 
   const handleSavePoint = async () => {
     if (!showTimeModal) return;
     const { emp, date, record } = showTimeModal;
+
+    const key = `${emp.id}_${date}`;
+    if (savingKeys.current.has(key)) return;
+    savingKeys.current.add(key);
 
     setIsLoading(true);
     try {
@@ -175,8 +200,23 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
         }
       }
 
+      const allExisting = state.attendanceRecords.filter(r => r.employeeId === emp.id && r.date === date);
+      const existingId = record?.id || allExisting[0]?.id || undefined;
+
+      // Limpa possíveis duplicados excedentes no banco de dados para evitar bugs
+      if (allExisting.length > 1) {
+        const extraRecords = allExisting.filter(r => r.id !== existingId);
+        if (extraRecords.length > 0) {
+          try {
+            await Promise.all(extraRecords.map(r => dbDelete('attendance_records', r.id)));
+          } catch (err) {
+            console.error("Erro ao limpar registros duplicados excedentes:", err);
+          }
+        }
+      }
+
       await dbSave('attendance_records', {
-        id: record?.id || undefined,
+        id: existingId,
         companyId: state.currentUser?.companyId,
         employeeId: emp.id,
         date,
@@ -197,6 +237,7 @@ const Employees: React.FC<EmployeesProps> = ({ state, setState, notify }) => {
       notify("Erro ao salvar registro de ponto", "error"); 
     } finally { 
       setIsLoading(false); 
+      savingKeys.current.delete(key);
     }
   };
 
